@@ -1,0 +1,11 @@
+﻿node_modules/
+dist/
+build/
+.env
+.env.*
+!.env.example
+*.log
+.dart_tool/
+.flutter-plugins*
+.idea/
+.vscode/settings.json
