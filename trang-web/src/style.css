@@ -180,3 +180,51 @@
 .qt-layout .qt-nav-label{display:none}
 .qt-layout .qt-menu-scroll{padding-top:12px}
 @media(max-width:760px){.qt-layout .qt-sidebar{background:#fff}}
+
+
+/* Quan ly chi nhanh CRUD */
+.cn-page{color:#29275d;animation:qtRise .35s ease both}
+.cn-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:24px}
+.cn-heading p,.cn-dialog-header p{color:#a6a0d1;font-size:11px;font-weight:800;letter-spacing:1.2px;margin:0 0 8px}
+.cn-heading h2{font:800 clamp(25px,3vw,33px) 'Manrope',sans-serif;color:#fff;margin:0 0 9px}
+.cn-heading span{color:#e4ddff;font-size:13px}
+.cn-primary{background:linear-gradient(110deg,#6348ed,#9566ef);color:#fff;border:0;box-shadow:0 9px 23px #5d42c43b;font-weight:700;white-space:nowrap}
+.cn-primary:hover{transform:translateY(-2px);filter:brightness(1.06)}
+.cn-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px}
+.cn-summary>div{padding:20px 24px;border-radius:18px;background:#fff;box-shadow:0 12px 30px #18104430;display:flex;flex-direction:column;gap:9px}
+.cn-summary span{color:#8180a4;font-size:12px}.cn-summary strong{color:#42329e;font:800 28px 'Manrope',sans-serif}
+.cn-panel{background:#fff;border-radius:22px;padding:22px;box-shadow:0 14px 35px #17103b40}
+.cn-filters{display:flex;gap:12px;align-items:center;margin-bottom:22px;flex-wrap:wrap}
+.cn-filters input{flex:1;min-width:200px}.cn-filters select{min-width:185px}
+.cn-filters input,.cn-filters select,.cn-field input,.cn-field select,.cn-field textarea{background:#faf9ff;border:1px solid #e6e2f4;color:#342f65;border-radius:11px;padding:12px 14px;font:inherit;font-size:13px;outline:none;width:100%;margin:0;box-shadow:none}
+.cn-filters input:focus,.cn-filters select:focus,.cn-field input:focus,.cn-field select:focus,.cn-field textarea:focus{border-color:#8a70f2;box-shadow:0 0 0 3px #8066f022}
+.cn-filters button{padding:12px 17px;font-size:12px}.cn-light{background:#f0edff;color:#6248bc;border:1px solid #e7e1fc}.cn-light:hover{background:#e7dfff}
+.cn-table-wrap{overflow:auto;border:1px solid #f0edf8;border-radius:14px}
+.cn-table{width:100%;border-collapse:collapse;min-width:890px;text-align:left}
+.cn-table th{padding:16px 13px;background:#f6f4ff;font-size:11px;letter-spacing:.2px;color:#807c9e;white-space:nowrap}
+.cn-table td{padding:16px 13px;border-top:1px solid #f0eef8;color:#625f81;font-size:12px;vertical-align:middle}
+.cn-table tbody tr:hover{background:#faf9ff}.cn-name{display:flex;align-items:center;gap:10px;min-width:180px}
+.cn-name strong{display:block;color:#29265f;font-size:12px}.cn-name small{display:block;margin-top:4px;color:#9290ab}
+.cn-branch-icon{width:40px;height:40px;border-radius:12px;background:#eee9ff;color:#7053e7;display:grid;place-items:center;font-size:23px;flex:none}
+.cn-address{max-width:220px;line-height:1.6}.cn-status{display:inline-block;padding:7px 10px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+.cn-active{background:#dff9ed;color:#15935c}.cn-pending{background:#fff1d8;color:#bc7b17}.cn-inactive{background:#f3eaf2;color:#98617b}
+.cn-actions{display:flex;gap:6px}.cn-actions button{font-size:11px;padding:7px 9px;border-radius:8px;background:#f0edff;color:#5943ba}.cn-actions button:hover{background:#e3ddff}
+.cn-actions .cn-danger-text{background:#fff0f1;color:#c74c62}.cn-actions .cn-danger-text:hover{background:#ffe1e5}
+.cn-empty{text-align:center;padding:42px!important;color:#9590b0!important}
+.cn-pagination{display:flex;align-items:center;justify-content:space-between;gap:15px;padding-top:20px;font-size:12px;color:#8c89a6}
+.cn-pagination>div{display:flex;align-items:center;gap:13px}.cn-pagination button{background:#f2efff;color:#6048bb;padding:9px 12px;font-size:12px}.cn-pagination button:disabled{opacity:.4;cursor:not-allowed}
+.cn-success,.cn-error{border-radius:10px;padding:12px 15px;font-size:12px;margin:10px 0 16px}.cn-success{background:#e2f8eb;color:#177b4e}.cn-error{background:#ffeaee;color:#af354e}
+.cn-backdrop{position:fixed;inset:0;background:#10102caa;z-index:100;display:grid;place-items:center;padding:16px;backdrop-filter:blur(5px)}
+.cn-dialog{background:#fff;color:#2d285d;border-radius:22px;width:min(680px,100%);max-height:min(92vh,850px);overflow:auto;padding:28px;box-shadow:0 30px 80px #08051b80;animation:qtRise .25s ease both}
+.cn-dialog-header{display:flex;align-items:start;justify-content:space-between;gap:15px;border-bottom:1px solid #f0edf9;padding-bottom:18px;margin-bottom:21px}
+.cn-dialog-header h3{font:800 21px 'Manrope',sans-serif;color:#30276d;margin:0}
+.cn-close{background:#f2efff;color:#6954b5;font-size:24px;padding:3px 11px;border-radius:10px}
+.cn-form{display:flex;flex-direction:column;gap:16px}.cn-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.cn-field label{display:block;font-size:12px;color:#615d84;font-weight:700;margin-bottom:7px}
+.cn-field textarea{resize:vertical;min-height:90px}.cn-form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:10px}
+.cn-confirm p{line-height:1.7;font-size:14px;color:#605d80}.cn-confirm p:nth-child(2){font-size:12px;color:#ad6273}
+.cn-danger{background:#d74865;color:#fff}.cn-danger:hover{background:#c42e4c}
+.cn-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.cn-details>div:not(.cn-form-actions){padding:12px;background:#f9f8ff;border-radius:10px;overflow-wrap:anywhere}
+.cn-details span{display:block;font-size:11px;color:#8d87a5;margin-bottom:5px}.cn-details strong{font-size:13px;color:#383168}.cn-details .cn-form-actions{grid-column:1/-1}
+@media(max-width:900px){.cn-summary{gap:9px}.cn-summary>div{padding:15px}.cn-filters input{min-width:150px}}
+@media(max-width:600px){.cn-heading{align-items:stretch;flex-direction:column}.cn-heading .cn-primary{align-self:flex-start}.cn-summary{grid-template-columns:1fr 1fr}.cn-panel{padding:12px}.cn-filters>*{width:100%}.cn-form-grid,.cn-details{grid-template-columns:1fr}.cn-dialog{padding:19px}.cn-pagination{flex-direction:column;align-items:start}}
