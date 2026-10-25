@@ -228,3 +228,18 @@
 .cn-details span{display:block;font-size:11px;color:#8d87a5;margin-bottom:5px}.cn-details strong{font-size:13px;color:#383168}.cn-details .cn-form-actions{grid-column:1/-1}
 @media(max-width:900px){.cn-summary{gap:9px}.cn-summary>div{padding:15px}.cn-filters input{min-width:150px}}
 @media(max-width:600px){.cn-heading{align-items:stretch;flex-direction:column}.cn-heading .cn-primary{align-self:flex-start}.cn-summary{grid-template-columns:1fr 1fr}.cn-panel{padding:12px}.cn-filters>*{width:100%}.cn-form-grid,.cn-details{grid-template-columns:1fr}.cn-dialog{padding:19px}.cn-pagination{flex-direction:column;align-items:start}}
+
+
+/* Chi nhanh: empty state va ban do Google */
+.cn-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:48px 20px;text-align:center;color:#8984a6}
+.cn-empty-state>span{font-size:48px;color:#9277ea;background:#f3efff;width:90px;height:90px;border-radius:50%;display:grid;place-items:center}
+.cn-empty-state h3{font-size:18px;color:#37306e;margin:5px 0 0}.cn-empty-state p{font-size:13px;margin:0 0 12px}
+.cn-map-section{border:1px solid #eae5f8;border-radius:15px;padding:14px;background:#faf9ff}
+.cn-map-title strong,.cn-map-title span{display:block}.cn-map-title strong{font-size:13px;color:#3b3375}.cn-map-title span{font-size:11px;color:#8580a4;line-height:1.6;margin:5px 0 12px}
+.cn-map-canvas{height:300px;width:100%;border-radius:12px;background:#ece8f8}
+.cn-map-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap}
+.cn-map-toolbar button{font-size:12px}.cn-map-toolbar span{font-size:11px;color:#6255a3}
+.cn-map-message{font-size:11px;color:#6255a3;margin:10px 0 0}
+.cn-map-unconfigured{padding:22px;background:#f2eeff;border-radius:12px;color:#5c4a94;font-size:12px;line-height:1.7}
+.cn-map-unconfigured strong{display:block;font-size:13px}.cn-map-unconfigured p{margin:8px 0}
+.cn-map-unconfigured a{color:#5b42cb;font-weight:700}
