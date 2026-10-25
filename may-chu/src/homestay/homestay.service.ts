@@ -36,6 +36,10 @@ export class HomestayService {
     return this.truyVan(`
       SELECT p.id, p.ma_phong, p.ten_phong, p.tang, p.trang_thai_van_hanh,
              l.id AS loai_phong_id, l.ten_loai, l.mo_ta, l.suc_chua, l.dien_tich_m2,
+             (SELECT min(g.gia_co_ban)::text FROM public.goi_gia g
+              WHERE g.loai_phong_id = l.id AND g.hieu_luc AND g.hinh_thuc_dat = 'Theo giờ') AS gia_tu_gio,
+             (SELECT min(g.gia_co_ban)::text FROM public.goi_gia g
+              WHERE g.loai_phong_id = l.id AND g.hieu_luc AND g.hinh_thuc_dat = 'Theo đêm') AS gia_tu_dem,
              (SELECT a.duong_dan FROM public.hinh_anh_phong a
               WHERE a.phong_id = p.id ORDER BY a.la_anh_dai_dien DESC, a.thu_tu ASC, a.id LIMIT 1) AS anh_dai_dien
       FROM public.phong p
