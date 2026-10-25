@@ -37,7 +37,7 @@ export default function QuanTri(){
   const [thongKe,setThongKe]=useState<ThongKe|null>(null);
   const [thongBao,setThongBao]=useState(''); const [dangXuLy,setDangXuLy]=useState(false);
   const [muc,setMuc]=useState<Muc>('tong-quan'); const [menuMo,setMenuMo]=useState(false);
-  const [hoSoMo,setHoSoMo]=useState(false); const [tim,setTim]=useState(''); const [ky,setKy]=useState<'hom-nay'|'tuan'|'thang'>('thang');
+  const [hoSoMo,setHoSoMo]=useState(false); const [timMo,setTimMo]=useState(false); const [tim,setTim]=useState(''); const [ky,setKy]=useState<'hom-nay'|'tuan'|'thang'>('thang');
   async function xuLy(e:React.FormEvent){
     e.preventDefault();setDangXuLy(true);setThongBao('');
     try{
@@ -78,8 +78,11 @@ export default function QuanTri(){
       </aside>
       {menuMo&&<button className="qt-overlay" aria-label="Đóng menu" onClick={()=>setMenuMo(false)}/>}
       <div className="qt-workspace">
-        <div className="qt-topbar"><div className="qt-header-search-group"><button className="qt-mobile-menu" onClick={()=>setMenuMo(!menuMo)} aria-label="Mở menu">☰</button>
-          <div className="qt-search"><span>⌕</span><input aria-label="Tìm menu" value={tim} onChange={e=>setTim(e.target.value)} placeholder="Tìm chức năng quản trị..." onKeyDown={e=>{if(e.key==='Enter'){const x=danhMuc.find(x=>x.nhan.toLowerCase().includes(tim.trim().toLowerCase()));if(x&&tim.trim())setMuc(x.id);}}}/></div></div>
+        <div className="qt-topbar"><div className="qt-header-search-row"><button className="qt-mobile-menu" onClick={()=>setMenuMo(!menuMo)} aria-label="Mở menu">☰</button>
+          <div className={'qt-header-search-group '+(timMo?'qt-search-expanded':'')} role="search">
+            <button type="button" className="qt-search-toggle" aria-label={timMo?'Thu gọn tìm kiếm':'Mở tìm kiếm'} aria-expanded={timMo} onClick={()=>{setTimMo(!timMo);if(timMo)setTim('');}}>⌕</button>
+            {timMo&&<div className="qt-search"><input autoFocus aria-label="Tìm menu" value={tim} onChange={e=>setTim(e.target.value)} placeholder="Tìm chức năng..." onKeyDown={e=>{if(e.key==='Escape'){setTimMo(false);setTim('');}if(e.key==='Enter'){const x=danhMuc.find(x=>x.nhan.toLowerCase().includes(tim.trim().toLowerCase()));if(x&&tim.trim()){setMuc(x.id);setTimMo(false);setTim('');}}}}/></div>}
+          </div></div>
           <div className="qt-top-actions"><button title="Thông báo" aria-label="Thông báo" onClick={()=>setMuc('thong-bao')} className="qt-icon-button">♧<i/></button><button title="Người dùng" aria-label="Người dùng" onClick={()=>setMuc('nguoi-dung')} className="qt-icon-button">✉</button><div className="qt-profile-wrap"><button type="button" className="qt-profile-button" aria-haspopup="menu" aria-expanded={hoSoMo} onClick={()=>setHoSoMo(!hoSoMo)}><span className="qt-avatar">{taiKhoan.slice(0,1).toUpperCase()}</span><span className="qt-profile-name">Quản trị viên</span><span className="qt-profile-chevron">{hoSoMo?'⌃':'⌄'}</span></button>{hoSoMo&&<><button className="qt-profile-dismiss" aria-label="Đóng menu tài khoản" onClick={()=>setHoSoMo(false)}/><div className="qt-profile-dropdown" role="menu"><div className="qt-profile-email" title={taiKhoan}>{taiKhoan}</div><button role="menuitem" onClick={()=>{setMuc('thong-tin');setHoSoMo(false);}}>♙ <span>Thông tin cá nhân</span></button><button role="menuitem" onClick={()=>{setMuc('cai-dat');setHoSoMo(false);}}>⚙ <span>Cài đặt</span></button><div className="qt-profile-divider"/><button role="menuitem" className="qt-profile-logout" onClick={()=>{setHoSoMo(false);thoat();}}>↪ <span>Đăng xuất</span></button></div></>}</div></div>
         </div>
         <main className="qt-content"><div className="qt-page-head"><div><p className="qt-welcome">Xin chào, <strong>Quản trị viên!</strong> 👋</p><h1>{muc==='tong-quan'?'Bảng điều khiển':danhMuc.find(x=>x.id===muc)?.nhan}</h1><p className="qt-subtitle">{muc==='tong-quan'?'Chào mừng trở lại! Đây là tổng quan hoạt động của hệ thống.':'Không gian quản trị Homestay tập trung.'}</p></div><div className="qt-date-widget"><span className="qt-date-icon">▣</span><div><strong>{new Intl.DateTimeFormat('vi-VN',{weekday:'long'}).format(new Date())}</strong><small>{new Intl.DateTimeFormat('vi-VN',{day:'2-digit',month:'long',year:'numeric'}).format(new Date())}</small></div><button className="qt-date-refresh" title="Làm mới số liệu" aria-label="Làm mới số liệu" onClick={()=>void taiLai()} disabled={dangXuLy}>↻</button></div></div>
