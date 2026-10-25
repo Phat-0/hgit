@@ -53,3 +53,28 @@
 @media(max-width:760px){.qt-sidebar{position:fixed;left:0;top:0;transform:translateX(-105%);transition:transform .3s;width:260px}.qt-sidebar-open{transform:translateX(0)}.qt-overlay{display:block;position:fixed;inset:0;z-index:25;background:#1e163d77;border:0;border-radius:0}.qt-mobile-menu{display:block;background:transparent;color:#3b277a;font-size:24px;padding:5px}.qt-topbar{height:76px}.qt-search{margin-left:12px}.qt-top-actions{gap:9px}.qt-content{padding:25px 16px}.qt-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.qt-bottom-grid{grid-template-columns:1fr}}
 @media(max-width:480px){.qt-search input{max-width:120px}.qt-top-actions .qt-icon-button:nth-child(2){display:none}.qt-stat{padding:16px}.qt-stat strong{font-size:24px}.qt-card-head{flex-direction:column}.qt-chart-card{padding:20px}.qt-page-head{align-items:start;flex-direction:column}}
 @media(prefers-reduced-motion:reduce){.qt-layout *{animation:none!important;transition:none!important}}
+
+
+/* Sidebar quan tri nen tim dam, khong trong suot */
+.qt-layout .qt-sidebar{
+  background:#211744;
+  background-image:linear-gradient(165deg,#34235e 0%,#241943 48%,#18132f 100%);
+  color:#f6f3ff;
+  border-right:1px solid #5e4c8b;
+  box-shadow:10px 0 32px rgba(14,9,36,.32);
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+}
+.qt-layout .qt-logo{color:#fff}
+.qt-layout .qt-logo>span:last-child>span{color:#c6b4ff}
+.qt-layout .qt-nav-label{color:#b5a8d3}
+.qt-layout .qt-nav-item{color:#e1daf4}
+.qt-layout .qt-nav-item:hover{background:#4a3679;color:#fff}
+.qt-layout .qt-nav-active,.qt-layout .qt-nav-active:hover{
+  background:linear-gradient(105deg,#6650f5,#9c5df1);
+  color:#fff;
+  box-shadow:0 8px 22px rgba(108,76,238,.38);
+}
+.qt-layout .qt-sidebar-bottom{background:transparent}
+.qt-layout .qt-logout{color:#f0dfff}
+.qt-layout .qt-logout:hover{background:#483066;color:#fff}
