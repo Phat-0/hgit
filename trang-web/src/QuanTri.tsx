@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 type ThongKe = { tong_homestay: number; cho_duyet: number; tong_phong: number; tong_dat_phong: number; tong_nguoi_dung: number };
 type Login = { access_token: string; nguoi_dung: { id: string; email: string } };
-type Muc = 'tong-quan'|'homestay'|'phong'|'dat-phong'|'nguoi-dung'|'thong-bao'|'cai-dat';
+type Muc = 'tong-quan'|'homestay'|'phong'|'dat-phong'|'nguoi-dung'|'thong-bao'|'cai-dat'|'thong-tin';
 const danhMuc: {id:Muc; nhan:string; icon:string; nhom:string}[] = [
   {id:'tong-quan',nhan:'Tổng quan',icon:'▦',nhom:'QUẢN LÝ CHUNG'},
   {id:'homestay',nhan:'Homestay',icon:'⌂',nhom:'QUẢN LÝ CHUNG'},
@@ -10,7 +10,8 @@ const danhMuc: {id:Muc; nhan:string; icon:string; nhom:string}[] = [
   {id:'dat-phong',nhan:'Đơn đặt phòng',icon:'▣',nhom:'QUẢN LÝ CHUNG'},
   {id:'nguoi-dung',nhan:'Người dùng',icon:'♙',nhom:'HỆ THỐNG'},
   {id:'thong-bao',nhan:'Thông báo',icon:'♧',nhom:'HỆ THỐNG'},
-  {id:'cai-dat',nhan:'Cài đặt',icon:'⚙',nhom:'HỆ THỐNG'}
+  {id:'cai-dat',nhan:'Cài đặt',icon:'⚙',nhom:'HỆ THỐNG'},
+  {id:'thong-tin',nhan:'Thông tin cá nhân',icon:'♙',nhom:'TÀI KHOẢN'}
 ];
 async function api<T>(url:string, method='GET', body?:unknown, token?:string):Promise<T>{
   const response=await fetch('/api'+url,{method,headers:{...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},body:body?JSON.stringify(body):undefined});
@@ -26,7 +27,7 @@ function BieuDo({thongKe}:{thongKe:ThongKe}){
     <div className="qt-chart-grid">{[0,1,2,3,4].map(i=><div key={i}/>)}</div>
     <div className="qt-chart-bars">{bars.map((n,i)=><div className="qt-chart-column" key={i}><div className="qt-chart-bar" style={{height:(20+n*.65)+'%'}}/><span>{['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'][i]}</span></div>)}</div>
     <svg className="qt-chart-line" viewBox="0 0 600 210" preserveAspectRatio="none" aria-hidden="true"><path d="M0 155 C28 151 32 90 65 105 S115 160 150 110 S203 60 235 111 S292 160 330 100 S387 55 416 110 S475 160 510 95 S560 110 600 85" fill="none" stroke="#50cbb1" strokeWidth="3" strokeLinecap="round"/></svg>
-    <div className="qt-chart-caption">Biểu đồ minh họa giao diện — chưa có API thống kê theo tháng. Dữ liệu tổng quan thực tế: {series.map(n=>Math.round(n/max*100)).join(' · ')}%</div>
+    <div className="qt-chart-caption">Minh họa giao diện, chưa có API dữ liệu theo tháng. Tỷ lệ các chỉ số tổng quan: {series.map(n=>Math.round(n/max*100)).join(' · ')}%</div>
   </div>;
 }
 export default function QuanTri(){
@@ -36,7 +37,7 @@ export default function QuanTri(){
   const [thongKe,setThongKe]=useState<ThongKe|null>(null);
   const [thongBao,setThongBao]=useState(''); const [dangXuLy,setDangXuLy]=useState(false);
   const [muc,setMuc]=useState<Muc>('tong-quan'); const [menuMo,setMenuMo]=useState(false);
-  const [tim,setTim]=useState(''); const [ky,setKy]=useState<'hom-nay'|'tuan'|'thang'>('thang');
+  const [hoSoMo,setHoSoMo]=useState(false); const [tim,setTim]=useState(''); const [ky,setKy]=useState<'hom-nay'|'tuan'|'thang'>('thang');
   async function xuLy(e:React.FormEvent){
     e.preventDefault();setDangXuLy(true);setThongBao('');
     try{
@@ -74,21 +75,20 @@ export default function QuanTri(){
         <div className="qt-menu-scroll">{['QUẢN LÝ CHUNG','HỆ THỐNG'].map(nhom=><div className="qt-nav-group" key={nhom}><p className="qt-nav-label">{nhom}</p>
           {danhMuc.filter(x=>x.nhom===nhom).map(item=><button type="button" key={item.id} className={'qt-nav-item '+(muc===item.id?'qt-nav-active':'')} onClick={()=>{setMuc(item.id);setMenuMo(false);setThongBao('');}}><span className="qt-nav-icon">{item.icon}</span><span>{item.nhan}</span><span className="qt-nav-arrow">›</span></button>)}
         </div>)}</div>
-        <div className="qt-sidebar-bottom"><div className="qt-help"><strong>Cần hỗ trợ?</strong><p>Hệ thống quản lý Homestay</p></div><button type="button" onClick={thoat} className="qt-logout">↪ Đăng xuất</button></div>
       </aside>
       {menuMo&&<button className="qt-overlay" aria-label="Đóng menu" onClick={()=>setMenuMo(false)}/>}
       <div className="qt-workspace">
         <div className="qt-topbar"><button className="qt-mobile-menu" onClick={()=>setMenuMo(!menuMo)} aria-label="Mở menu">☰</button>
           <div className="qt-search"><span>⌕</span><input aria-label="Tìm menu" value={tim} onChange={e=>setTim(e.target.value)} placeholder="Tìm chức năng quản trị..." onKeyDown={e=>{if(e.key==='Enter'){const x=danhMuc.find(x=>x.nhan.toLowerCase().includes(tim.trim().toLowerCase()));if(x&&tim.trim())setMuc(x.id);}}}/></div>
-          <div className="qt-top-actions"><button title="Thông báo" aria-label="Thông báo" onClick={()=>setMuc('thong-bao')} className="qt-icon-button">♧<i/></button><button title="Người dùng" aria-label="Người dùng" onClick={()=>setMuc('nguoi-dung')} className="qt-icon-button">✉</button><div className="qt-avatar" title={taiKhoan}>{taiKhoan.slice(0,1).toUpperCase()}</div></div>
+          <div className="qt-top-actions"><button title="Thông báo" aria-label="Thông báo" onClick={()=>setMuc('thong-bao')} className="qt-icon-button">♧<i/></button><button title="Người dùng" aria-label="Người dùng" onClick={()=>setMuc('nguoi-dung')} className="qt-icon-button">✉</button><div className="qt-profile-wrap"><button type="button" className="qt-profile-button" aria-haspopup="menu" aria-expanded={hoSoMo} onClick={()=>setHoSoMo(!hoSoMo)}><span className="qt-avatar">{taiKhoan.slice(0,1).toUpperCase()}</span><span className="qt-profile-name">Quản trị viên</span><span className="qt-profile-chevron">{hoSoMo?'⌃':'⌄'}</span></button>{hoSoMo&&<><button className="qt-profile-dismiss" aria-label="Đóng menu tài khoản" onClick={()=>setHoSoMo(false)}/><div className="qt-profile-dropdown" role="menu"><div className="qt-profile-email" title={taiKhoan}>{taiKhoan}</div><button role="menuitem" onClick={()=>{setMuc('thong-tin');setHoSoMo(false);}}>♙ <span>Thông tin cá nhân</span></button><button role="menuitem" onClick={()=>{setMuc('cai-dat');setHoSoMo(false);}}>⚙ <span>Cài đặt</span></button><div className="qt-profile-divider"/><button role="menuitem" className="qt-profile-logout" onClick={()=>{setHoSoMo(false);thoat();}}>↪ <span>Đăng xuất</span></button></div></>}</div></div>
         </div>
         <main className="qt-content"><div className="qt-page-head"><div><p className="qt-breadcrumb">Trang quản trị / {danhMuc.find(x=>x.id===muc)?.nhan}</p><h1>{muc==='tong-quan'?'Bảng điều khiển':danhMuc.find(x=>x.id===muc)?.nhan}</h1><p className="qt-subtitle">{muc==='tong-quan'?'Chào mừng trở lại! Đây là tổng quan hoạt động của hệ thống.':'Không gian quản trị Homestay tập trung.'}</p></div><button className="qt-refresh" onClick={()=>void taiLai()} disabled={dangXuLy}>↻ Làm mới</button></div>
         {thongBao&&<div className="qt-alert" role="status">{thongBao}</div>}
         {muc==='tong-quan'?<><div className="qt-stats">{stats.map((s,i)=><article className={'qt-stat qt-tone-'+s.tone} key={s.ten} style={{animationDelay:(i*80)+'ms'}}><div className="qt-stat-icon">{s.icon}</div><p>{s.ten}</p><strong>{s.so.toLocaleString('vi-VN')}</strong><span className="qt-stat-foot">Dữ liệu thực tế</span></article>)}</div>
           <div className="qt-main-grid"><section className="qt-chart-card"><div className="qt-card-head"><div><h2>Thống kê hoạt động</h2><p>Tổng quan hệ thống Homestay</p></div><div className="qt-period">{(['hom-nay','tuan','thang'] as const).map((k,i)=><button key={k} onClick={()=>setKy(k)} className={ky===k?'selected':''}>{['Hôm nay','Tuần','Tháng'][i]}</button>)}</div></div><BieuDo thongKe={thongKe!}/></section>
-          <section className="qt-side-card"><h2>Chỉ số nổi bật</h2>{stats.slice(0,4).map(s=><div className="qt-highlight" key={s.ten}><strong>{s.so.toLocaleString('vi-VN')}<span> +</span></strong><p>{s.ten}</p></div>)}</section></div>
+          <section className="qt-side-card"><h2>Chỉ số nổi bật</h2>{stats.slice(0,4).map(s=><div className="qt-highlight" key={s.ten}><strong>{s.so.toLocaleString('vi-VN')}</strong><p>{s.ten}</p></div>)}</section></div>
           <div className="qt-bottom-grid"><div className="qt-mini-card"><span className="qt-mini-symbol">⌂</span><div><h3>Quản lý cơ sở</h3><p>Danh sách Homestay và phê duyệt</p></div><button onClick={()=>setMuc('homestay')}>Xem mục ›</button></div><div className="qt-mini-card"><span className="qt-mini-symbol">▣</span><div><h3>Đơn đặt phòng</h3><p>Theo dõi hoạt động đặt phòng</p></div><button onClick={()=>setMuc('dat-phong')}>Xem mục ›</button></div></div>
-        </>:<section className="qt-placeholder"><div className="qt-placeholder-icon">{danhMuc.find(x=>x.id===muc)?.icon}</div><h2>{danhMuc.find(x=>x.id===muc)?.nhan}</h2><p>Giao diện chức năng đã được bố trí trong menu. Các thao tác quản lý dữ liệu của mục này chưa được triển khai; sẽ kết nối API bảo vệ quyền quản trị ở bước tiếp theo.</p><button onClick={()=>setMuc('tong-quan')}>← Trở về tổng quan</button></section>}
+        </>:<section className="qt-placeholder"><div className="qt-placeholder-icon">{danhMuc.find(x=>x.id===muc)?.icon}</div><h2>{danhMuc.find(x=>x.id===muc)?.nhan}</h2>{muc==='thong-tin'?<p>Tài khoản đăng nhập: <strong>{taiKhoan}</strong>. Các chức năng cập nhật hồ sơ sẽ được triển khai sau.</p>:<p>Giao diện chức năng đã được bố trí trong menu. Các thao tác quản lý dữ liệu của mục này chưa được triển khai; sẽ kết nối API bảo vệ quyền quản trị ở bước tiếp theo.</p>}<button onClick={()=>setMuc('tong-quan')}>← Trở về tổng quan</button></section>}
         </main>
       </div>
     </div>;
