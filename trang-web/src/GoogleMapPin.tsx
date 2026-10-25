@@ -32,12 +32,15 @@ export default function GoogleMapPin({address,latitude,longitude,onChange}:Props
  const [ready,setReady]=useState(false);
  const [busy,setBusy]=useState(false);
  const [message,setMessage]=useState('');
+ const [mapError,setMapError]=useState('');
  const selected=latitude!==''&&longitude!==''&&Number.isFinite(Number(latitude))&&Number.isFinite(Number(longitude));
  const mapsUrl='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(address);
  const callback=useRef(onChange);callback.current=onChange;
  useEffect(()=>{
   if(!key||!container.current)return;
   let cancelled=false;
+  const previousAuthFailure=(window as Window & {gm_authFailure?:()=>void}).gm_authFailure;
+  (window as Window & {gm_authFailure?:()=>void}).gm_authFailure=()=>{if(!cancelled){setReady(false);setMapError('Google Maps từ chối API key. Kiểm tra Billing, Maps JavaScript API và HTTP referrer localhost:5173.');}};
   loadGoogle(key).then(()=>{
    if(cancelled||!container.current||!window.google)return;
    const g=window.google;
@@ -48,8 +51,8 @@ export default function GoogleMapPin({address,latitude,longitude,onChange}:Props
    pin.addListener('dragend',()=>{const p=pin.getPosition();if(p)callback.current(p.lat(),p.lng());});
    instance.addListener('click',(e)=>{if(e.latLng){const p={lat:e.latLng.lat(),lng:e.latLng.lng()};pin.setPosition(p);callback.current(p.lat,p.lng);}});
    setReady(true);
-  }).catch(e=>{if(!cancelled)setMessage(e instanceof Error?e.message:'Không tải được bản đồ');});
-  return ()=>{cancelled=true;map.current=null;marker.current=null;geocoder.current=null;setReady(false);};
+  }).catch(e=>{if(!cancelled){setMapError(e instanceof Error?e.message:'Không tải được bản đồ');setReady(false);}});
+  return ()=>{cancelled=true;(window as Window & {gm_authFailure?:()=>void}).gm_authFailure=previousAuthFailure;map.current=null;marker.current=null;geocoder.current=null;};
  // Only initialize map once per key
  },[key]);
  useEffect(()=>{if(!ready||!selected||!map.current||!marker.current)return;const p={lat:Number(latitude),lng:Number(longitude)};marker.current.setPosition(p);map.current.setCenter(p);},[latitude,longitude,ready]);
@@ -67,7 +70,7 @@ export default function GoogleMapPin({address,latitude,longitude,onChange}:Props
  }
  return <div className="cn-map-section">
   <div className="cn-map-title"><strong>📍 Vị trí chi nhánh trên Google Maps *</strong><span>Nhập địa chỉ phía trên, nhấn “Tìm địa chỉ” để đặt ghim tự động, sau đó kéo ghim để chỉnh lại.</span></div>
-  {key?<><div className="cn-map-canvas" ref={container}/><div className="cn-map-toolbar"><button type="button" className="cn-light" disabled={!ready||busy} onClick={locate}>{busy?'Đang tìm...':'⌖ Tìm địa chỉ và đặt ghim'}</button><span>{selected?'✓ Đã chọn vị trí':'Chưa chọn vị trí'}</span></div></>:<div className="cn-map-unconfigured"><strong>Google Maps chưa được cấu hình</strong><p>Để định vị tự động và kéo ghim trực tiếp, cần cấu hình khóa Google Maps JavaScript API và Geocoding API trong file <code>trang-web/.env.local</code>.</p><a href={mapsUrl} target="_blank" rel="noopener noreferrer">Xem địa chỉ trên Google Maps ↗</a></div>}
+  {key?<><div className="cn-map-canvas" ref={container} style={{display:mapError?'none':'block'}}/>{mapError&&<div className="cn-map-unconfigured" role="alert"><strong>Không thể sử dụng Google Maps</strong><p>{mapError}</p><p>Mở DevTools (F12 → Console) để xem mã lỗi cụ thể như BillingNotEnabledMapError, RefererNotAllowedMapError hoặc ApiNotActivatedMapError.</p><a href={mapsUrl} target="_blank" rel="noopener noreferrer">Mở địa chỉ trên Google Maps ↗</a></div>}<div className="cn-map-toolbar"><button type="button" className="cn-light" disabled={!ready||busy} onClick={locate}>{busy?'Đang tìm...':'⌖ Tìm địa chỉ và đặt ghim'}</button><span>{selected?'✓ Đã chọn vị trí':'Chưa chọn vị trí'}</span></div></>:<div className="cn-map-unconfigured"><strong>Google Maps chưa được cấu hình</strong><p>Để định vị tự động và kéo ghim trực tiếp, cần cấu hình khóa Google Maps JavaScript API và Geocoding API trong file <code>trang-web/.env.local</code>.</p><a href={mapsUrl} target="_blank" rel="noopener noreferrer">Xem địa chỉ trên Google Maps ↗</a></div>}
   {message&&<p className="cn-map-message" role="status">{message}</p>}
  </div>;
 }
