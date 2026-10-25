@@ -2,16 +2,19 @@ import { useState } from 'react';
 
 type ThongKe = { tong_homestay: number; cho_duyet: number; tong_phong: number; tong_dat_phong: number; tong_nguoi_dung: number };
 type Login = { access_token: string; nguoi_dung: { id: string; email: string } };
-type Muc = 'tong-quan'|'homestay'|'phong'|'dat-phong'|'nguoi-dung'|'thong-bao'|'cai-dat'|'thong-tin';
-const danhMuc: {id:Muc; nhan:string; icon:string; nhom:string}[] = [
-  {id:'tong-quan',nhan:'Tổng quan',icon:'▦',nhom:'QUẢN LÝ CHUNG'},
-  {id:'homestay',nhan:'Homestay',icon:'⌂',nhom:'QUẢN LÝ CHUNG'},
-  {id:'phong',nhan:'Phòng & loại phòng',icon:'▤',nhom:'QUẢN LÝ CHUNG'},
-  {id:'dat-phong',nhan:'Đơn đặt phòng',icon:'▣',nhom:'QUẢN LÝ CHUNG'},
-  {id:'nguoi-dung',nhan:'Người dùng',icon:'♙',nhom:'HỆ THỐNG'},
-  {id:'thong-bao',nhan:'Thông báo',icon:'♧',nhom:'HỆ THỐNG'},
-  {id:'cai-dat',nhan:'Cài đặt',icon:'⚙',nhom:'HỆ THỐNG'},
-  {id:'thong-tin',nhan:'Thông tin cá nhân',icon:'♙',nhom:'TÀI KHOẢN'}
+type Muc = 'tong-quan'|'lich'|'chi-nhanh'|'phong'|'dat-phong'|'trang-chu'|'nhan-vien'|'thong-bao'|'cai-dat'|'bao-cao'|'thong-tin';
+const danhMuc: {id:Muc; nhan:string; icon:string}[] = [
+  {id:'tong-quan',nhan:'Tổng quan',icon:'▦'},
+  {id:'lich',nhan:'Lịch',icon:'▣'},
+  {id:'chi-nhanh',nhan:'Chi nhánh',icon:'▥'},
+  {id:'phong',nhan:'Phòng',icon:'▤'},
+  {id:'dat-phong',nhan:'Đơn đặt phòng',icon:'▣'},
+  {id:'trang-chu',nhan:'Trang chủ',icon:'⌂'},
+  {id:'nhan-vien',nhan:'Nhân viên',icon:'♙'},
+  {id:'thong-bao',nhan:'Thông báo',icon:'♧'},
+  {id:'cai-dat',nhan:'Cài đặt',icon:'⚙'},
+  {id:'bao-cao',nhan:'Báo cáo thống kê',icon:'▥'},
+  {id:'thong-tin',nhan:'Thông tin cá nhân',icon:'♙'}
 ];
 async function api<T>(url:string, method='GET', body?:unknown, token?:string):Promise<T>{
   const response=await fetch('/api'+url,{method,headers:{...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},body:body?JSON.stringify(body):undefined});
@@ -72,9 +75,11 @@ export default function QuanTri(){
     <div className="qt-layout">
       <aside className={'qt-sidebar '+(menuMo?'qt-sidebar-open':'')}>
         <div className="qt-logo"><span className="qt-logo-mark">H</span><span>Home<span>Stay</span></span></div>
-        <div className="qt-menu-scroll">{['QUẢN LÝ CHUNG','HỆ THỐNG'].map(nhom=><div className="qt-nav-group" key={nhom}><p className="qt-nav-label">{nhom}</p>
-          {danhMuc.filter(x=>x.nhom===nhom).map(item=><button type="button" key={item.id} className={'qt-nav-item '+(muc===item.id?'qt-nav-active':'')} onClick={()=>{setMuc(item.id);setMenuMo(false);setThongBao('');}}><span className="qt-nav-icon">{item.icon}</span><span>{item.nhan}</span><span className="qt-nav-arrow">›</span></button>)}
-        </div>)}</div>
+        <div className="qt-menu-scroll">
+          {danhMuc.filter(item=>item.id!=='thong-tin').map(item=><button type="button" key={item.id} className={'qt-nav-item '+(muc===item.id?'qt-nav-active':'')} onClick={()=>{setMuc(item.id);setMenuMo(false);setThongBao('');}}>
+            <span className="qt-nav-icon">{item.icon}</span><span>{item.nhan}</span><span className="qt-nav-arrow">›</span>
+          </button>)}
+        </div>
       </aside>
       {menuMo&&<button className="qt-overlay" aria-label="Đóng menu" onClick={()=>setMenuMo(false)}/>}
       <div className="qt-workspace">
