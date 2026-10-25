@@ -77,8 +77,8 @@ export default function ChiNhanhPage({token}:{token:string}){
     <td><div className="cn-name"><span className="cn-branch-icon">⌂</span><div><strong>{item.ten_homestay}</strong><small>{item.tinh_thanh}</small></div></div></td>
     <td className="cn-address">{item.dia_chi}</td><td>{item.so_phong}</td>
     <td><span className={'cn-status '+(item.trang_thai==='Đang hoạt động'?'cn-active':item.trang_thai==='Chờ duyệt'?'cn-pending':'cn-inactive')}>{item.trang_thai}</span></td>
-    <td>{date(item.ngay_tao)}</td><td><div className="cn-actions"><button aria-label={'Xem '+item.ten_homestay} title="Xem chi tiết" onClick={()=>open('view',item)}>◉</button><button aria-label={'Sửa '+item.ten_homestay} title="Chỉnh sửa" onClick={()=>open('edit',item)}>✎</button><button aria-label={'Xóa '+item.ten_homestay} className="cn-danger-text" title="Xóa chi nhánh" onClick={()=>open('delete',item)}>♲</button></div></td>
-   </tr>):<tr><td colSpan={7} className="cn-empty">Không tìm thấy chi nhánh phù hợp.</td></tr>}
+    <td>{date(item.ngay_tao)}</td><td><div className="cn-actions"><button aria-label={'Xem '+item.ten_homestay} title="Xem chi tiết" onClick={()=>open('view',item)}>◉</button><button aria-label={'Sửa '+item.ten_homestay} title="Chỉnh sửa" onClick={()=>open('edit',item)}>✎</button><button aria-label={'Xóa '+item.ten_homestay} className="cn-danger-text" title="Xóa chi nhánh" onClick={()=>open('delete',item)}>✕</button></div></td>
+   </tr>):<tr><td colSpan={6} className="cn-empty">Không tìm thấy chi nhánh phù hợp.</td></tr>}
   </tbody></table>}</div>
   <div className="cn-pagination"><span>{data?.tong_so??0} kết quả</span><div><button disabled={page===1||loading} onClick={()=>setPage(page-1)}>‹ Trước</button><span>Trang {page} / {totalPages}</span><button disabled={page>=totalPages||loading} onClick={()=>setPage(page+1)}>Sau ›</button></div></div>
   </div>
