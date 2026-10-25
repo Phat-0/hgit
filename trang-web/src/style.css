@@ -243,3 +243,38 @@
 .cn-map-unconfigured{padding:22px;background:#f2eeff;border-radius:12px;color:#5c4a94;font-size:12px;line-height:1.7}
 .cn-map-unconfigured strong{display:block;font-size:13px}.cn-map-unconfigured p{margin:8px 0}
 .cn-map-unconfigured a{color:#5b42cb;font-weight:700}
+
+
+/* Chi nhanh - giao dien quan ly moi */
+.cn-page .cn-heading{margin-bottom:24px}
+.cn-page .cn-heading h2{font-size:34px;letter-spacing:-.8px}
+.cn-page .cn-summary{gap:15px}
+.cn-page .cn-summary>div{position:relative;overflow:hidden;border:1px solid #f2efff;min-height:105px;background:linear-gradient(135deg,#fff 60%,#f2edff)}
+.cn-page .cn-summary>div:before{content:'';position:absolute;width:100px;height:100px;right:-32px;top:-36px;border-radius:50%;background:#eee8ff80}
+.cn-page .cn-summary>div:nth-child(2){background:linear-gradient(135deg,#fff 60%,#eaf8ff)}
+.cn-page .cn-summary>div:nth-child(3){background:linear-gradient(135deg,#fff 60%,#fff0f6)}
+.cn-page .cn-panel{padding:24px;border:1px solid #eeebfb}
+.cn-page .cn-filters-compact{display:flex;gap:9px;justify-content:flex-start;align-items:center;padding:13px 15px;background:#f8f7ff;border:1px solid #efebfa;border-radius:17px;margin-bottom:20px;width:fit-content;max-width:100%}
+.cn-page .cn-filters-compact input{width:240px;max-width:100%;min-width:130px;flex:0 1 240px;background:#fff;border-radius:12px}
+.cn-page .cn-filters-compact select{width:175px;min-width:130px;background:#fff;border-radius:12px}
+.cn-page .cn-filters-compact button{padding:11px 14px;border-radius:11px;white-space:nowrap}
+.cn-page .cn-filters-compact button[type=submit]{background:linear-gradient(105deg,#6b4ef0,#9872f5);color:white}
+.cn-page .cn-table-wrap{border-radius:16px;border-color:#eeeafa}
+.cn-page .cn-table th{background:#f8f6ff;padding:17px 15px;color:#706995;font-weight:800;text-transform:uppercase;font-size:10px}
+.cn-page .cn-table td{padding:19px 15px;border-top-color:#f2eff9}
+.cn-page .cn-table tbody tr{transition:background .2s}
+.cn-page .cn-table tbody tr:hover{background:#f6f2ff}
+.cn-page .cn-name{gap:13px}
+.cn-page .cn-name strong{font-size:13px;line-height:1.5;color:#2c275f}
+.cn-page .cn-name small{font-size:11px}
+.cn-page .cn-branch-icon{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,#eee7ff,#e1d7ff);box-shadow:0 6px 15px #6955c21b}
+.cn-page .cn-actions{gap:8px}
+.cn-page .cn-actions button{display:grid;place-items:center;width:34px;height:34px;padding:0;border-radius:11px;font-size:17px;background:#f1edff;color:#6650c9;transition:transform .2s,background .2s}
+.cn-page .cn-actions button:hover{transform:translateY(-2px);background:#e3dcff}
+.cn-page .cn-actions button:nth-child(2){background:#e9f5ff;color:#287ac2}
+.cn-page .cn-actions button:nth-child(2):hover{background:#d6ebff}
+.cn-page .cn-actions .cn-danger-text{background:#ffebee;color:#d54765}
+.cn-page .cn-actions .cn-danger-text:hover{background:#ffdae1}
+.cn-page .cn-status{padding:8px 12px}
+.cn-page .cn-pagination{padding:20px 4px 0}
+@media(max-width:760px){.cn-page .cn-filters-compact{width:100%;flex-wrap:wrap}.cn-page .cn-filters-compact input{flex:1 1 100%;width:100%}.cn-page .cn-filters-compact select{flex:1 1 150px;width:auto}}
