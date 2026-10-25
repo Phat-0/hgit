@@ -163,3 +163,20 @@
 @media(max-width:760px){.qt-layout .qt-header-search-group{height:48px;width:48px;max-width:48px;min-width:48px;flex-basis:48px}.qt-layout .qt-header-search-group.qt-search-expanded{flex-basis:min(230px,100%);width:min(230px,100%);max-width:min(230px,100%)}.qt-search-toggle{width:39px;height:39px}}
 @media(max-width:480px){.qt-layout .qt-header-search-group.qt-search-expanded{flex-basis:min(160px,100%);width:min(160px,100%);max-width:min(160px,100%)}}
 @media(prefers-reduced-motion:reduce){.qt-layout .qt-header-search-group{transition:none}}
+
+
+/* Nen tim dam theo anh tham khao, noi bat cac the trang */
+.qt-layout{background:radial-gradient(ellipse at 80% 5%,#63509e 0%,transparent 45%),radial-gradient(ellipse at 18% 85%,#6c55ad 0%,transparent 48%),linear-gradient(135deg,#373276 0%,#28265e 52%,#3d2d79 100%)}
+.qt-layout:before{background:radial-gradient(ellipse at 50% 0%,#9a77ca35,transparent 55%);opacity:1}
+.qt-layout .qt-sidebar{background:#fff;border-color:#e7e4f7;box-shadow:0 16px 44px #12113950}
+.qt-layout .qt-nav-item{color:#373269}.qt-layout .qt-nav-item:hover{background:#f0ecff;color:#5537b8}
+.qt-layout .qt-nav-active,.qt-layout .qt-nav-active:hover{background:linear-gradient(105deg,#6145f5,#bd77f1);color:white}
+.qt-layout .qt-welcome,.qt-layout .qt-subtitle{color:#e4ddff}.qt-layout .qt-welcome strong{color:#ffce71}.qt-layout .qt-page-head h1{color:#fff}
+.qt-layout .qt-date-widget{background:#ffffffec;box-shadow:0 12px 28px #12113b30}
+.qt-layout .qt-topbar{background:transparent}
+.qt-layout .qt-header-search-group,.qt-layout .qt-top-actions{background:#ffffffed;border-color:#ded9f2;box-shadow:0 12px 30px #12113b35}
+.qt-layout .qt-stat,.qt-layout .qt-chart-card,.qt-layout .qt-side-card,.qt-layout .qt-recent-card,.qt-layout .qt-mini-card,.qt-layout .qt-placeholder{background:#fff;box-shadow:0 15px 35px #15123c33}
+.qt-layout .qt-header-search-group.qt-search-expanded{max-width:min(320px,100%)}
+.qt-layout .qt-nav-label{display:none}
+.qt-layout .qt-menu-scroll{padding-top:12px}
+@media(max-width:760px){.qt-layout .qt-sidebar{background:#fff}}
