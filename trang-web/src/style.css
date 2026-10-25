@@ -322,3 +322,46 @@
 .qt-layout .cn-page .cn-success{background:#254e47;color:#b9f5d8}
 .qt-layout .cn-page .cn-primary{background:linear-gradient(110deg,#6950d0,#8768d4);color:#fff;box-shadow:0 7px 20px #17123442}
 @media(max-width:760px){.qt-layout .cn-page .cn-summary>div{min-height:96px}}
+
+
+/* Chi nhanh: nen trang diu, chi nhan mau o danh sach */
+.qt-layout .cn-page .cn-summary>div,
+.qt-layout .cn-page .cn-summary>div:nth-child(2),
+.qt-layout .cn-page .cn-summary>div:nth-child(3){
+ background:#fdfcff!important;border:1px solid #e6e2f1!important;
+ box-shadow:0 7px 22px #332a6720!important
+}
+.qt-layout .cn-page .cn-summary>div:nth-child(2){background:#f5f9ff!important}
+.qt-layout .cn-page .cn-summary>div:nth-child(3){background:#fbf6ff!important}
+.qt-layout .cn-page .cn-summary>div:before{background:#e8e1fb65}
+.qt-layout .cn-page .cn-summary span{color:#6e6789}
+.qt-layout .cn-page .cn-summary strong{color:#493a88}
+.qt-layout .cn-page .cn-panel{background:#fdfcff;border:1px solid #e5e1f1;box-shadow:0 12px 30px #26205220}
+.qt-layout .cn-page .cn-filters-compact{background:#f4f1fa;border-color:#e5e0ef}
+.qt-layout .cn-page .cn-filters-compact input,
+.qt-layout .cn-page .cn-filters-compact select{background:#fff;color:#393352;border-color:#dcd6e9}
+.qt-layout .cn-page .cn-filters-compact input::placeholder{color:#8c849e}
+.qt-layout .cn-page .cn-filters-compact .cn-light{background:#eae5f6;color:#584b7c;border-color:#d9d1e9}
+.qt-layout .cn-page .cn-table-wrap{background:#fff;border-color:#e1dbea}
+.qt-layout .cn-page .cn-table th{background:#eae5f4;color:#544b76;border-bottom:1px solid #d8d0e7}
+.qt-layout .cn-page .cn-table td{color:#4c4665;border-top:1px solid #e9e5f0}
+.qt-layout .cn-page .cn-table tbody tr:nth-child(odd){background:#fff}
+.qt-layout .cn-page .cn-table tbody tr:nth-child(even){background:#f3effa}
+.qt-layout .cn-page .cn-table tbody tr:hover{background:#e9e1f6}
+.qt-layout .cn-page .cn-name strong{color:#31294f}
+.qt-layout .cn-page .cn-name small{color:#77708d}
+.qt-layout .cn-page .cn-address{color:#5b5472}
+.qt-layout .cn-page .cn-branch-icon{background:#e5dbf8;color:#654b9b}
+.qt-layout .cn-page .cn-status.cn-active{background:#dcf5e8;color:#176c48}
+.qt-layout .cn-page .cn-status.cn-pending{background:#fff0ce;color:#8d5b14}
+.qt-layout .cn-page .cn-status.cn-inactive{background:#f6e1e9;color:#93445d}
+.qt-layout .cn-page .cn-actions button{background:#e8e0f7;color:#6249a5}
+.qt-layout .cn-page .cn-actions button:nth-child(2){background:#e0effb;color:#276a9c}
+.qt-layout .cn-page .cn-actions .cn-danger-text{background:#f9e2e8;color:#ac3c57}
+.qt-layout .cn-page .cn-pagination{color:#6c6583}
+.qt-layout .cn-page .cn-pagination button{background:#ebe5f7;color:#584480}
+.qt-layout .cn-page .cn-empty-state{background:#fdfcff;color:#77708c}
+.qt-layout .cn-page .cn-empty-state h3{color:#3c3459}
+.qt-layout .cn-page .cn-empty-state>span{background:#eee8f9;color:#7861ad}
+.qt-layout .cn-page .cn-error{background:#fce8ee;color:#9b344e}
+.qt-layout .cn-page .cn-success{background:#e1f5e9;color:#276d4c}
