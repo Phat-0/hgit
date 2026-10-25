@@ -278,3 +278,47 @@
 .cn-page .cn-status{padding:8px 12px}
 .cn-page .cn-pagination{padding:20px 4px 0}
 @media(max-width:760px){.cn-page .cn-filters-compact{width:100%;flex-wrap:wrap}.cn-page .cn-filters-compact input{flex:1 1 100%;width:100%}.cn-page .cn-filters-compact select{flex:1 1 150px;width:auto}}
+
+
+/* Chi nhanh: giao dien tim than diu mat, tang do tuong phan */
+.qt-layout .cn-page{color:#eceafb}
+.qt-layout .cn-page .cn-heading p{color:#b9b3e5}
+.qt-layout .cn-page .cn-heading h2{color:#f7f5ff;text-shadow:0 2px 14px #15113730}
+.qt-layout .cn-page .cn-heading span{color:#d0cbea}
+.qt-layout .cn-page .cn-summary>div{background:linear-gradient(130deg,#39365e,#302e51)!important;border:1px solid #6b628a!important;box-shadow:0 9px 25px #10102a36}
+.qt-layout .cn-page .cn-summary>div:nth-child(2){background:linear-gradient(130deg,#30465c,#2e3b54)!important}
+.qt-layout .cn-page .cn-summary>div:nth-child(3){background:linear-gradient(130deg,#493a5f,#39304f)!important}
+.qt-layout .cn-page .cn-summary>div:before{background:#ffffff0a}
+.qt-layout .cn-page .cn-summary span{color:#c5c0e4;font-size:13px}
+.qt-layout .cn-page .cn-summary strong{color:#fff;font-size:30px}
+.qt-layout .cn-page .cn-panel{background:#302f4e;border:1px solid #615b83;box-shadow:0 16px 42px #12102f52}
+.qt-layout .cn-page .cn-filters-compact{background:#393759;border-color:#666084}
+.qt-layout .cn-page .cn-filters-compact input,.qt-layout .cn-page .cn-filters-compact select{background:#282741;color:#f1efff;border:1px solid #6b668d}
+.qt-layout .cn-page .cn-filters-compact input::placeholder{color:#b8b4d2}
+.qt-layout .cn-page .cn-filters-compact .cn-light{background:#514c70;color:#f2edff;border-color:#6d678b}
+.qt-layout .cn-page .cn-table-wrap{border-color:#575375;background:#302f4e}
+.qt-layout .cn-page .cn-table{min-width:780px}
+.qt-layout .cn-page .cn-table th{background:#3b395d;color:#d2cdef;border-bottom:1px solid #696286;font-size:11px}
+.qt-layout .cn-page .cn-table td{color:#ddd9f0;border-top:1px solid #4b4869;font-size:13px}
+.qt-layout .cn-page .cn-table tbody tr:nth-child(even){background:#353352}
+.qt-layout .cn-page .cn-table tbody tr:hover{background:#49446b}
+.qt-layout .cn-page .cn-name strong{color:#fff;font-size:13px}
+.qt-layout .cn-page .cn-name small{color:#c3bedc}
+.qt-layout .cn-page .cn-address{color:#dedbf0}
+.qt-layout .cn-page .cn-branch-icon{background:linear-gradient(135deg,#6652a6,#4c4486);color:#fff;box-shadow:none}
+.qt-layout .cn-page .cn-status.cn-active{background:#174f44;color:#9af0cb}
+.qt-layout .cn-page .cn-status.cn-pending{background:#68502c;color:#ffdfa3}
+.qt-layout .cn-page .cn-status.cn-inactive{background:#603d56;color:#ffc3df}
+.qt-layout .cn-page .cn-actions button{background:#554b82;color:#eee6ff}
+.qt-layout .cn-page .cn-actions button:nth-child(2){background:#284c69;color:#b9e1ff}
+.qt-layout .cn-page .cn-actions .cn-danger-text{background:#673c53;color:#ffd0da}
+.qt-layout .cn-page .cn-actions button:hover{filter:brightness(1.25);transform:translateY(-2px)}
+.qt-layout .cn-page .cn-pagination{color:#c8c2e0}
+.qt-layout .cn-page .cn-pagination button{background:#4d476e;color:#f4f1ff}
+.qt-layout .cn-page .cn-empty-state{background:#302f4e;color:#ccc7e5}
+.qt-layout .cn-page .cn-empty-state h3{color:#fff}
+.qt-layout .cn-page .cn-empty-state>span{background:#504678;color:#e3d8ff}
+.qt-layout .cn-page .cn-error{background:#683a50;color:#ffe2ea}
+.qt-layout .cn-page .cn-success{background:#254e47;color:#b9f5d8}
+.qt-layout .cn-page .cn-primary{background:linear-gradient(110deg,#6950d0,#8768d4);color:#fff;box-shadow:0 7px 20px #17123442}
+@media(max-width:760px){.qt-layout .cn-page .cn-summary>div{min-height:96px}}
