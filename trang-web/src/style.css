@@ -150,3 +150,16 @@
 @media(max-width:1080px){.qt-layout .qt-main-grid{grid-template-columns:1fr}.qt-donut-area{justify-content:center}.qt-layout .qt-stats{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:760px){.qt-layout .qt-sidebar{width:260px;margin:0;height:100vh}.qt-workspace{padding:10px}.qt-header-search-group,.qt-layout .qt-top-actions{height:54px}.qt-date-widget{min-width:0}.qt-layout .qt-page-head h1{font-size:27px}.qt-layout .qt-stats{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:520px){.qt-layout .qt-page-head{align-items:stretch}.qt-date-widget{align-self:flex-start}.qt-layout .qt-stats{gap:9px}.qt-layout .qt-stat{padding:12px}.qt-layout .qt-stat-icon{width:37px;height:37px;margin-right:7px}.qt-layout .qt-stat strong{font-size:22px}.qt-donut-area{flex-direction:column}.qt-donut{width:170px}.qt-donut-legend{width:100%}}
+
+
+/* Tim kiem dang icon, bung rong khi nhan */
+.qt-header-search-row{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.qt-layout .qt-header-search-group{flex:0 0 52px;width:52px;max-width:52px;min-width:52px;height:52px;border-radius:18px;padding:4px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;transition:width .28s ease,max-width .28s ease,flex-basis .28s ease,border-radius .28s ease}
+.qt-layout .qt-header-search-group.qt-search-expanded{flex-basis:320px;width:320px;max-width:min(320px,100%);border-radius:22px;justify-content:flex-start;padding:4px 9px 4px 4px}
+.qt-search-toggle{flex:none;display:grid;place-items:center;width:43px;height:43px;border:0;border-radius:14px;background:#f2efff;color:#5843bc;font-size:28px;line-height:1;padding:0;transition:background .2s,transform .2s}
+.qt-search-toggle:hover{background:#e6ddff;transform:scale(1.04)}
+.qt-layout .qt-search{min-width:0;flex:1;max-width:none;height:42px;padding:0 5px;background:transparent;border:0}
+.qt-layout .qt-search input{width:100%;max-width:none;padding:8px 0;outline:none}
+@media(max-width:760px){.qt-layout .qt-header-search-group{height:48px;width:48px;max-width:48px;min-width:48px;flex-basis:48px}.qt-layout .qt-header-search-group.qt-search-expanded{flex-basis:min(230px,100%);width:min(230px,100%);max-width:min(230px,100%)}.qt-search-toggle{width:39px;height:39px}}
+@media(max-width:480px){.qt-layout .qt-header-search-group.qt-search-expanded{flex-basis:min(160px,100%);width:min(160px,100%);max-width:min(160px,100%)}}
+@media(prefers-reduced-motion:reduce){.qt-layout .qt-header-search-group{transition:none}}
