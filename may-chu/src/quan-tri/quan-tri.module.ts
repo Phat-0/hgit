@@ -8,6 +8,8 @@ import { PhongController } from './phong.controller.js';
 import { PhongService } from './phong.service.js';
 import { LoaiPhongService } from './loai-phong.service.js';
 import { LoaiPhongController } from './loai-phong.controller.js';
+import { LichPhongController } from './lich-phong.controller.js';
+import { LichPhongService } from './lich-phong.service.js';
 
-@Module({ imports: [XacThucModule], controllers: [QuanTriController, ChiNhanhController, PhongController, LoaiPhongController], providers: [QuanTriService, ChiNhanhService, PhongService, LoaiPhongService] })
+@Module({ imports: [XacThucModule], controllers: [QuanTriController, ChiNhanhController, PhongController, LoaiPhongController, LichPhongController], providers: [QuanTriService, ChiNhanhService, PhongService, LoaiPhongService, LichPhongService] })
 export class QuanTriModule {}
