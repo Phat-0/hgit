@@ -63,12 +63,12 @@ export default function ChiNhanhPage({token}:{token:string}){
  }
  const totalPages=Math.max(1,Math.ceil((data?.tong_so??0)/10));
  return <section className="cn-page">
-  <div className="cn-heading"><button className="cn-primary" onClick={()=>open('create')}>＋ Thêm chi nhánh</button></div>
-  <div className="cn-panel"><form className="cn-filters cn-filters-compact" onSubmit={e=>{e.preventDefault();setPage(1);setQuery(filter);}}>
+  
+  <div className="cn-panel"><div className="cn-toolbar"><form className="cn-filters cn-filters-compact" onSubmit={e=>{e.preventDefault();setPage(1);setQuery(filter);}}>
    <input aria-label="Tìm kiếm chi nhánh" placeholder="Tìm tên, địa chỉ, tỉnh/thành..." value={filter} onChange={e=>setFilter(e.target.value)} maxLength={150}/>
    <select aria-label="Lọc trạng thái" value={status} onChange={e=>{setStatus(e.target.value);setPage(1);}}><option value="">Tất cả trạng thái</option>{states.map(s=><option key={s}>{s}</option>)}</select>
    <button type="submit">Tìm kiếm</button><button type="button" className="cn-light" onClick={()=>{setFilter('');setQuery('');setStatus('');setPage(1);}}>Đặt lại</button>
-  </form>
+  </form><button type="button" className="cn-primary cn-add-button" onClick={()=>open('create')}>＋ Thêm chi nhánh</button></div>
   {success&&<p className="cn-success" role="status">{success}</p>}
   {error&&!modal&&<p className="cn-error" role="alert">{error}</p>}
   <div className="cn-table-wrap" onClick={e=>{if(menuId&&!(e.target as HTMLElement).closest('.cn-menu-wrap'))setMenuId(null);}}>{!loading&&!error&&data?.tong_so===0?<div className="cn-empty-state"><span>⌂</span><h3>Chưa có chi nhánh nào</h3><p>Nhấn “Thêm chi nhánh” để tạo cơ sở đầu tiên.</p><button className="cn-primary" onClick={()=>open('create')}>＋ Thêm chi nhánh</button></div>:<table className="cn-table"><thead><tr><th>Tên cơ sở</th><th>Địa chỉ</th><th>Số phòng</th><th>Trạng thái</th><th aria-label="Tùy chọn"></th></tr></thead><tbody>
@@ -76,7 +76,7 @@ export default function ChiNhanhPage({token}:{token:string}){
     <td><div className="cn-name"><span className="cn-branch-icon">⌂</span><div><strong>{item.ten_homestay}</strong><small>{item.tinh_thanh}</small></div></div></td>
     <td className="cn-address">{item.dia_chi}</td><td>{item.so_phong}</td>
     <td><span className={'cn-status '+(item.trang_thai==='Đang hoạt động'?'cn-active':item.trang_thai==='Chờ duyệt'?'cn-pending':'cn-inactive')}>{item.trang_thai}</span></td>
-    <td className="cn-menu-cell"><div className="cn-menu-wrap"><button type="button" className="cn-menu-trigger" aria-label={'Tùy chọn '+item.ten_homestay} aria-expanded={menuId===item.id} onClick={()=>setMenuId(menuId===item.id?null:item.id)}>⋮</button>{menuId===item.id&&<div className="cn-menu" role="menu"><button type="button" role="menuitem" onClick={()=>open('view',item)}>Xem chi tiết</button><button type="button" role="menuitem" onClick={()=>open('edit',item)}>Chỉnh sửa</button><button type="button" role="menuitem" className="cn-danger-text" onClick={()=>open('delete',item)}>Xóa</button></div>}</div></td>
+    <td className="cn-menu-cell"><div className="cn-menu-wrap"><button type="button" className="cn-menu-trigger" aria-label={'Tùy chọn '+item.ten_homestay} aria-expanded={menuId===item.id} onClick={()=>setMenuId(menuId===item.id?null:item.id)}><span className="cn-dots" aria-hidden="true"><i/><i/><i/></span></button>{menuId===item.id&&<div className="cn-menu" role="menu"><button type="button" role="menuitem" onClick={()=>open('view',item)}><span className="cn-menu-icon" aria-hidden="true">◉</span><span>Xem chi tiết</span></button><button type="button" role="menuitem" onClick={()=>open('edit',item)}><span className="cn-menu-icon" aria-hidden="true">✎</span><span>Chỉnh sửa</span></button><button type="button" role="menuitem" className="cn-danger-text" onClick={()=>open('delete',item)}><span className="cn-menu-icon" aria-hidden="true">▤</span><span>Xóa</span></button></div>}</div></td>
    </tr>):<tr><td colSpan={5} className="cn-empty">Không tìm thấy chi nhánh phù hợp.</td></tr>}
   </tbody></table>}</div>
   <div className="cn-pagination"><div><button disabled={page===1||loading} onClick={()=>setPage(page-1)}>‹ Trước</button><span>{page} / {totalPages}</span><button disabled={page>=totalPages||loading} onClick={()=>setPage(page+1)}>Sau ›</button></div></div>
