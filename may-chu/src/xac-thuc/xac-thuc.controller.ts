@@ -36,6 +36,13 @@ export class XacThucController {
     return this.xacThucService.dangNhap(email, matKhau);
   }
 
+  @Post('lam-moi')
+  lamMoi(@Body() body:unknown) {
+    const refresh=(body as {refresh_token?:unknown}|null)?.refresh_token;
+    if(typeof refresh!=='string'||refresh.length<10||refresh.length>4096)throw new BadRequestException('Refresh token không hợp lệ');
+    return this.xacThucService.lamMoi(refresh);
+  }
+
   @UseGuards(SupabaseAuthGuard)
   @Get('toi')
   thongTin(@Req() request: Request & { nguoiDung?: { id: string; email?: string } }) {
