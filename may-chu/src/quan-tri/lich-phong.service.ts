@@ -2,7 +2,6 @@ import {BadRequestException,ConflictException,Injectable,NotFoundException} from
 import {Client} from 'pg';
 import {QuanTriService} from './quan-tri.service.js';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const TZ='+07:00';
 @Injectable()
 export class LichPhongService{
  constructor(private readonly admin:QuanTriService){}
