@@ -417,3 +417,41 @@
 .cn-view-layer .cn-view-popover{position:fixed!important;margin:0!important;transform:none!important;width:min(400px,calc(100vw - 24px))!important;max-height:min(76vh,560px);overflow-y:auto;box-shadow:0 16px 50px #261d4933;border:1px solid #e1d9ef;border-radius:16px;background:#fff;animation:none}
 .cn-view-layer .cn-details{padding-bottom:12px}
 @media(max-width:600px){.cn-view-layer .cn-view-popover{left:12px!important;top:12vh!important}}
+
+
+/* Lich phong: luoi ngay va chi tiet theo gio */
+.lp-page{background:#fff;border:1px solid #e7e0f2;border-radius:18px;padding:18px;min-height:610px}
+.lp-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:15px}
+.lp-toolbar select,.lp-toolbar input,.lp-toolbar>button{height:38px;border:1px solid #ded8ec;border-radius:9px;padding:7px 10px;background:#fff;color:#463b64}
+.lp-toolbar select{max-width:210px}
+.lp-modes{display:flex;gap:5px;padding:4px;border-radius:10px;background:#f2eef9}
+.lp-modes button{border:0;background:transparent;border-radius:8px;padding:9px 12px;color:#594d73;cursor:pointer;font-weight:600}
+.lp-modes button.active{background:#7659d8;color:#fff}
+.lp-legend{display:flex;flex-wrap:wrap;gap:16px;color:#756d83;font-size:12px;margin-bottom:12px}
+.lp-scroll{overflow:auto;max-height:70vh;min-height:460px;border:1px solid #e7e2ee;border-radius:12px}
+.lp-grid{border-collapse:separate;border-spacing:0;table-layout:fixed;width:max-content;min-width:100%;font-size:12px}
+.lp-grid th,.lp-grid td{border-right:1px solid #e8e5ef;border-bottom:1px solid #e8e5ef;padding:0;text-align:center}
+.lp-grid thead th{height:47px;min-width:86px;position:sticky;top:0;background:#f2eef9;z-index:2;color:#56446f}
+.lp-grid .lp-room{position:sticky;left:0;min-width:205px;max-width:205px;width:205px;z-index:3;background:#fff;padding:10px 12px;text-align:left}
+.lp-grid thead .lp-room{z-index:4;background:#eae4f5}
+.lp-room strong,.lp-room small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lp-room small{font-weight:400;color:#8a8099;margin-top:4px}
+.lp-grid .lp-hour{min-width:44px;width:44px;font-size:10px}
+.lp-hour span{display:block;color:#7659d8}
+.lp-cell{display:flex;align-items:center;justify-content:center;width:100%;min-width:86px;height:54px;border:0;background:#fff;color:#a49bb4;cursor:pointer}
+.lp-hour-cell{min-width:44px;height:54px}
+.lp-cell:hover{outline:2px solid #8d75de;outline-offset:-2px;background:#f5f1ff}
+.lp-full{background:#eadffb;color:#6845ae}.lp-partial{background:#fff0c9;color:#916a1a}.lp-booked{background:#bfe9e7;color:#087d80}
+.lp-empty{height:320px;color:#938a9f}
+.lp-overlay{position:fixed;inset:0;z-index:1200;display:flex;justify-content:center;align-items:center;background:#1c17352e}
+.lp-dialog{width:min(520px,calc(100vw - 24px));max-height:88vh;overflow:auto;background:#fff;border-radius:16px;padding:20px;box-shadow:0 16px 60px #21163b38}
+.lp-dialog-head{display:flex;justify-content:space-between;align-items:center;font-size:17px;margin-bottom:14px}
+.lp-dialog-head button{border:0;background:#f2eef9;border-radius:8px;font-size:22px;width:34px;height:34px}
+.lp-dialog form{display:grid;gap:12px}.lp-dialog form label{display:grid;gap:5px;font-size:13px;font-weight:600;color:#544966}
+.lp-dialog form label input,.lp-dialog form label select{width:100%;min-height:38px;border:1px solid #ddd5eb;border-radius:8px;padding:8px;background:#fff}
+.lp-dialog .lp-time{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.lp-dialog .lp-check{display:flex;align-items:center;gap:8px;grid-column:1/-1}
+.lp-dialog .lp-check input{width:16px;min-height:16px}
+.lp-item{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid #ebe5f3;background:#faf8fd;border-radius:9px;padding:9px;margin-bottom:6px;font-size:12px}
+.lp-item button{border:0;background:#f5e6ed;color:#a33658;padding:6px 9px;border-radius:6px;white-space:nowrap}
+.lp-existing{max-height:170px;overflow:auto}
