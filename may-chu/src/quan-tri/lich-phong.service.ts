@@ -1,0 +1,26 @@
+import {BadRequestException,ConflictException,Injectable,NotFoundException} from '@nestjs/common';
+import {Client} from 'pg';
+import {QuanTriService} from './quan-tri.service.js';
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const TZ='+07:00';
+@Injectable()
+export class LichPhongService{
+ constructor(private readonly admin:QuanTriService){}
+ private async db(){const c=new Client({connectionString:process.env.DATABASE_URL,ssl:{rejectUnauthorized:true},connectionTimeoutMillis:5000,query_timeout:8000});await c.connect();return c;}
+ private validId(v:string){if(!UUID.test(v))throw new BadRequestException('ID không hợp lệ');}
+ private dates(start:string,end:string){const a=new Date(start),b=new Date(end);if(!Number.isFinite(a.getTime())||!Number.isFinite(b.getTime())||a>=b||b.getTime()-a.getTime()>90*86400000)throw new BadRequestException('Khoảng thời gian không hợp lệ hoặc dài quá 90 ngày');return [a.toISOString(),b.toISOString()];}
+ private failure(e:unknown):never{const code=(e as {code?:string})?.code;if(code==='23P01'||code==='23505'||code==='P0001')throw new ConflictException('Khoảng thời gian đã có khóa hoặc đơn đặt phòng');throw e;}
+ async calendar(uid:string,branch:string,start:string,end:string){await this.admin.kiemTraQuanTri(uid);if(branch)this.validId(branch);const [a,b]=this.dates(start,end);const c=await this.db();try{
+ const rooms=await c.query('SELECT p.id,p.ma_phong,p.ten_phong,p.homestay_id,h.ten_homestay,p.gia_moi_dem FROM public.phong p JOIN public.homestay h ON h.id=p.homestay_id WHERE ($1::uuid IS NULL OR p.homestay_id=$1) ORDER BY h.ten_homestay,p.ma_phong',[branch||null]);
+ const ids=rooms.rows.map(x=>x.id);if(!ids.length)return {phong:[],khoa:[],dat_phong:[],gia:[]};
+ const [locks,bookings,prices]=await Promise.all([
+ c.query("SELECT id,phong_id,bat_dau,ket_thuc,ly_do,loai_khoa,co_dinh FROM public.chan_lich_phong WHERE phong_id=ANY($1::uuid[]) AND bat_dau<$3 AND ket_thuc>$2 ORDER BY bat_dau",[ids,a,b]),
+ c.query("SELECT id,phong_id,nhan_phong_luc AS bat_dau,tra_phong_luc AS ket_thuc,trang_thai,hinh_thuc_dat FROM public.dat_phong WHERE phong_id=ANY($1::uuid[]) AND nhan_phong_luc<$3 AND tra_phong_luc>$2 AND trang_thai IN ('Chờ thanh toán','Chờ xác nhận','Đã xác nhận','Đã nhận phòng')",[ids,a,b]),
+ c.query("SELECT id,phong_id,bat_dau,ket_thuc,loai_gia,gia FROM public.gia_lich_phong WHERE phong_id=ANY($1::uuid[]) AND bat_dau<$3 AND ket_thuc>$2",[ids,a,b])]);
+ return {phong:rooms.rows,khoa:locks.rows,dat_phong:bookings.rows,gia:prices.rows};
+ }finally{await c.end();}}
+ async block(uid:string,body:unknown){await this.admin.kiemTraQuanTri(uid);const x=body as Record<string,unknown>|null;const room=String(x?.phong_id||''),kind=String(x?.loai_khoa||''),reason=String(x?.ly_do||'Khóa lịch từ quản trị').trim();this.validId(room);if(!['ngay','gio','qua-dem'].includes(kind)||reason.length>500||!reason)throw new BadRequestException('Thông tin khóa không hợp lệ');const [a,b]=this.dates(String(x?.bat_dau||''),String(x?.ket_thuc||''));if(kind==='ngay'&&(!a.endsWith('17:00:00.000Z')||((new Date(b).getTime()-new Date(a).getTime())%86400000!==0)))throw new BadRequestException('Khóa ngày phải bắt đầu lúc 00:00 Việt Nam và theo ngày tròn');const c=await this.db();try{const r=await c.query('INSERT INTO public.chan_lich_phong(phong_id,bat_dau,ket_thuc,ly_do,loai_khoa,co_dinh) VALUES($1,$2,$3,$4,$5,$6) RETURNING *',[room,a,b,reason,kind,kind==='ngay'&&x?.co_dinh===true]);return r.rows[0];}catch(e){this.failure(e);}finally{await c.end();}}
+ async unblock(uid:string,id:string){await this.admin.kiemTraQuanTri(uid);this.validId(id);const c=await this.db();try{const r=await c.query('DELETE FROM public.chan_lich_phong WHERE id=$1 RETURNING id',[id]);if(!r.rowCount)throw new NotFoundException('Không tìm thấy khóa');return r.rows[0];}finally{await c.end();}}
+ async price(uid:string,body:unknown){await this.admin.kiemTraQuanTri(uid);const x=body as Record<string,unknown>|null;const room=String(x?.phong_id||''),kind=String(x?.loai_gia||''),price=Number(x?.gia);this.validId(room);if(!['ngay','gio','qua-dem'].includes(kind)||!Number.isSafeInteger(price)||price<0)throw new BadRequestException('Giá không hợp lệ');const [a,b]=this.dates(String(x?.bat_dau||''),String(x?.ket_thuc||''));const c=await this.db();try{const r=await c.query('INSERT INTO public.gia_lich_phong(phong_id,bat_dau,ket_thuc,loai_gia,gia) VALUES($1,$2,$3,$4,$5) RETURNING *',[room,a,b,kind,price]);return r.rows[0];}catch(e){this.failure(e);}finally{await c.end();}}
+ async deletePrice(uid:string,id:string){await this.admin.kiemTraQuanTri(uid);this.validId(id);const c=await this.db();try{const r=await c.query('DELETE FROM public.gia_lich_phong WHERE id=$1 RETURNING id',[id]);if(!r.rowCount)throw new NotFoundException('Không tìm thấy giá');return r.rows[0];}finally{await c.end();}}
+}
