@@ -401,3 +401,5 @@
 
 .qt-remember{display:flex!important;align-items:center;gap:9px;font-size:13px;color:#514a69;margin:10px 0 14px}.qt-remember input{width:16px!important;height:16px!important;min-width:16px;accent-color:#7655da;margin:0!important}
 .cn-page .cn-toolbar .cn-filters-compact select{max-width:195px}
+
+.cn-room-images{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}.cn-room-images>img,.cn-room-images>div img{width:110px;height:86px;object-fit:cover;border-radius:10px;border:1px solid #e8e2f1}.cn-room-images>div{display:flex;flex-direction:column;gap:5px}.cn-image-add{display:flex;gap:8px;align-items:center}.cn-image-add input{flex:1;min-width:0}
