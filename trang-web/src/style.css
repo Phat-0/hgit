@@ -365,3 +365,17 @@
 .qt-layout .cn-page .cn-empty-state>span{background:#eee8f9;color:#7861ad}
 .qt-layout .cn-page .cn-error{background:#fce8ee;color:#9b344e}
 .qt-layout .cn-page .cn-success{background:#e1f5e9;color:#276d4c}
+
+
+/* Chi nhanh: giao dien toi gian va menu thao tac */
+.cn-heading{display:flex;justify-content:flex-end;align-items:center;margin-bottom:18px}
+.cn-menu-cell{width:68px;text-align:right;overflow:visible}
+.cn-table-wrap,.cn-table{overflow:visible}
+.cn-menu-wrap{position:relative;display:inline-block}
+.cn-menu-trigger{width:36px;height:36px;border:1px solid #e7e5ef;border-radius:10px;background:#fff;color:#554d70;font-size:24px;cursor:pointer;line-height:1}
+.cn-menu-trigger:hover{background:#f4f1fc}
+.cn-menu{position:absolute;right:0;top:calc(100% + 5px);min-width:160px;z-index:30;padding:6px;background:#fff;border:1px solid #e8e5f1;border-radius:12px;box-shadow:0 10px 28px #24203826;display:flex;flex-direction:column;gap:2px;text-align:left}
+.cn-menu button{border:0;background:transparent;text-align:left;padding:10px 12px;border-radius:8px;cursor:pointer;color:#343045;white-space:nowrap}
+.cn-menu button:hover{background:#f4f1fc}
+.cn-menu button.cn-danger-text{color:#bf354e}
+.cn-map-canvas{border-radius:12px;overflow:hidden;border:1px solid #e8e5f1}
