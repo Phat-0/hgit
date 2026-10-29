@@ -42,6 +42,12 @@ export class XacThucService {
     };
   }
 
+  async lamMoi(refreshToken: string) {
+    const {data,error}=await this.supabase.auth.refreshSession({refresh_token:refreshToken});
+    if(error||!data.session||!data.user)throw new UnauthorizedException('Phiên đăng nhập đã hết hạn');
+    return {access_token:data.session.access_token,refresh_token:data.session.refresh_token,expires_in:data.session.expires_in,nguoi_dung:{id:data.user.id,email:data.user.email}};
+  }
+
   async xacMinhToken(token: string) {
     const { data, error } = await this.supabase.auth.getUser(token);
     if (error || !data.user) throw new UnauthorizedException('Phiên đăng nhập không hợp lệ');
