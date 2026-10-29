@@ -1,8 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import PhongPage from './Phong.js';
 import ChiNhanhPage from './ChiNhanh.js';
 
 type ThongKe = { tong_homestay: number; cho_duyet: number; tong_phong: number; tong_dat_phong: number; tong_nguoi_dung: number };
-type Login = { access_token: string; nguoi_dung: { id: string; email: string } };
+type Login = { access_token: string; refresh_token:string; expires_in:number; nguoi_dung: { id: string; email: string } };
+type SavedSession={refresh_token:string;email:string;remember:boolean};
+const SESSION_KEY='homestay_admin_session';
+function stored():SavedSession|null{try{const raw=localStorage.getItem(SESSION_KEY)||sessionStorage.getItem(SESSION_KEY);return raw?JSON.parse(raw) as SavedSession:null;}catch{return null;}}
+function persist(x:SavedSession){sessionStorage.removeItem(SESSION_KEY);localStorage.removeItem(SESSION_KEY);(x.remember?localStorage:sessionStorage).setItem(SESSION_KEY,JSON.stringify(x));}
+function clearSaved(){sessionStorage.removeItem(SESSION_KEY);localStorage.removeItem(SESSION_KEY);}
+
 type Muc = 'tong-quan'|'lich'|'chi-nhanh'|'phong'|'dat-phong'|'trang-chu'|'nhan-vien'|'thong-bao'|'cai-dat'|'bao-cao'|'thong-tin';
 const danhMuc: {id:Muc; nhan:string; icon:string}[] = [
   {id:'tong-quan',nhan:'Tổng quan',icon:'▦'},
@@ -35,6 +42,8 @@ function BieuDo({thongKe}:{thongKe:ThongKe}){
   </div>;
 }
 export default function QuanTri(){
+  const [remember,setRemember]=useState(false);
+  const [restoring,setRestoring]=useState(!!stored());
   const [cheDo,setCheDo]=useState<'dang-nhap'|'dang-ky'>('dang-nhap');
   const [email,setEmail]=useState(''); const [matKhau,setMatKhau]=useState('');
   const [token,setToken]=useState(''); const [taiKhoan,setTaiKhoan]=useState('');
@@ -42,6 +51,24 @@ export default function QuanTri(){
   const [thongBao,setThongBao]=useState(''); const [dangXuLy,setDangXuLy]=useState(false);
   const [muc,setMuc]=useState<Muc>('tong-quan'); const [menuMo,setMenuMo]=useState(false);
   const [hoSoMo,setHoSoMo]=useState(false); const [timMo,setTimMo]=useState(false); const [tim,setTim]=useState(''); const [ky,setKy]=useState<'hom-nay'|'tuan'|'thang'>('thang');
+  useEffect(()=>{
+    let active=true;
+    const saved=stored();
+    if(!saved){setRestoring(false);return;}
+    setRemember(saved.remember);
+    async function restore(){
+      try{
+        const login=await api<Login>('/xac-thuc/lam-moi','POST',{refresh_token:saved!.refresh_token});
+        await api('/quan-tri/toi','GET',undefined,login.access_token);
+        const stats=await api<ThongKe>('/quan-tri/tong-quan','GET',undefined,login.access_token);
+        if(!active)return;
+        persist({refresh_token:login.refresh_token,email:login.nguoi_dung.email,remember:saved!.remember});
+        setToken(login.access_token);setTaiKhoan(login.nguoi_dung.email);setThongKe(stats);
+      }catch{if(active){clearSaved();setThongBao('Phiên đăng nhập đã hết hạn hoặc không thể kết nối. Vui lòng đăng nhập lại.');}}
+      finally{if(active)setRestoring(false);}
+    }
+    void restore();return()=>{active=false;};
+  },[]);
   async function xuLy(e:React.FormEvent){
     e.preventDefault();setDangXuLy(true);setThongBao('');
     try{
@@ -52,7 +79,7 @@ export default function QuanTri(){
         const login=await api<Login>('/xac-thuc/dang-nhap','POST',{email,matKhau});
         await api('/quan-tri/toi','GET',undefined,login.access_token);
         const data=await api<ThongKe>('/quan-tri/tong-quan','GET',undefined,login.access_token);
-        setToken(login.access_token);setTaiKhoan(login.nguoi_dung.email);setThongKe(data);setMatKhau('');
+        persist({refresh_token:login.refresh_token,email:login.nguoi_dung.email,remember});setToken(login.access_token);setTaiKhoan(login.nguoi_dung.email);setThongKe(data);setMatKhau('');
       }
     }catch(e){setThongBao(e instanceof Error?e.message:'Có lỗi xảy ra');}
     finally{setDangXuLy(false);}
@@ -63,13 +90,14 @@ export default function QuanTri(){
     catch(e){setThongBao(e instanceof Error?e.message:'Không thể tải dữ liệu');}
     finally{setDangXuLy(false);}
   }
-  function thoat(){setToken('');setThongKe(null);setTaiKhoan('');setThongBao('');setMuc('tong-quan');}
+  function thoat(){clearSaved();setToken('');setThongKe(null);setTaiKhoan('');setThongBao('');setMuc('tong-quan');}
   const stats=thongKe?[{ten:'Tổng Homestay',so:thongKe.tong_homestay,icon:'⌂',tone:'violet'},{ten:'Tổng phòng',so:thongKe.tong_phong,icon:'▤',tone:'blue'},{ten:'Đơn đặt phòng',so:thongKe.tong_dat_phong,icon:'▣',tone:'pink'},{ten:'Người dùng',so:thongKe.tong_nguoi_dung,icon:'♙',tone:'green'},{ten:'Chờ duyệt',so:thongKe.cho_duyet,icon:'◷',tone:'orange'}]:[];
-  return !token?<main className="admin-shell"><header className="admin-header"><a href="/" className="brand">HOMESTAY <b>•</b> ADMIN</a><span className="tag">Quản trị hệ thống</span></header>
+  return restoring?<main className="admin-shell"><div className="admin-auth"><p>Đang khôi phục phiên đăng nhập...</p></div></main>:!token?<main className="admin-shell"><header className="admin-header"><a href="/" className="brand">HOMESTAY <b>•</b> ADMIN</a><span className="tag">Quản trị hệ thống</span></header>
     <section className="admin-auth"><div className="admin-intro"><p className="eyebrow">HỆ THỐNG QUẢN TRỊ</p><h1>Quản lý Homestay<br/><em>trong một nơi.</em></h1><p>Đăng nhập bằng tài khoản đã được cấp vai trò Quản trị hệ thống. Tài khoản mới đăng ký không tự động có quyền quản trị.</p></div>
     <form className="panel admin-form" onSubmit={xuLy}><h2>{cheDo==='dang-nhap'?'Đăng nhập quản trị':'Đăng ký tài khoản'}</h2><p className="sub">Xác thực bằng Supabase Auth</p>
     <label>Email<input type="email" required autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)}/></label>
     <label>Mật khẩu<input type="password" required minLength={8} maxLength={128} autoComplete={cheDo==='dang-ky'?'new-password':'current-password'} value={matKhau} onChange={e=>setMatKhau(e.target.value)}/></label>
+    <label className="qt-remember"><input type="checkbox" checked={remember} onChange={e=>setRemember(e.target.checked)}/> Ghi nhớ đăng nhập trên thiết bị này</label>
     <button className="full" disabled={dangXuLy}>{dangXuLy?'Đang xử lý...':cheDo==='dang-nhap'?'Đăng nhập':'Đăng ký'}</button>
     <button className="admin-switch" type="button" onClick={()=>{setCheDo(cheDo==='dang-nhap'?'dang-ky':'dang-nhap');setThongBao('');}}>{cheDo==='dang-nhap'?'Chưa có tài khoản? Đăng ký':'Đã có tài khoản? Đăng nhập'}</button>
     {thongBao&&<p role="status" className="admin-message">{thongBao}</p>}</form></section></main>:
@@ -91,9 +119,9 @@ export default function QuanTri(){
           </div></div>
           <div className="qt-top-actions"><button title="Thông báo" aria-label="Thông báo" onClick={()=>setMuc('thong-bao')} className="qt-icon-button">♧<i/></button><button title="Người dùng" aria-label="Người dùng" onClick={()=>setMuc('nhan-vien')} className="qt-icon-button">✉</button><div className="qt-profile-wrap"><button type="button" className="qt-profile-button" aria-haspopup="menu" aria-expanded={hoSoMo} onClick={()=>setHoSoMo(!hoSoMo)}><span className="qt-avatar">{taiKhoan.slice(0,1).toUpperCase()}</span><span className="qt-profile-name">Quản trị viên</span><span className="qt-profile-chevron">{hoSoMo?'⌃':'⌄'}</span></button>{hoSoMo&&<><button className="qt-profile-dismiss" aria-label="Đóng menu tài khoản" onClick={()=>setHoSoMo(false)}/><div className="qt-profile-dropdown" role="menu"><div className="qt-profile-email" title={taiKhoan}>{taiKhoan}</div><button role="menuitem" onClick={()=>{setMuc('thong-tin');setHoSoMo(false);}}>♙ <span>Thông tin cá nhân</span></button><button role="menuitem" onClick={()=>{setMuc('cai-dat');setHoSoMo(false);}}>⚙ <span>Cài đặt</span></button><div className="qt-profile-divider"/><button role="menuitem" className="qt-profile-logout" onClick={()=>{setHoSoMo(false);thoat();}}>↪ <span>Đăng xuất</span></button></div></>}</div></div>
         </div>
-        <main className="qt-content">{muc!=='chi-nhanh'&&<div className="qt-page-head"><div><h1>{muc==='tong-quan'?'Bảng điều khiển':danhMuc.find(x=>x.id===muc)?.nhan}</h1></div></div>}
+        <main className="qt-content">{muc!=='chi-nhanh'&&muc!=='phong'&&<div className="qt-page-head"><div><h1>{muc==='tong-quan'?'Bảng điều khiển':danhMuc.find(x=>x.id===muc)?.nhan}</h1></div></div>}
         {thongBao&&<div className="qt-alert" role="status">{thongBao}</div>}
-        {muc==='chi-nhanh'?<ChiNhanhPage token={token}/>:muc==='tong-quan'?<><div className="qt-stats">{stats.map((s,i)=><article className={'qt-stat qt-tone-'+s.tone} key={s.ten} style={{animationDelay:(i*80)+'ms'}}><div className="qt-stat-icon">{s.icon}</div><p>{s.ten}</p><strong>{s.so.toLocaleString('vi-VN')}</strong><span className="qt-stat-foot">Dữ liệu thực tế</span></article>)}</div>
+        {muc==='chi-nhanh'?<ChiNhanhPage token={token}/>:muc==='phong'?<PhongPage token={token}/>:muc==='tong-quan'?<><div className="qt-stats">{stats.map((s,i)=><article className={'qt-stat qt-tone-'+s.tone} key={s.ten} style={{animationDelay:(i*80)+'ms'}}><div className="qt-stat-icon">{s.icon}</div><p>{s.ten}</p><strong>{s.so.toLocaleString('vi-VN')}</strong><span className="qt-stat-foot">Dữ liệu thực tế</span></article>)}</div>
           <div className="qt-main-grid">
             <section className="qt-chart-card"><div className="qt-card-head"><div><h2><span className="qt-heading-icon">▣</span> Thống kê đặt phòng</h2><p>Biểu đồ minh họa — dữ liệu theo thời gian đang được phát triển</p></div><div className="qt-period">{(['hom-nay','tuan','thang'] as const).map((k,i)=><button key={k} onClick={()=>setKy(k)} className={ky===k?'selected':''}>{['Ngày','Tuần','Tháng'][i]}</button>)}</div></div><div className="qt-chart-legend"><span><i className="qt-dot purple"/>Đơn đặt phòng</span><span><i className="qt-dot pink"/>Doanh thu</span></div><BieuDo thongKe={thongKe!}/></section>
             <section className="qt-side-card qt-status-card"><div className="qt-card-head"><h2><span className="qt-heading-icon">◉</span> Trạng thái Homestay</h2></div><div className="qt-donut-area"><div className="qt-donut" style={{background:thongKe!.tong_homestay>0?`conic-gradient(#24c4ad 0 ${Math.max(0,100-thongKe!.cho_duyet/thongKe!.tong_homestay*100)}%,#ffaf4c 0 100%)`:'#e9e5f6'}}><div><strong>{thongKe!.tong_homestay}</strong><small>Tổng</small></div></div><div className="qt-donut-legend"><p><i className="qt-dot teal"/>Trạng thái khác <strong>{Math.max(0,thongKe!.tong_homestay-thongKe!.cho_duyet)}</strong></p><p><i className="qt-dot orange"/>Chờ duyệt <strong>{thongKe!.cho_duyet}</strong></p><small>Chưa phân tách trạng thái hoạt động và tạm ngừng.</small></div></div></section>
