@@ -69,6 +69,21 @@ export default function QuanTri(){
     }
     void restore();return()=>{active=false;};
   },[]);
+  useEffect(()=>{
+    if(!token)return;
+    let active=true;
+    const timer=window.setInterval(async()=>{
+      const saved=stored();
+      if(!saved)return;
+      try{
+        const next=await api<Login>('/xac-thuc/lam-moi','POST',{refresh_token:saved.refresh_token});
+        if(!active)return;
+        persist({refresh_token:next.refresh_token,email:next.nguoi_dung.email,remember:saved.remember});
+        setToken(next.access_token);
+      }catch{ /* Loi mang tam thoi: giu phien, kiem tra lai khi nguoi dung thao tac. */ }
+    },40*60*1000);
+    return()=>{active=false;window.clearInterval(timer);};
+  },[token]);
   async function xuLy(e:React.FormEvent){
     e.preventDefault();setDangXuLy(true);setThongBao('');
     try{
