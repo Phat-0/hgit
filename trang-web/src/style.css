@@ -457,3 +457,5 @@
 .lp-existing{max-height:170px;overflow:auto}
 
 .lp-grid .lp-day-head th{background:#e7d8f1;color:#503d68;height:34px;font-weight:700;border-right:2px solid #b9a6ce}.lp-grid .lp-day-head .lp-room{background:#e7d8f1;z-index:6}.lp-grid thead tr:nth-child(2) th{top:34px}.lp-grid .lp-hour:nth-child(24n){border-right:2px solid #b9a6ce}.lp-grid .lp-hour-cell{font-size:11px}
+
+.qt-layout .qt-sidebar{transition:width .25s ease,margin .25s ease,opacity .2s ease,transform .25s ease}.qt-layout.qt-sidebar-hidden .qt-sidebar{width:0!important;min-width:0!important;margin-left:0!important;margin-right:0!important;padding:0!important;border-width:0!important;opacity:0;pointer-events:none;overflow:hidden}.qt-sidebar-toggle{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid #e0d9ef;border-radius:10px;background:#fff;color:#654ba0;cursor:pointer;font-size:18px;flex-shrink:0}.qt-sidebar-toggle:hover{background:#f1eafa}@media(max-width:760px){.qt-sidebar-toggle{display:none}}
