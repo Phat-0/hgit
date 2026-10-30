@@ -10,7 +10,7 @@ export class LichPhongService{
  private dates(start:string,end:string){const a=new Date(start),b=new Date(end);if(!Number.isFinite(a.getTime())||!Number.isFinite(b.getTime())||a>=b||b.getTime()-a.getTime()>90*86400000)throw new BadRequestException('Khoảng thời gian không hợp lệ hoặc dài quá 90 ngày');return [a.toISOString(),b.toISOString()];}
  private failure(e:unknown):never{const code=(e as {code?:string})?.code;if(code==='23P01'||code==='23505'||code==='P0001')throw new ConflictException('Khoảng thời gian đã có khóa hoặc đơn đặt phòng');throw e;}
  async calendar(uid:string,branch:string,start:string,end:string){await this.admin.kiemTraQuanTri(uid);if(branch)this.validId(branch);const [a,b]=this.dates(start,end);const c=await this.db();try{
- const rooms=await c.query('SELECT p.id,p.ma_phong,p.ten_phong,p.homestay_id,h.ten_homestay,p.gia_moi_dem FROM public.phong p JOIN public.homestay h ON h.id=p.homestay_id WHERE ($1::uuid IS NULL OR p.homestay_id=$1) ORDER BY h.ten_homestay,p.ma_phong',[branch||null]);
+ const rooms=await c.query('SELECT p.id,p.ma_phong,p.ten_phong,p.homestay_id,h.ten_homestay,p.gia_moi_dem,p.gia_moi_gio,p.gia_moi_ngay,p.gia_phu_thu_gio FROM public.phong p JOIN public.homestay h ON h.id=p.homestay_id WHERE ($1::uuid IS NULL OR p.homestay_id=$1) ORDER BY h.ten_homestay,p.ma_phong',[branch||null]);
  const ids=rooms.rows.map(x=>x.id);if(!ids.length)return {phong:[],khoa:[],dat_phong:[],gia:[]};
  const [locks,bookings,prices]=await Promise.all([
  c.query("SELECT id,phong_id,bat_dau,ket_thuc,ly_do,loai_khoa,co_dinh FROM public.chan_lich_phong WHERE phong_id=ANY($1::uuid[]) AND bat_dau<$3 AND ket_thuc>$2 ORDER BY bat_dau",[ids,a,b]).catch(async e=>{if((e as {code?:string}).code==='42703')return c.query("SELECT id,phong_id,bat_dau,ket_thuc,ly_do,'gio'::text AS loai_khoa,false AS co_dinh FROM public.chan_lich_phong WHERE phong_id=ANY($1::uuid[]) AND bat_dau<$3 AND ket_thuc>$2 ORDER BY bat_dau",[ids,a,b]);throw e;}),
@@ -22,4 +22,17 @@ export class LichPhongService{
  async unblock(uid:string,id:string){await this.admin.kiemTraQuanTri(uid);this.validId(id);const c=await this.db();try{const r=await c.query('DELETE FROM public.chan_lich_phong WHERE id=$1 RETURNING id',[id]);if(!r.rowCount)throw new NotFoundException('Không tìm thấy khóa');return r.rows[0];}finally{await c.end();}}
  async price(uid:string,body:unknown){await this.admin.kiemTraQuanTri(uid);const x=body as Record<string,unknown>|null;const room=String(x?.phong_id||''),kind=String(x?.loai_gia||''),price=Number(x?.gia);this.validId(room);if(!['ngay','gio','qua-dem'].includes(kind)||!Number.isSafeInteger(price)||price<0)throw new BadRequestException('Giá không hợp lệ');const [a,b]=this.dates(String(x?.bat_dau||''),String(x?.ket_thuc||''));const c=await this.db();try{const r=await c.query('INSERT INTO public.gia_lich_phong(phong_id,bat_dau,ket_thuc,loai_gia,gia) VALUES($1,$2,$3,$4,$5) RETURNING *',[room,a,b,kind,price]);return r.rows[0];}catch(e){this.failure(e);}finally{await c.end();}}
  async deletePrice(uid:string,id:string){await this.admin.kiemTraQuanTri(uid);this.validId(id);const c=await this.db();try{const r=await c.query('DELETE FROM public.gia_lich_phong WHERE id=$1 RETURNING id',[id]);if(!r.rowCount)throw new NotFoundException('Không tìm thấy giá');return r.rows[0];}finally{await c.end();}}
+ async updateBasePrices(uid:string,roomId:string,body:unknown){
+  await this.admin.kiemTraQuanTri(uid);this.validId(roomId);
+  const x=body as Record<string,unknown>|null;
+  const keys=['gia_moi_gio','gia_moi_dem','gia_moi_ngay','gia_phu_thu_gio'] as const;
+  const values=keys.map(k=>Number(x?.[k]));
+  if(values.some(v=>!Number.isSafeInteger(v)||v<0||v>1000000000000))throw new BadRequestException('Giá phải là số nguyên không âm');
+  const c=await this.db();try{
+   const r=await c.query('UPDATE public.phong SET gia_moi_gio=$2,gia_moi_dem=$3,gia_moi_ngay=$4,gia_phu_thu_gio=$5 WHERE id=$1 RETURNING id,gia_moi_gio,gia_moi_dem,gia_moi_ngay,gia_phu_thu_gio',[roomId,...values]);
+   if(!r.rowCount)throw new NotFoundException('Không tìm thấy phòng');
+   return r.rows[0];
+  }finally{await c.end();}
+ }
+
 }
