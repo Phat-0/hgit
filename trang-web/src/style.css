@@ -579,3 +579,27 @@
 .qt-layout .qt-sidebar-edge{top:50%!important;transform:translateY(-50%)!important;width:3px!important;opacity:.04!important;background:#8ca3ce!important}
 .qt-layout .qt-sidebar-edge:hover{width:28px!important;opacity:1!important;color:#fff!important}
 @media(max-width:900px){.lp-toolbar{flex-wrap:wrap!important}.lp-grid .lp-room{min-width:130px!important;width:130px!important;max-width:130px!important}}
+
+
+/* Compact inventory grid inspired by supplied reference */
+.lp-grid .lp-month-head th{height:25px!important;padding:3px 8px!important;background:#fff!important;text-align:left!important;font-size:12px!important;font-weight:800!important;color:#202b3d!important}
+.lp-grid .lp-day-head th{height:25px!important;padding:2px 6px!important;font-weight:700!important}
+.lp-grid thead tr:last-child th{height:27px!important;padding:2px 5px!important}
+.lp-grid .lp-room{min-width:220px!important;max-width:220px!important;width:220px!important}
+.lp-grid tbody .lp-room{padding:4px 9px!important}
+.lp-room-name{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:6px!important;font-size:12px!important;padding:6px!important}
+.lp-room-prices{padding:5px 4px 7px!important;margin-top:3px!important;border-top:1px solid #e8edf5!important;gap:0!important}
+.lp-room-prices label{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:7px!important;margin:0!important;padding:5px 1px!important;border-bottom:1px solid #e9edf4!important;font-size:11px!important;white-space:nowrap}
+.lp-room-prices input{width:108px!important;min-width:0!important;max-width:108px!important;margin:0!important;text-align:right!important;border:1px solid #d6deeb!important;background:#fff!important;padding:6px 4px!important;border-radius:5px!important;font-size:11px!important}
+.lp-room-prices input:focus{border-color:#2e72e9!important;box-shadow:0 0 0 2px #2e72e922!important}
+.lp-room-prices button{margin-top:7px!important;background:#286fe7!important}
+.lp-grid tbody .lp-day-slot{height:39px!important}
+.lp-day-click{height:39px!important}
+.lp-booking-pill,.lp-timeline .lp-span{border-radius:999px!important;box-shadow:none!important}
+.lp-grid tbody td{border-right:1px solid #e1e5ed!important}
+.lp-toolbar{justify-content:space-between!important}
+.lp-date-range{margin-left:auto!important}
+.qt-layout .qt-sidebar-inside-toggle{top:20px!important;right:8px!important;transform:none!important;width:25px!important;height:25px!important;padding:0!important;border:0!important;background:transparent!important;color:#738199!important;opacity:.85!important;font-size:16px!important;border-radius:4px!important}
+.qt-layout .qt-sidebar-inside-toggle:hover{width:25px!important;background:#edf1f8!important;color:#246be6!important;opacity:1!important}
+.qt-layout .qt-sidebar-edge{top:18px!important;left:0!important;transform:none!important;height:35px!important;border-radius:0 6px 6px 0!important}
+.qt-layout .qt-sidebar-edge:hover{width:30px!important}
