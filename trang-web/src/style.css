@@ -638,3 +638,47 @@
 .lp-timeline{box-sizing:border-box!important;width:max-content!important;min-width:100%!important}
 .lp-grid .lp-day-slot{min-width:65px!important}
 @media(max-width:720px){.qt-layout.qt-sidebar-hidden .qt-sidebar{width:54px!important;min-width:54px!important;max-width:54px!important;flex-basis:54px!important}.lp-date-range{max-width:100%!important}.lp-toolbar .lp-date-range input[type=date]{width:105px!important;max-width:105px!important}}
+
+
+/* Tight icon rail, full-size navigation icons, flush inventory workspace */
+.qt-layout{gap:0!important}
+.qt-layout .qt-sidebar{margin:0!important;border-radius:0!important}
+.qt-layout .qt-workspace{margin:0!important;padding:0!important}
+.qt-layout:has(.lp-page) .qt-content{padding:0!important;margin:0!important}
+.qt-layout:has(.lp-page) .lp-page{margin:0!important;border-radius:0!important;border-left:0!important;padding:10px 12px!important}
+.qt-layout.qt-sidebar-hidden .qt-sidebar{width:58px!important;min-width:58px!important;max-width:58px!important;flex:0 0 58px!important;padding:0 4px!important}
+.qt-layout.qt-sidebar-hidden .qt-sidebar .qt-nav-icon{font-size:inherit!important;transform:none!important;width:24px!important;height:24px!important;min-width:24px!important;min-height:24px!important}
+.qt-layout.qt-sidebar-hidden .qt-sidebar .qt-nav-item{height:46px!important;min-height:46px!important}
+.qt-layout.qt-sidebar-hidden .qt-sidebar .qt-logo-mark{transform:none!important}
+.qt-layout.qt-sidebar-hidden .qt-sidebar-inside-toggle{opacity:1!important;color:#285ec5!important;background:#fff!important;right:-12px!important}
+.lp-range-wrap{position:relative;flex-shrink:0;margin-left:auto}
+.lp-range-button{height:34px!important;min-width:0!important;padding:5px 10px!important;white-space:nowrap;border:1px solid #d7deea!important;border-radius:6px!important;background:#fff!important;font-size:11px!important;color:#34435a!important;cursor:pointer}
+.lp-range-button span{color:#6c87ac;margin-right:4px}
+.lp-range-popup{position:absolute;top:calc(100% + 5px);right:0;z-index:100;width:282px;max-width:calc(100vw - 25px);padding:10px;border:1px solid #dce3ef;border-radius:10px;background:white;box-shadow:0 12px 30px #20345c24}
+.lp-range-month{display:flex;align-items:center;justify-content:space-between;gap:5px;margin-bottom:8px}
+.lp-range-month strong{font-size:12px;text-transform:capitalize}
+.lp-range-month button,.lp-range-close{border:1px solid #e0e6ef;border-radius:5px;background:#f8faff;color:#2e5fa6;padding:4px 9px}
+.lp-range-weekdays,.lp-range-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px}
+.lp-range-weekdays span{font-size:10px;text-align:center;color:#8a95a7;padding:4px 0}
+.lp-range-days button{height:30px!important;min-width:0!important;border:0!important;border-radius:5px!important;background:#fff!important;color:#35435b!important;font-size:11px!important;cursor:pointer}
+.lp-range-days button:hover,.lp-range-days .range-first{background:#246de7!important;color:#fff!important}
+.lp-range-days .in-range{background:#e8f0ff!important}
+.lp-range-popup small{display:block;font-size:10px;color:#75829a;margin:8px 0}
+.lp-range-close{display:block;margin-left:auto;font-size:11px}
+.lp-grid tbody tr{height:43px!important;min-height:43px!important}
+.lp-grid tbody .lp-room{height:43px!important;min-height:43px!important;position:sticky!important}
+.lp-grid tbody .lp-day-slot,.lp-grid tbody .lp-timeline-td{height:43px!important}
+.lp-grid tbody .lp-day-click{height:42px!important}
+.lp-grid tbody .lp-room-prices{position:absolute!important;top:100%;left:4px;width:220px;z-index:25;background:white;padding:10px!important;border:1px solid #d9e1ed!important;border-radius:9px!important;box-shadow:0 10px 25px #22335224!important;max-height:none!important}
+.lp-grid tbody .lp-room-name{height:34px!important}
+.lp-grid tbody .lp-room-prices label{padding:4px 0!important}
+.lp-grid tbody .lp-room-prices input{height:29px!important}
+.lp-dialog{max-height:min(92vh,760px)!important;overflow:visible!important;width:min(590px,calc(100vw - 24px))!important}
+.lp-dialog form{gap:9px!important;padding:12px 18px 16px!important;grid-template-columns:repeat(2,minmax(0,1fr))}
+.lp-dialog form>.lp-modes,.lp-dialog form>.lp-date-inputs,.lp-dialog form>.lp-time,.lp-dialog form>.lp-status-preview,.lp-dialog form>.lp-dialog-actions,.lp-dialog form>.lp-hint,.lp-dialog form>.cn-error{grid-column:1/-1}
+.lp-dialog form label{font-size:12px!important}
+.lp-dialog form input,.lp-dialog form select{min-height:34px!important;height:34px!important;padding:5px 8px!important}
+.lp-dialog-head{padding:12px 18px!important}
+.lp-dialog-actions{padding-top:10px!important}
+.lp-dialog .lp-time{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-height:680px){.lp-dialog{max-height:94vh!important;overflow-y:auto!important}.lp-dialog form{gap:6px!important}}
