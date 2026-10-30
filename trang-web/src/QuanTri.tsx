@@ -120,9 +120,10 @@ export default function QuanTri(){
     <button className="full" disabled={dangXuLy}>{dangXuLy?'Đang xử lý...':cheDo==='dang-nhap'?'Đăng nhập':'Đăng ký'}</button>
     <button className="admin-switch" type="button" onClick={()=>{setCheDo(cheDo==='dang-nhap'?'dang-ky':'dang-nhap');setThongBao('');}}>{cheDo==='dang-nhap'?'Chưa có tài khoản? Đăng ký':'Đã có tài khoản? Đăng nhập'}</button>
     {thongBao&&<p role="status" className="admin-message">{thongBao}</p>}</form></section></main>:
-    <div className={"qt-layout "+(sidebarHidden?"qt-sidebar-hidden":"")}>\n      {sidebarHidden&&<button type="button" className="qt-sidebar-edge" title="Mở sidebar" aria-label="Mở sidebar" onClick={()=>setSidebarHidden(false)}>❯</button>}
+    <div className={"qt-layout "+(sidebarHidden?"qt-sidebar-hidden":"")}>
+      {sidebarHidden&&<button type="button" className="qt-sidebar-edge" title="Mở sidebar" aria-label="Mở sidebar" onClick={()=>setSidebarHidden(false)}>❯</button>}
       <aside className={'qt-sidebar '+(menuMo?'qt-sidebar-open':'')}>
-        <div className="qt-logo"><span className="qt-logo-mark">H</span><span>Home<span>Stay</span></span><button type="button" className="qt-sidebar-inside-toggle" title="Thu gọn thanh bên" aria-label="Thu gọn thanh bên" onClick={()=>setSidebarHidden(true)}>❮</button></div>
+        <div className="qt-logo"><span className="qt-logo-mark">H</span><span>Home<span>Stay</span></span></div><button type="button" className="qt-sidebar-inside-toggle" title="Thu gọn thanh bên" aria-label="Thu gọn thanh bên" onClick={()=>setSidebarHidden(true)}>❮</button>
         <div className="qt-menu-scroll">
           {danhMuc.filter(item=>item.id!=='thong-tin').map(item=><button type="button" key={item.id} className={'qt-nav-item '+(muc===item.id?'qt-nav-active':'')} onClick={()=>{setMuc(item.id);setMenuMo(false);setThongBao('');}}>
             <span className="qt-nav-icon">{item.icon}</span><span>{item.nhan}</span><span className="qt-nav-arrow">›</span>
