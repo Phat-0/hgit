@@ -478,3 +478,16 @@
 .qt-layout .qt-logo{position:relative!important;padding-right:58px!important}
 .qt-layout.qt-sidebar-hidden .qt-sidebar-edge{display:block!important}
 @media(max-width:980px){.lp-toolbar{flex-wrap:wrap!important}.lp-toolbar input[type=date]{width:135px!important}}
+
+/* Calendar: full available viewport, one compact toolbar */
+.qt-layout:has(.lp-page) .qt-content{max-width:none!important;width:100%!important;margin:0!important;padding:10px 8px 10px 10px!important}
+.qt-layout:has(.lp-page) .qt-workspace{min-width:0!important;flex:1 1 0!important;width:0}
+.qt-layout:has(.lp-page) .lp-page{width:100%!important;max-width:none!important;min-height:calc(100vh - 110px);padding:7px!important;border-radius:12px!important}
+.qt-layout:has(.lp-page) .lp-scroll{width:100%;max-height:calc(100vh - 185px)!important;min-height:calc(100vh - 185px)!important}
+.lp-toolbar{margin:0 0 7px!important}.lp-toolbar .lp-settings-trigger{margin-left:auto;white-space:nowrap}.lp-extra{height:0!important;margin:0!important;z-index:50}.lp-extra .lp-settings{top:0;left:auto;right:0}.lp-room-name{border:0;background:transparent;display:flex;align-items:center;justify-content:space-between;width:100%;font-size:12px;font-weight:700;color:#4b3c6d;text-align:left;cursor:pointer}.lp-room-prices{display:grid;gap:4px;margin-top:8px;border-top:1px solid #e9e4ef;padding-top:7px;font-size:10px;font-weight:400;white-space:normal;color:#615676}.lp-grid tbody .lp-room{vertical-align:top}
+/* Sidebar edge handle: invisible at rest, reveal on hover */
+.qt-layout .qt-sidebar-inside-toggle{right:0!important;top:27px!important;width:19px!important;height:40px!important;border-radius:10px 0 0 10px!important;opacity:.23!important;background:#a38bd7!important;color:#fff!important;transition:opacity .2s,width .2s!important}
+.qt-layout .qt-sidebar-inside-toggle:hover,.qt-layout .qt-sidebar-inside-toggle:focus-visible{width:35px!important;opacity:1!important}
+.qt-layout .qt-sidebar-edge{width:3px!important;opacity:.08!important;color:transparent!important;transition:width .2s,opacity .2s!important}
+.qt-layout .qt-sidebar-edge:hover,.qt-layout .qt-sidebar-edge:focus-visible{width:37px!important;opacity:1!important;color:white!important}
+@media(max-width:950px){.lp-toolbar{flex-wrap:wrap!important}.lp-toolbar .lp-settings-trigger{margin-left:0}}
