@@ -120,7 +120,7 @@ export default function QuanTri(){
     <button className="full" disabled={dangXuLy}>{dangXuLy?'Đang xử lý...':cheDo==='dang-nhap'?'Đăng nhập':'Đăng ký'}</button>
     <button className="admin-switch" type="button" onClick={()=>{setCheDo(cheDo==='dang-nhap'?'dang-ky':'dang-nhap');setThongBao('');}}>{cheDo==='dang-nhap'?'Chưa có tài khoản? Đăng ký':'Đã có tài khoản? Đăng nhập'}</button>
     {thongBao&&<p role="status" className="admin-message">{thongBao}</p>}</form></section></main>:
-    <div className={"qt-layout "+(sidebarHidden?"qt-sidebar-hidden":"")}>
+    <div className={"qt-layout "+(sidebarHidden?"qt-sidebar-hidden":"")}>\n      {sidebarHidden&&<button type="button" className="qt-sidebar-edge" title="Mở sidebar" aria-label="Mở sidebar" onClick={()=>setSidebarHidden(false)}>❯</button>}
       <aside className={'qt-sidebar '+(menuMo?'qt-sidebar-open':'')}>
         <div className="qt-logo"><span className="qt-logo-mark">H</span><span>Home<span>Stay</span></span><button type="button" className="qt-sidebar-inside-toggle" title="Thu gọn thanh bên" aria-label="Thu gọn thanh bên" onClick={()=>setSidebarHidden(true)}>❮</button></div>
         <div className="qt-menu-scroll">
@@ -131,7 +131,7 @@ export default function QuanTri(){
       </aside>
       {menuMo&&<button className="qt-overlay" aria-label="Đóng menu" onClick={()=>setMenuMo(false)}/>}
       <div className="qt-workspace">
-        <div className="qt-topbar"><div className="qt-header-search-row"><button type="button" className="qt-sidebar-toggle" aria-label={sidebarHidden?"Hiện thanh bên":"Ẩn thanh bên"} title={sidebarHidden?"Hiện sidebar":"Ẩn sidebar"} onClick={()=>setSidebarHidden(v=>!v)}>{sidebarHidden?"☰":"❮"}</button><button className="qt-mobile-menu" onClick={()=>setMenuMo(!menuMo)} aria-label="Mở menu">☰</button>
+        <div className="qt-topbar"><div className="qt-header-search-row"><button className="qt-mobile-menu" onClick={()=>setMenuMo(!menuMo)} aria-label="Mở menu">☰</button>
           <div className={'qt-header-search-group '+(timMo?'qt-search-expanded':'')} role="search">
             <button type="button" className="qt-search-toggle" aria-label={timMo?'Thu gọn tìm kiếm':'Mở tìm kiếm'} aria-expanded={timMo} onClick={()=>{setTimMo(!timMo);if(timMo)setTim('');}}>⌕</button>
             {timMo&&<div className="qt-search"><input autoFocus aria-label="Tìm menu" value={tim} onChange={e=>setTim(e.target.value)} placeholder="Tìm chức năng..." onKeyDown={e=>{if(e.key==='Escape'){setTimMo(false);setTim('');}if(e.key==='Enter'){const x=danhMuc.find(x=>x.nhan.toLowerCase().includes(tim.trim().toLowerCase()));if(x&&tim.trim()){setMuc(x.id);setTimMo(false);setTim('');}}}}/></div>}
