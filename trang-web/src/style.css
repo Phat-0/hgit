@@ -535,3 +535,47 @@
 .lp-status-preview i{display:block;width:25px;height:17px;border-radius:7px}
 
 .lp-room-prices label{display:grid;gap:3px;font-size:10px}.lp-room-prices input{width:100%;min-width:0;border:1px solid #ded6ed;border-radius:6px;padding:5px}.lp-room-prices button{background:#755bd2;color:white;border:0;border-radius:7px;padding:7px}.lp-date-inputs{display:grid;grid-template-columns:1fr 1fr;gap:10px}.lp-date-inputs input[type=date]{cursor:pointer;min-width:0;width:100%}
+
+
+/* Inventory calendar: restrained, spacious Go2Joy-style layout */
+.qt-layout:has(.lp-page) .qt-content{background:#f7f8fb!important;padding:12px 14px!important}
+.qt-layout:has(.lp-page) .lp-page{background:#fff!important;border:1px solid #e0e5ee!important;border-radius:10px!important;box-shadow:none!important;padding:14px!important}
+.lp-toolbar{display:flex!important;align-items:center!important;gap:10px!important;padding:3px 0 13px!important;border-bottom:1px solid #e6e9f0!important;margin-bottom:9px!important}
+.lp-toolbar button,.lp-toolbar select{height:36px!important;border-radius:6px!important}
+.lp-toolbar .lp-modes{display:flex!important;align-items:center!important;gap:0!important;background:transparent!important;border-radius:0!important;border-bottom:2px solid #e7eaf0!important}
+.lp-toolbar .lp-modes button{border:0!important;border-radius:0!important;background:transparent!important;color:#535f73!important;font-weight:600!important;padding:0 14px!important}
+.lp-toolbar .lp-modes button.active{color:#2769e8!important;border-bottom:2px solid #2769e8!important;background:transparent!important}
+.lp-toolbar .lp-settings-trigger{background:#fff!important;border:1px solid #dbe1eb!important;color:#2769e8!important}
+.lp-scroll{border:1px solid #d6dce7!important;border-radius:8px!important;overflow:auto!important}
+.lp-grid{border-collapse:collapse!important;border-spacing:0!important}
+.lp-grid thead th{background:#f8fafc!important;color:#37445a!important;font-size:11px!important;border-bottom:1px solid #d7dce6!important}
+.lp-grid thead .lp-day-head th{background:#fff!important;text-align:left!important;font-size:12px!important;font-weight:700!important}
+.lp-grid tbody tr{background:#fff!important}
+.lp-grid tbody td,.lp-grid tbody th{border-bottom:1px solid #e3e7ee!important}
+.lp-grid .lp-room{background:#fafbfe!important;position:sticky!important;left:0;z-index:5!important;border-right:1px solid #d7dce6!important;min-width:180px!important;max-width:180px!important;width:180px!important}
+.lp-grid thead .lp-room{z-index:8!important}
+.lp-room-name{font-size:12px!important;color:#243653!important;padding:7px 3px!important}
+.lp-room-name:hover{color:#2468e8!important}
+.lp-timeline .lp-span,.lp-booking-pill{border-radius:999px!important;font-weight:650!important}
+.lp-hour-background button{border-right:1px solid #e3e7ee!important}
+.lp-hour-background button:nth-child(48n){border-right:2px solid #a9b6cc!important}
+.lp-grid .lp-hour{color:#657188!important}
+.lp-date-range{border-color:#d9e0eb!important}
+.lp-settings{border-color:#dce2eb!important;box-shadow:0 12px 32px #2436531c!important}
+.lp-overlay{backdrop-filter:blur(1px)}
+.lp-dialog{width:min(540px,calc(100vw - 30px))!important;max-height:88vh!important;overflow-y:auto!important;border-radius:14px!important;background:#fff!important;box-shadow:0 20px 65px #1b2c4930!important}
+.lp-dialog-head{padding:17px 20px!important;border-bottom:1px solid #e6eaf1!important}
+.lp-dialog-head>div{display:flex;flex-direction:column;gap:4px}
+.lp-dialog-eyebrow{font-size:10px;letter-spacing:1px;font-weight:700;color:#75859c}
+.lp-dialog form{padding:17px 20px 20px!important;display:grid;gap:13px}
+.lp-dialog form label{font-weight:600;color:#39475d}
+.lp-dialog form input,.lp-dialog form select{border:1px solid #d8e0eb!important;border-radius:8px!important;min-height:38px!important}
+.lp-dialog form input:focus,.lp-dialog form select:focus{outline:2px solid #bed5ff!important;border-color:#4b83e9!important}
+.lp-dialog-actions{display:flex;justify-content:flex-end;gap:10px;border-top:1px solid #e7eaf0;padding-top:15px}
+.lp-dialog-actions button{min-width:100px;min-height:37px;border-radius:8px}
+.lp-cancel{border:1px solid #d7dfeb;background:white;color:#4d5b70}
+.qt-layout .qt-sidebar-inside-toggle{top:50%!important;right:-1px!important;transform:translateY(-50%)!important;width:19px!important;height:58px!important;border-radius:8px 0 0 8px!important;background:#f0f2f6!important;color:#5b6a80!important;border:1px solid #d7dce7!important;opacity:.55!important}
+.qt-layout .qt-sidebar-inside-toggle:hover{width:31px!important;opacity:1!important}
+.qt-layout .qt-sidebar-edge{top:50%!important;transform:translateY(-50%)!important;width:3px!important;opacity:.04!important;background:#8ca3ce!important}
+.qt-layout .qt-sidebar-edge:hover{width:28px!important;opacity:1!important;color:#fff!important}
+@media(max-width:900px){.lp-toolbar{flex-wrap:wrap!important}.lp-grid .lp-room{min-width:130px!important;width:130px!important;max-width:130px!important}}
