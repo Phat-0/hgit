@@ -455,3 +455,5 @@
 .lp-item{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid #ebe5f3;background:#faf8fd;border-radius:9px;padding:9px;margin-bottom:6px;font-size:12px}
 .lp-item button{border:0;background:#f5e6ed;color:#a33658;padding:6px 9px;border-radius:6px;white-space:nowrap}
 .lp-existing{max-height:170px;overflow:auto}
+
+.lp-grid .lp-day-head th{background:#e7d8f1;color:#503d68;height:34px;font-weight:700;border-right:2px solid #b9a6ce}.lp-grid .lp-day-head .lp-room{background:#e7d8f1;z-index:6}.lp-grid thead tr:nth-child(2) th{top:34px}.lp-grid .lp-hour:nth-child(24n){border-right:2px solid #b9a6ce}.lp-grid .lp-hour-cell{font-size:11px}
