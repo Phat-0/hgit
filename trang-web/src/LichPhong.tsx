@@ -15,8 +15,7 @@ export default function LichPhong({token}:{token:string}){
  const [showColors,setShowColors]=useState(false),[showSettings,setShowSettings]=useState(false),[expandedRoom,setExpandedRoom]=useState<string|null>(null);
  const [customStatuses,setCustomStatuses]=useState<string[]>(()=>{try{return JSON.parse(localStorage.getItem('lich_phong_trang_thai')||'[]') as string[];}catch{return [];}});
  const [newStatus,setNewStatus]=useState('');
- const [nightFrom,setNightFrom]=useState(()=>localStorage.getItem('lich_dem_tu')||'20:00'),[nightTo,setNightTo]=useState(()=>localStorage.getItem('lich_dem_den')||'08:00'),[dayFrom,setDayFrom]=useState(()=>localStorage.getItem('lich_ngay_tu')||'14:00'),[dayTo,setDayTo]=useState(()=>localStorage.getItem('lich_ngay_den')||'12:00');
- function updateClock(key:string,v:string,set:(v:string)=>void){set(v);localStorage.setItem(key,v);}
+ const nightTo=localStorage.getItem('lich_dem_den')||'08:00';
  function saveStatuses(next:string[]){setCustomStatuses(next);localStorage.setItem('lich_phong_trang_thai',JSON.stringify(next));}
  const palette:Record<string,string>={'Trống':'#ffffff','Khóa ngày':'#f5cb65','Khóa giờ':'#f6a75d','Khóa qua đêm':'#c5a2f1','Khóa cố định':'#ea8f9e','Chờ thanh toán':'#b8d7fc','Chờ xác nhận':'#ffe49b','Đã xác nhận':'#9bd9b4','Đã nhận phòng':'#78c4df'};
  function tone(k:string){return colors[k]||palette[k]||'#d6c5f4';}
