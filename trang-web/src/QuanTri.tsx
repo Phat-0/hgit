@@ -138,7 +138,7 @@ export default function QuanTri(){
             <button type="button" className="qt-search-toggle" aria-label={timMo?'Thu gọn tìm kiếm':'Mở tìm kiếm'} aria-expanded={timMo} onClick={()=>{setTimMo(!timMo);if(timMo)setTim('');}}>⌕</button>
             {timMo&&<div className="qt-search"><input autoFocus aria-label="Tìm menu" value={tim} onChange={e=>setTim(e.target.value)} placeholder="Tìm chức năng..." onKeyDown={e=>{if(e.key==='Escape'){setTimMo(false);setTim('');}if(e.key==='Enter'){const x=danhMuc.find(x=>x.nhan.toLowerCase().includes(tim.trim().toLowerCase()));if(x&&tim.trim()){setMuc(x.id);setTimMo(false);setTim('');}}}}/></div>}
           </div>}</div>
-          <div className="qt-top-actions"><button title="Thông báo" aria-label="Thông báo" onClick={()=>setMuc('thong-bao')} className="qt-icon-button">♧<i/></button><button title="Người dùng" aria-label="Người dùng" onClick={()=>setMuc('nhan-vien')} className="qt-icon-button">✉</button></div></div>
+          <div className="qt-top-actions"><button title="Thông báo" aria-label="Thông báo" onClick={()=>setMuc('thong-bao')} className="qt-icon-button">♧<i/></button><button title="Người dùng" aria-label="Người dùng" onClick={()=>setMuc('nhan-vien')} className="qt-icon-button">✉</button></div>
         </div>
         <main className="qt-content">{muc!=='chi-nhanh'&&muc!=='phong'&&muc!=='loai-phong'&&muc!=='lich'&&<div className="qt-page-head"><div><h1>{muc==='tong-quan'?'Bảng điều khiển':danhMuc.find(x=>x.id===muc)?.nhan}</h1></div></div>}
         {thongBao&&<div className="qt-alert" role="status">{thongBao}</div>}
