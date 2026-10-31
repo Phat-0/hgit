@@ -2,7 +2,7 @@ import {useCallback,useEffect,useMemo,useState} from 'react';
 type Room={id:string;ma_phong:string;ten_phong:string;homestay_id:string;ten_homestay:string;gia_moi_dem:number|string;gia_moi_gio:number|string;gia_moi_ngay:number|string;gia_phu_thu_gio:number|string};
 type Span={id:string;phong_id:string;bat_dau:string;ket_thuc:string;loai_khoa?:string;co_dinh?:boolean;ly_do?:string;trang_thai?:string;hinh_thuc_dat?:string;loai_gia?:string;gia?:number;ten_khach?:string;ma_dat_phong?:string};
 type Calendar={phong:Room[];khoa:Span[];dat_phong:Span[];gia:Span[]};
-const HOUR=3600000,DAY=86400000,SLOT=32;
+const HOUR=3600000,DAY=86400000,SLOT=40;
 function local(d:Date){return new Date(d.getTime()+7*HOUR).toISOString().slice(0,16);}
 function iso(date:string,time:string){return new Date(date+'T'+time+':00+07:00').toISOString();}
 function dateOnly(d:Date){return local(d).slice(0,10);}
