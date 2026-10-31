@@ -125,7 +125,7 @@ export default function QuanTri(){
       <aside className={'qt-sidebar '+(menuMo?'qt-sidebar-open':'')}>
         <div className="qt-logo"><span className="qt-logo-mark">H</span><span>Home<span>Stay</span></span></div><button type="button" className="qt-sidebar-inside-toggle" title={sidebarHidden?"Mở rộng thanh bên":"Thu gọn thanh bên"} aria-label={sidebarHidden?"Mở rộng thanh bên":"Thu gọn thanh bên"} onClick={()=>setSidebarHidden(v=>!v)}>{sidebarHidden?"❯":"❮"}</button>
         <div className="qt-menu-scroll">
-          {danhMuc.filter(item=>item.id!=='thong-tin').map(item=><button type="button" key={item.id} className={'qt-nav-item '+(muc===item.id?'qt-nav-active':'')} onClick={()=>{setMuc(item.id);setMenuMo(false);setThongBao('');}}>
+          {danhMuc.filter(item=>item.id!=='thong-tin').map(item=><button type="button" key={item.id} className={'qt-nav-item '+(muc===item.id?'qt-nav-active':'')} title={sidebarHidden?item.nhan:undefined} aria-label={item.nhan} onClick={()=>{setMuc(item.id);setMenuMo(false);setThongBao('');}}>
             <span className="qt-nav-icon">{item.icon}</span><span>{item.nhan}</span><span className="qt-nav-arrow">›</span>
           </button>)}
         </div>
