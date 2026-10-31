@@ -14,3 +14,8 @@ create table if not exists public.gia_lich_phong (
 );
 create index if not exists idx_gia_lich_phong on public.gia_lich_phong(phong_id,bat_dau);
 -- Khóa lịch vẫn dùng trigger và EXCLUDE constraint hiện có để chống trùng đơn đặt.
+
+-- Thông tin quy tắc giá theo thứ trong tuần
+ALTER TABLE public.gia_lich_phong ADD COLUMN IF NOT EXISTS ten text;
+ALTER TABLE public.gia_lich_phong ADD COLUMN IF NOT EXISTS thu_trong_tuan integer[];
+ALTER TABLE public.gia_lich_phong ADD COLUMN IF NOT EXISTS phu_thu_gio numeric(14,0);
