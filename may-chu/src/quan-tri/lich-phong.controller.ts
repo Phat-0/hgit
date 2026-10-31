@@ -11,7 +11,4 @@ export class LichPhongController{
  @Post('khoa') block(@Req() r:Auth,@Body() b:unknown){return this.service.block(r.nguoiDung.id,b);}
  @Delete('khoa/:id') unblock(@Req() r:Auth,@Param('id') id:string){return this.service.unblock(r.nguoiDung.id,id);}
  @Patch('phong/:id/gia-co-ban') basePrices(@Req() r:Auth,@Param('id') id:string,@Body() b:unknown){return this.service.updateBasePrices(r.nguoiDung.id,id,b);}
- @Post('gia/quy-tac') priceRule(@Req() r:Auth,@Body() b:unknown){return this.service.priceRule(r.nguoiDung.id,b);}
- @Post('gia') price(@Req() r:Auth,@Body() b:unknown){return this.service.price(r.nguoiDung.id,b);}
- @Delete('gia/:id') deletePrice(@Req() r:Auth,@Param('id') id:string){return this.service.deletePrice(r.nguoiDung.id,id);}
 }
