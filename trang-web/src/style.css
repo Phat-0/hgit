@@ -935,3 +935,21 @@
 .lp-overlay .lp-dialog-head{min-height:58px!important;padding:10px 16px!important;}
 .lp-overlay .lp-dialog-head>button{width:32px!important;height:32px!important;min-width:32px!important;min-height:32px!important;padding:0!important;display:flex!important;align-items:center!important;justify-content:center!important;line-height:1!important;font-size:21px!important;position:static!important;transform:none!important;flex-shrink:0!important;}
 @media(max-width:620px){.lp-overlay .lp-dialog-wide form{grid-template-columns:1fr!important;}.lp-overlay .lp-dialog-wide form>.lp-dialog-actions{grid-column:1!important;}}
+
+/* Các biểu mẫu lịch: nhãn trái, dữ liệu phải theo mẫu khóa nhanh */
+.lp-overlay .lp-dialog:not(.lp-price-dialog){width:min(580px,calc(100vw - 28px))!important;max-width:580px!important;max-height:calc(100vh - 32px)!important;overflow-y:auto!important;}
+.lp-overlay .lp-dialog:not(.lp-price-dialog) form{display:grid!important;grid-template-columns:1fr!important;gap:9px!important;padding:14px 16px!important;}
+.lp-overlay .lp-dialog:not(.lp-price-dialog) form>.lp-dialog-field,.lp-overlay .lp-dialog:not(.lp-price-dialog) form>.lp-dialog-range,.lp-overlay .lp-dialog:not(.lp-price-dialog) form>label,.lp-overlay .lp-dialog:not(.lp-price-dialog) form>.lp-time{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr)!important;gap:10px!important;align-items:center!important;margin:0!important;min-height:34px!important;}
+.lp-overlay .lp-dialog:not(.lp-price-dialog) form>.lp-dialog-field>span,.lp-overlay .lp-dialog:not(.lp-price-dialog) form>.lp-dialog-range>span,.lp-overlay .lp-dialog:not(.lp-price-dialog) form>label{font-size:13px!important;color:#43516a!important;}
+.lp-overlay .lp-dialog:not(.lp-price-dialog) form>.lp-dialog-field>input,.lp-overlay .lp-dialog:not(.lp-price-dialog) form>.lp-dialog-field>select,.lp-overlay .lp-dialog:not(.lp-price-dialog) form>.lp-dialog-range>div,.lp-overlay .lp-dialog:not(.lp-price-dialog) form>label>input,.lp-overlay .lp-dialog:not(.lp-price-dialog) form>label>select,.lp-overlay .lp-dialog:not(.lp-price-dialog) form>label>textarea{width:100%!important;min-width:0!important;max-width:100%!important;min-height:34px!important;box-sizing:border-box!important;}
+.lp-overlay .lp-dialog:not(.lp-price-dialog) form>.lp-time{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr)!important;}
+.lp-overlay .lp-dialog:not(.lp-price-dialog) form>.lp-time>label{display:flex!important;align-items:center!important;gap:5px!important;min-width:0!important;}
+.lp-overlay .lp-dialog:not(.lp-price-dialog) form>.lp-time>label input{min-width:0!important;width:100%!important;}
+.lp-overlay .lp-dialog:not(.lp-price-dialog) form>.lp-dialog-actions,.lp-overlay .lp-dialog:not(.lp-price-dialog) form>.lp-hint,.lp-overlay .lp-dialog:not(.lp-price-dialog) form>.cn-error{grid-column:1/-1!important;}
+.lp-overlay .lp-dialog:not(.lp-price-dialog) form>.lp-dialog-field>div{width:100%!important;min-width:0!important;}
+.lp-overlay .lp-dialog:not(.lp-price-dialog) form>.lp-dialog-field input[placeholder="Tìm tên phòng"]{width:100%!important;max-width:100%!important;}
+.lp-overlay .lp-price-dialog .lp-price-base>label,.lp-overlay .lp-price-dialog .lp-price-schedule-form>label{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr)!important;gap:12px!important;align-items:center!important;margin:0!important;}
+.lp-overlay .lp-price-dialog .lp-price-base>label>input,.lp-overlay .lp-price-dialog .lp-price-base>label>select,.lp-overlay .lp-price-dialog .lp-price-schedule-form>label>input,.lp-overlay .lp-price-dialog .lp-price-schedule-form>label>select{width:100%!important;min-width:0!important;box-sizing:border-box!important;}
+.lp-overlay .lp-price-dialog .lp-price-base,.lp-overlay .lp-price-dialog .lp-price-schedule-form{display:grid!important;gap:10px!important;}
+.lp-overlay .lp-dialog .lp-dialog-head>button{display:flex!important;align-items:center!important;justify-content:center!important;padding:0!important;line-height:1!important;}
+@media(max-width:480px){.lp-overlay .lp-dialog:not(.lp-price-dialog) form>.lp-dialog-field,.lp-overlay .lp-dialog:not(.lp-price-dialog) form>.lp-dialog-range,.lp-overlay .lp-dialog:not(.lp-price-dialog) form>label,.lp-overlay .lp-price-dialog .lp-price-base>label{grid-template-columns:1fr!important;}}
