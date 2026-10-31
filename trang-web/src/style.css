@@ -773,3 +773,26 @@
 .lp-grid tbody tr:has(.lp-room-prices) .lp-day-click{height:100%!important;min-height:43px!important}
 .lp-grid tbody tr:has(.lp-room-prices) .lp-timeline{min-height:100%!important}
 @media(max-width:720px){.qt-layout{gap:5px!important}.qt-layout.qt-sidebar-hidden .qt-sidebar{width:58px!important;min-width:58px!important;max-width:58px!important;flex-basis:58px!important}}
+
+
+/* Uniform timeline cells and dedicated price detail rows */
+.lp-grid{table-layout:fixed!important;width:max-content!important;min-width:0!important}
+.lp-grid col{box-sizing:border-box!important}
+.lp-grid thead th{box-sizing:border-box!important}
+.lp-grid .lp-day-slot,.lp-grid .lp-hour,.lp-grid .lp-timeline-td{box-sizing:border-box!important}
+.lp-grid tbody tr:not(.lp-price-row){height:44px!important;min-height:44px!important;max-height:44px!important}
+.lp-grid tbody tr:not(.lp-price-row)>th,.lp-grid tbody tr:not(.lp-price-row)>td{height:44px!important;min-height:44px!important;max-height:44px!important;padding-top:0!important;padding-bottom:0!important;overflow:hidden!important}
+.lp-grid tbody tr:not(.lp-price-row) .lp-room-name{height:43px!important;max-height:43px!important}
+.lp-grid tbody tr.lp-price-row{height:auto!important;min-height:0!important;max-height:none!important}
+.lp-grid tbody .lp-price-row>.lp-room{height:auto!important;min-height:0!important;max-height:none!important;overflow:visible!important;padding:8px 10px!important}
+.lp-grid tbody .lp-price-row>.lp-price-empty{height:auto!important;background:#fcfdff!important;border-bottom:1px solid #e7ebf3!important}
+.lp-grid tbody .lp-price-row-title{font-size:11px;font-weight:700;color:#374d70;margin-bottom:6px}
+.lp-grid tbody .lp-price-row .lp-room-prices{display:grid!important;gap:5px!important;position:static!important;width:100%!important;box-shadow:none!important;border:0!important;margin:0!important;padding:0!important}
+.lp-grid tbody .lp-price-row .lp-room-prices label{display:grid!important;grid-template-columns:78px minmax(0,1fr)!important;align-items:center!important;font-size:10px!important}
+.lp-grid tbody .lp-price-row .lp-room-prices input{width:100%!important;min-width:0!important}
+.lp-settings-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.lp-status-summary{display:flex;flex-wrap:wrap;gap:7px}
+.lp-status-chip{display:inline-flex!important;align-items:center!important;gap:6px!important;padding:5px 8px!important;border:1px solid #dce3ed!important;border-radius:7px!important;background:#fff!important;font-size:12px}
+.lp-status-chip input[type=color]{width:20px!important;height:20px!important;min-width:20px!important;border:0!important;padding:0!important;background:transparent!important;cursor:pointer}
+.lp-status-chip .lp-status-remove{padding:0 4px!important;min-width:20px!important;color:#c33!important;background:#fff!important;border:0!important;cursor:pointer}
+.lp-new-status{display:flex;gap:8px;align-items:center}
