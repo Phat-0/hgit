@@ -734,3 +734,42 @@
 .lp-dialog .lp-hint{grid-column:1/-1;margin:0;font-size:11px}
 .lp-dialog .lp-dialog-actions{grid-column:1/-1}
 @media(max-width:600px){.lp-range-dual{width:320px}.lp-calendar-pair{gap:5px}.lp-calendar-days button{height:26px!important}.lp-dialog .lp-dialog-range{flex-wrap:wrap}.lp-dialog .lp-dialog-range .lp-range-control{max-width:100%;width:100%}}
+
+
+/* Fixed icon sidebar, scrolling navigation, anchored account footer */
+.qt-layout{gap:8px!important;align-items:stretch!important}
+.qt-layout .qt-sidebar{position:sticky!important;top:0!important;height:100vh!important;min-height:100vh!important;max-height:100vh!important;display:flex!important;flex-direction:column!important;align-self:flex-start!important;overflow:visible!important;flex-shrink:0!important;margin:0!important;box-shadow:none!important;border-right:1px solid #e4e9f3!important}
+.qt-layout .qt-workspace{min-width:0!important;flex:1 1 0!important;position:relative!important;margin:0!important;overflow:visible!important}
+.qt-layout .qt-sidebar .qt-menu-scroll{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;scrollbar-width:none!important;-ms-overflow-style:none!important}
+.qt-layout .qt-sidebar .qt-menu-scroll::-webkit-scrollbar{display:none!important}
+.qt-layout.qt-sidebar-hidden .qt-sidebar{flex:0 0 58px!important;width:58px!important;min-width:58px!important;max-width:58px!important;padding:0 4px!important}
+.qt-layout.qt-sidebar-hidden .qt-sidebar .qt-logo{visibility:hidden!important;height:45px!important;min-height:45px!important;padding:0!important;margin:0!important}
+.qt-layout.qt-sidebar-hidden .qt-sidebar .qt-logo-mark{display:none!important}
+.qt-layout.qt-sidebar-hidden .qt-sidebar .qt-menu-scroll{padding:8px 0!important}
+.qt-layout.qt-sidebar-hidden .qt-sidebar .qt-nav-item{width:48px!important;height:46px!important;min-height:46px!important;padding:0!important;display:flex!important;align-items:center!important;justify-content:center!important;transform:none!important}
+.qt-layout.qt-sidebar-hidden .qt-sidebar .qt-nav-icon{font-size:18px!important;line-height:24px!important;transform:none!important;flex:0 0 24px!important;width:24px!important;height:24px!important;min-width:24px!important;min-height:24px!important}
+.qt-layout .qt-sidebar-account{flex:0 0 auto!important;position:relative!important;z-index:40!important;background:#fff!important;border-top:1px solid #e8edf5!important;padding:10px 8px!important;min-height:65px!important}
+.qt-layout .qt-sidebar-account .qt-profile-wrap{width:100%!important}
+.qt-layout .qt-sidebar-account .qt-profile-button{width:100%!important;max-width:none!important;min-width:0!important;padding:6px!important;display:flex!important;justify-content:flex-start!important;gap:8px!important}
+.qt-layout .qt-sidebar-account .qt-avatar{flex:0 0 34px!important;width:34px!important;height:34px!important;font-size:15px!important}
+.qt-layout .qt-sidebar-account .qt-profile-dropdown{position:absolute!important;bottom:calc(100% + 8px)!important;top:auto!important;left:0!important;right:auto!important;width:240px!important;max-width:calc(100vw - 80px)!important;z-index:200!important}
+.qt-layout.qt-sidebar-hidden .qt-sidebar-account{padding:10px 3px!important}
+.qt-layout.qt-sidebar-hidden .qt-sidebar-account .qt-profile-button{justify-content:center!important;padding:4px 0!important}
+.qt-layout.qt-sidebar-hidden .qt-sidebar-account .qt-profile-name,.qt-layout.qt-sidebar-hidden .qt-sidebar-account .qt-profile-chevron{display:none!important}
+.qt-layout.qt-sidebar-hidden .qt-sidebar-account .qt-avatar{flex:0 0 34px!important;width:34px!important;height:34px!important}
+.qt-layout .qt-sidebar-inside-toggle{z-index:100!important}
+.lp-grid{table-layout:fixed!important;min-width:0!important;max-width:none!important}
+.lp-grid .lp-hour{width:40px!important;min-width:40px!important;max-width:40px!important;overflow:hidden!important;font-size:9px!important}
+.lp-grid .lp-day-slot{width:86px!important;min-width:0!important;max-width:none!important}
+.lp-grid .lp-room{width:205px!important;min-width:205px!important;max-width:205px!important}
+.lp-grid thead th:not(.lp-room){min-width:0!important}
+.lp-grid .lp-month-head th{overflow:hidden!important;white-space:nowrap!important;text-overflow:clip!important}
+.lp-grid tbody .lp-room-prices{position:static!important;top:auto!important;left:auto!important;width:100%!important;min-width:0!important;z-index:auto!important;margin-top:6px!important;padding:7px 0!important;border:0!important;border-top:1px solid #e4eaf4!important;border-radius:0!important;box-shadow:none!important;background:transparent!important}
+.lp-grid tbody .lp-room-prices label{display:grid!important;grid-template-columns:70px 1fr!important;gap:4px!important;font-size:10px!important;white-space:nowrap!important}
+.lp-grid tbody .lp-room-prices input{width:100%!important;min-width:0!important;height:28px!important;box-sizing:border-box!important}
+.lp-grid tbody .lp-room-prices>button{width:100%!important;margin-top:5px!important}
+.lp-grid tbody tr:has(.lp-room-prices){height:auto!important}
+.lp-grid tbody tr:has(.lp-room-prices)>.lp-room,.lp-grid tbody tr:has(.lp-room-prices)>.lp-day-slot,.lp-grid tbody tr:has(.lp-room-prices)>.lp-timeline-td{height:auto!important}
+.lp-grid tbody tr:has(.lp-room-prices) .lp-day-click{height:100%!important;min-height:43px!important}
+.lp-grid tbody tr:has(.lp-room-prices) .lp-timeline{min-height:100%!important}
+@media(max-width:720px){.qt-layout{gap:5px!important}.qt-layout.qt-sidebar-hidden .qt-sidebar{width:58px!important;min-width:58px!important;max-width:58px!important;flex-basis:58px!important}}
