@@ -953,3 +953,7 @@
 .lp-overlay .lp-price-dialog .lp-price-base,.lp-overlay .lp-price-dialog .lp-price-schedule-form{display:grid!important;gap:10px!important;}
 .lp-overlay .lp-dialog .lp-dialog-head>button{display:flex!important;align-items:center!important;justify-content:center!important;padding:0!important;line-height:1!important;}
 @media(max-width:480px){.lp-overlay .lp-dialog:not(.lp-price-dialog) form>.lp-dialog-field,.lp-overlay .lp-dialog:not(.lp-price-dialog) form>.lp-dialog-range,.lp-overlay .lp-dialog:not(.lp-price-dialog) form>label,.lp-overlay .lp-price-dialog .lp-price-base>label{grid-template-columns:1fr!important;}}
+
+.lp-guest-lookup{display:block;margin-top:4px;font-size:11px;color:#64748b;line-height:1.4;}
+.lp-overlay .lp-dialog form>label>div:has(.lp-guest-lookup){min-width:0;width:100%;}
+.lp-overlay .lp-dialog form>label>div>input[type=tel]{width:100%;min-width:0;box-sizing:border-box;}
