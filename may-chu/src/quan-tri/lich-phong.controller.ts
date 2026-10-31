@@ -8,6 +8,7 @@ type Auth=Request & {nguoiDung:{id:string}};
 export class LichPhongController{
  constructor(private readonly service:LichPhongService){}
  @Get() calendar(@Req() r:Auth,@Query('homestay_id') branch:string,@Query('bat_dau') a:string,@Query('ket_thuc') b:string){return this.service.calendar(r.nguoiDung.id,branch||'',a,b);}
+ @Get('khach-theo-sdt') guestByPhone(@Req() r:Auth,@Query('so_dien_thoai') phone:string){return this.service.findGuest(r.nguoiDung.id,phone||'');}
  @Post('khoa') block(@Req() r:Auth,@Body() b:unknown){return this.service.block(r.nguoiDung.id,b);}
  @Patch('khoa/:id') editBlock(@Req() r:Auth,@Param('id') id:string,@Body() b:unknown){return this.service.editBlock(r.nguoiDung.id,id,b);}
  @Delete('khoa/:id') unblock(@Req() r:Auth,@Param('id') id:string){return this.service.unblock(r.nguoiDung.id,id);}
