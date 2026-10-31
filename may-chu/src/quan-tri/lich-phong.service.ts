@@ -30,7 +30,7 @@ export class LichPhongService{
   this.validId(room);
   if(!['ngay','gio','qua-dem'].includes(kind)||!name||name.length>120||!Number.isSafeInteger(amount)||amount<0||amount>1000000000000||(extra!==null&&(!Number.isSafeInteger(extra)||extra<0||extra>1000000000000))||!Array.isArray(days)||!days.length||days.some(d=>!Number.isInteger(d)||d<0||d>6))throw new BadRequestException('Quy tắc giá không hợp lệ');
   const first=String(x?.bat_dau||''),last=String(x?.ket_thuc||'');
-  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(first)||!/^\\d{4}-\\d{2}-\\d{2}$/.test(last))throw new BadRequestException('Ngày không hợp lệ');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(first)||!/^\d{4}-\d{2}-\d{2}$/.test(last))throw new BadRequestException('Ngày không hợp lệ');
   const start=new Date(first+'T00:00:00+07:00'),end=new Date(last+'T00:00:00+07:00');
   if(!Number.isFinite(start.getTime())||!Number.isFinite(end.getTime())||start>end||(end.getTime()-start.getTime())/86400000>90)throw new BadRequestException('Khoảng áp dụng phải từ 1 đến 91 ngày');
   const c=await this.db();try{
