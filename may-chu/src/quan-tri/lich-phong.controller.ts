@@ -10,5 +10,7 @@ export class LichPhongController{
  @Get() calendar(@Req() r:Auth,@Query('homestay_id') branch:string,@Query('bat_dau') a:string,@Query('ket_thuc') b:string){return this.service.calendar(r.nguoiDung.id,branch||'',a,b);}
  @Post('khoa') block(@Req() r:Auth,@Body() b:unknown){return this.service.block(r.nguoiDung.id,b);}
  @Delete('khoa/:id') unblock(@Req() r:Auth,@Param('id') id:string){return this.service.unblock(r.nguoiDung.id,id);}
+ @Post('gia') savePrice(@Req() r:Auth,@Body() b:unknown){return this.service.saveScheduledPrice(r.nguoiDung.id,b);}
+ @Delete('gia/:id') removePrice(@Req() r:Auth,@Param('id') id:string){return this.service.removeScheduledPrice(r.nguoiDung.id,id);}
  @Patch('phong/:id/gia-co-ban') basePrices(@Req() r:Auth,@Param('id') id:string,@Body() b:unknown){return this.service.updateBasePrices(r.nguoiDung.id,id,b);}
 }
