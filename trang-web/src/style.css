@@ -864,3 +864,15 @@
 .lp-price-rule-item small{color:#68788f}
 .lp-price-rule-item>strong{white-space:nowrap;color:#355fba}
 .lp-price-dialog .lp-dialog-actions{flex-wrap:wrap}
+
+/* Lịch phòng: tăng kích thước ô và giữ bề rộng bảng ổn định */
+.lp-page .lp-scroll{max-width:100%;overflow:auto;scrollbar-gutter:stable;}
+.lp-page .lp-grid{table-layout:fixed;}
+.lp-page .lp-grid td,.lp-page .lp-grid th{box-sizing:border-box;}
+.lp-page .lp-hour{font-size:12px;white-space:nowrap;}
+.lp-page .lp-price-band-cell{font-size:12px;overflow:hidden;text-overflow:ellipsis;}
+.lp-dialog textarea{width:100%;min-height:62px;resize:vertical;border:1px solid #d9ddeb;border-radius:8px;padding:9px;font:inherit;}
+.lp-dialog .lp-dialog-field>div{display:grid;gap:7px;min-width:0;}
+.lp-dialog .lp-dialog-field>div>select,.lp-dialog .lp-dialog-field>div>input{width:100%;min-width:0;}
+.qt-sidebar-hidden .qt-nav-item[title]{position:relative;}
+.qt-sidebar-hidden .qt-nav-item[title]:hover{background:#f2efff;}
