@@ -37,7 +37,7 @@ export class LichPhongService{
    await c.query('BEGIN');
    const inserted=[];
    for(let t=start.getTime();t<=end.getTime();t+=86400000){
-    const d=new Date(t),weekday=d.getUTCDay();
+    const d=new Date(t),weekday=new Date(t+7*3600000).getUTCDay();
     if(!days.includes(weekday))continue;
     const a=d.toISOString(),b=new Date(t+86400000).toISOString();
     const r=await c.query('INSERT INTO public.gia_lich_phong(phong_id,bat_dau,ket_thuc,loai_gia,gia,ten,thu_trong_tuan,phu_thu_gio) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id',[room,a,b,kind,amount,name,days,extra]);
