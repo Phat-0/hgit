@@ -15,12 +15,38 @@ export class LichPhongService{
  const [locks,bookings,prices]=await Promise.all([
  c.query("SELECT id,phong_id,bat_dau,ket_thuc,ly_do,loai_khoa,co_dinh FROM public.chan_lich_phong WHERE phong_id=ANY($1::uuid[]) AND bat_dau<$3 AND ket_thuc>$2 ORDER BY bat_dau",[ids,a,b]).catch(async e=>{if((e as {code?:string}).code==='42703')return c.query("SELECT id,phong_id,bat_dau,ket_thuc,ly_do,'gio'::text AS loai_khoa,false AS co_dinh FROM public.chan_lich_phong WHERE phong_id=ANY($1::uuid[]) AND bat_dau<$3 AND ket_thuc>$2 ORDER BY bat_dau",[ids,a,b]);throw e;}),
  c.query("SELECT d.id,d.phong_id,d.nhan_phong_luc AS bat_dau,d.tra_phong_luc AS ket_thuc,d.trang_thai,d.hinh_thuc_dat,d.ma_dat_phong,COALESCE(NULLIF(trim(n.ho_ten),''),d.ma_dat_phong) AS ten_khach FROM public.dat_phong d LEFT JOIN public.nguoi_dung n ON n.id=d.nguoi_dung_id WHERE d.phong_id=ANY($1::uuid[]) AND d.nhan_phong_luc<$3 AND d.tra_phong_luc>$2 AND d.trang_thai IN ('Chờ thanh toán','Chờ xác nhận','Đã xác nhận','Đã nhận phòng')",[ids,a,b]),
- c.query("SELECT id,phong_id,bat_dau,ket_thuc,loai_gia,gia FROM public.gia_lich_phong WHERE phong_id=ANY($1::uuid[]) AND bat_dau<$3 AND ket_thuc>$2",[ids,a,b]).catch(e=>{if((e as {code?:string}).code==='42P01')return {rows:[]};throw e;})]);
+ c.query("SELECT id,phong_id,bat_dau,ket_thuc,loai_gia,gia,ten,thu_trong_tuan,phu_thu_gio FROM public.gia_lich_phong WHERE phong_id=ANY($1::uuid[]) AND bat_dau<$3 AND ket_thuc>$2",[ids,a,b]).catch(e=>{if((e as {code?:string}).code==='42P01')return {rows:[]};throw e;})]);
  return {phong:rooms.rows,khoa:locks.rows,dat_phong:bookings.rows,gia:prices.rows};
  }catch(e){const err=e as {code?:string;message?:string};if(err.code==='42P01'||err.code==='42703')throw new BadRequestException('Thiếu bảng hoặc cột lịch trong Supabase. Hãy chạy migrations: them-gia-phong.sql và lich-phong-quan-tri.sql. Chi tiết: '+(err.message||err.code));throw e;}finally{await c.end();}}
  async block(uid:string,body:unknown){await this.admin.kiemTraQuanTri(uid);const x=body as Record<string,unknown>|null;const room=String(x?.phong_id||''),kind=String(x?.loai_khoa||''),reason=String(x?.ly_do||'Khóa lịch từ quản trị').trim();this.validId(room);if(!['ngay','gio','qua-dem'].includes(kind)||reason.length>500||!reason)throw new BadRequestException('Thông tin khóa không hợp lệ');const [a,b]=this.dates(String(x?.bat_dau||''),String(x?.ket_thuc||''));if(kind==='ngay'&&(!a.endsWith('17:00:00.000Z')||((new Date(b).getTime()-new Date(a).getTime())%86400000!==0)))throw new BadRequestException('Khóa ngày phải bắt đầu lúc 00:00 Việt Nam và theo ngày tròn');const c=await this.db();try{const r=await c.query('INSERT INTO public.chan_lich_phong(phong_id,bat_dau,ket_thuc,ly_do,loai_khoa,co_dinh) VALUES($1,$2,$3,$4,$5,$6) RETURNING *',[room,a,b,reason,kind,kind==='ngay'&&x?.co_dinh===true]);return r.rows[0];}catch(e){this.failure(e);}finally{await c.end();}}
  async unblock(uid:string,id:string){await this.admin.kiemTraQuanTri(uid);this.validId(id);const c=await this.db();try{const r=await c.query('DELETE FROM public.chan_lich_phong WHERE id=$1 RETURNING id',[id]);if(!r.rowCount)throw new NotFoundException('Không tìm thấy khóa');return r.rows[0];}finally{await c.end();}}
  async price(uid:string,body:unknown){await this.admin.kiemTraQuanTri(uid);const x=body as Record<string,unknown>|null;const room=String(x?.phong_id||''),kind=String(x?.loai_gia||''),price=Number(x?.gia);this.validId(room);if(!['ngay','gio','qua-dem'].includes(kind)||!Number.isSafeInteger(price)||price<0)throw new BadRequestException('Giá không hợp lệ');const [a,b]=this.dates(String(x?.bat_dau||''),String(x?.ket_thuc||''));const c=await this.db();try{const r=await c.query('INSERT INTO public.gia_lich_phong(phong_id,bat_dau,ket_thuc,loai_gia,gia) VALUES($1,$2,$3,$4,$5) RETURNING *',[room,a,b,kind,price]);return r.rows[0];}catch(e){this.failure(e);}finally{await c.end();}}
+ async priceRule(uid:string,body:unknown){
+  await this.admin.kiemTraQuanTri(uid);
+  const x=body as Record<string,unknown>|null;
+  const room=String(x?.phong_id||''),kind=String(x?.loai_gia||''),name=String(x?.ten||'').trim();
+  const amount=Number(x?.gia),extra=x?.phu_thu_gio==null?null:Number(x.phu_thu_gio);
+  const days=x?.thu_trong_tuan;
+  this.validId(room);
+  if(!['ngay','gio','qua-dem'].includes(kind)||!name||name.length>120||!Number.isSafeInteger(amount)||amount<0||amount>1000000000000||(extra!==null&&(!Number.isSafeInteger(extra)||extra<0||extra>1000000000000))||!Array.isArray(days)||!days.length||days.some(d=>!Number.isInteger(d)||d<0||d>6))throw new BadRequestException('Quy tắc giá không hợp lệ');
+  const first=String(x?.bat_dau||''),last=String(x?.ket_thuc||'');
+  if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(first)||!/^\\d{4}-\\d{2}-\\d{2}$/.test(last))throw new BadRequestException('Ngày không hợp lệ');
+  const start=new Date(first+'T00:00:00+07:00'),end=new Date(last+'T00:00:00+07:00');
+  if(!Number.isFinite(start.getTime())||!Number.isFinite(end.getTime())||start>end||(end.getTime()-start.getTime())/86400000>90)throw new BadRequestException('Khoảng áp dụng phải từ 1 đến 91 ngày');
+  const c=await this.db();try{
+   await c.query('BEGIN');
+   const inserted=[];
+   for(let t=start.getTime();t<=end.getTime();t+=86400000){
+    const d=new Date(t),weekday=d.getUTCDay();
+    if(!days.includes(weekday))continue;
+    const a=d.toISOString(),b=new Date(t+86400000).toISOString();
+    const r=await c.query('INSERT INTO public.gia_lich_phong(phong_id,bat_dau,ket_thuc,loai_gia,gia,ten,thu_trong_tuan,phu_thu_gio) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id',[room,a,b,kind,amount,name,days,extra]);
+    inserted.push(r.rows[0]);
+   }
+   if(!inserted.length)throw new BadRequestException('Không có ngày nào khớp thứ trong tuần');
+   await c.query('COMMIT');return {so_ngay:inserted.length};
+  }catch(e){await c.query('ROLLBACK');this.failure(e);}finally{await c.end();}
+ }
  async deletePrice(uid:string,id:string){await this.admin.kiemTraQuanTri(uid);this.validId(id);const c=await this.db();try{const r=await c.query('DELETE FROM public.gia_lich_phong WHERE id=$1 RETURNING id',[id]);if(!r.rowCount)throw new NotFoundException('Không tìm thấy giá');return r.rows[0];}finally{await c.end();}}
  async updateBasePrices(uid:string,roomId:string,body:unknown){
   await this.admin.kiemTraQuanTri(uid);this.validId(roomId);
