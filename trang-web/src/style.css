@@ -843,3 +843,24 @@
 .lp-price-base label{display:grid;grid-template-columns:1fr 160px;align-items:center;gap:10px;font-size:12px}
 .lp-price-base input,.lp-price-dialog .lp-dialog-field input{width:100%;min-width:0;box-sizing:border-box;height:34px;border:1px solid #d9e2ee;border-radius:6px;padding:5px 8px}
 .lp-price-base>button{justify-self:end}
+
+
+/* Clear price rows and expandable room pricing */
+.lp-grid .lp-room-name{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important}
+.lp-grid tbody .lp-price-band-row{height:39px!important;min-height:39px!important;max-height:39px!important}
+.lp-grid tbody .lp-price-band-row>th,.lp-grid tbody .lp-price-band-row>td{height:39px!important;min-height:39px!important;max-height:39px!important}
+.lp-grid tbody .lp-price-band-row>.lp-room{background:#f8faff!important}
+.lp-price-band-label{height:38px!important;font-weight:600!important}
+.lp-grid tbody .lp-price-band-cell{background:#f9fbff!important}
+.lp-price-band-cell>span{height:31px!important;line-height:30px!important;background:#fff!important;border:1px solid #d8e2f0!important;border-left:3px solid #b5c5ec!important;font-weight:600!important;font-variant-numeric:tabular-nums!important}
+.lp-weekdays{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start;gap:12px;font-size:12px;color:#41516b}
+.lp-weekdays>div{display:flex;flex-wrap:wrap;gap:5px}
+.lp-weekdays label{display:inline-flex;align-items:center;gap:3px;padding:5px 6px;border:1px solid #dce4f0;border-radius:6px;background:#f9fbff;cursor:pointer}
+.lp-weekdays input{margin:0;accent-color:#4e79e8}
+.lp-price-rules{display:grid;gap:8px;padding:12px 16px;border-top:1px solid #e2e8f0;max-height:180px;overflow-y:auto}
+.lp-price-rules>strong{font-size:12px}
+.lp-price-rule-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 10px;background:#f8faff;border:1px solid #e1e8f5;border-radius:7px;font-size:12px}
+.lp-price-rule-item>span{display:grid;gap:3px}
+.lp-price-rule-item small{color:#68788f}
+.lp-price-rule-item>strong{white-space:nowrap;color:#355fba}
+.lp-price-dialog .lp-dialog-actions{flex-wrap:wrap}
