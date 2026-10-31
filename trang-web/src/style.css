@@ -796,3 +796,27 @@
 .lp-status-chip input[type=color]{width:20px!important;height:20px!important;min-width:20px!important;border:0!important;padding:0!important;background:transparent!important;cursor:pointer}
 .lp-status-chip .lp-status-remove{padding:0 4px!important;min-width:20px!important;color:#c33!important;background:#fff!important;border:0!important;cursor:pointer}
 .lp-new-status{display:flex;gap:8px;align-items:center}
+
+
+/* Calendar block dialog aligned to reference, prices below room */
+.lp-dialog{width:min(520px,calc(100vw - 20px))!important;box-sizing:border-box!important}
+.lp-dialog form{display:flex!important;flex-direction:column!important;gap:14px!important;padding:16px!important;box-sizing:border-box!important}
+.lp-dialog .lp-dialog-field,.lp-dialog .lp-dialog-range{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;align-items:center!important;gap:12px!important;width:100%!important;font-size:12px!important;color:#41516b!important}
+.lp-dialog .lp-dialog-field select{width:100%!important;min-width:0!important;height:36px!important;box-sizing:border-box!important}
+.lp-dialog .lp-dialog-room{display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:4px!important;margin:0!important;padding:12px!important;width:100%!important;box-sizing:border-box!important}
+.lp-dialog .lp-dialog-range .lp-range-control{width:100%!important;max-width:none!important;min-width:0!important}
+.lp-dialog .lp-dialog-range .lp-range-button{width:100%!important;min-width:0!important;justify-content:center!important;white-space:nowrap!important;font-size:11px!important}
+.lp-dialog .lp-time{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:12px!important;width:100%!important}
+.lp-dialog .lp-time label{display:grid!important;grid-template-columns:1fr!important;gap:6px!important;min-width:0!important}
+.lp-dialog form>label{display:grid!important;grid-template-columns:1fr 1fr!important;align-items:center!important;gap:12px!important;margin:0!important}
+.lp-dialog form>label select{width:100%!important;min-width:0!important;box-sizing:border-box!important}
+.lp-dialog .lp-status-preview{align-self:stretch!important;min-height:34px!important}
+.lp-dialog .lp-dialog-actions{display:flex!important;justify-content:flex-end!important;gap:8px!important;margin-top:6px!important}
+.lp-grid tbody .lp-price-field-row{height:43px!important}
+.lp-grid tbody .lp-price-field-row>.lp-room{padding:5px 9px!important}
+.lp-grid tbody .lp-price-inline{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;width:100%!important;font-size:11px!important}
+.lp-grid tbody .lp-price-inline span{white-space:nowrap!important}
+.lp-grid tbody .lp-price-inline input{width:110px!important;max-width:60%!important;height:29px!important;box-sizing:border-box!important;border:1px solid #d9e2f0!important;border-radius:6px!important;padding:4px 6px!important}
+.lp-grid tbody .lp-price-save-row button{width:100%!important;padding:6px!important}
+.lp-grid tbody .lp-price-row>.lp-price-empty{background:#fbfcff!important}
+@media(max-width:560px){.lp-dialog .lp-dialog-field,.lp-dialog .lp-dialog-range{grid-template-columns:95px minmax(0,1fr)!important}.lp-dialog form{padding:12px!important}.lp-dialog .lp-dialog-range .lp-range-button{font-size:10px!important}}
