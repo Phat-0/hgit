@@ -1013,3 +1013,15 @@
 .lp-grid .lp-day-click span{font-weight:700!important;text-shadow:none!important;}
 /* Nhập giá: cho phép gõ đè toàn bộ số hiện tại */
 .lp-overlay .lp-price-dialog input[inputmode=numeric]:focus{outline:2px solid #9bb8ff!important;outline-offset:1px!important;}
+
+/* Sửa góc bảng bị lệch khi cuộn ngang: ô Phòng phủ nhãn tháng/ngày */
+.lp-scroll{isolation:isolate!important;position:relative!important;}
+.lp-grid thead .lp-room{position:sticky!important;left:0!important;z-index:90!important;background:#fff!important;background-clip:padding-box!important;box-shadow:1px 0 0 #d9e0ec!important;}
+.lp-grid thead .lp-month-head>.lp-room{top:0!important;height:32px!important;min-height:32px!important;z-index:94!important;}
+.lp-grid thead .lp-day-head>.lp-room{top:32px!important;z-index:93!important;vertical-align:middle!important;}
+.lp-grid thead tr:last-child>.lp-room{top:78px!important;z-index:92!important;}
+.lp-grid thead .lp-day-group{position:sticky!important;top:32px!important;z-index:18!important;overflow:clip!important;}
+.lp-grid thead .lp-day-group .lp-sticky-day-label{position:sticky!important;left:215px!important;z-index:1!important;}
+.lp-grid thead .lp-month-head th:not(.lp-room){z-index:17!important;overflow:clip!important;}
+.lp-grid thead .lp-month-head .lp-sticky-month-label{left:215px!important;}
+.lp-grid tbody>tr>th.lp-room{position:sticky!important;left:0!important;z-index:11!important;background:#fff!important;box-shadow:1px 0 0 #d9e0ec!important;}
