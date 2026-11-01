@@ -28,6 +28,10 @@ export class XacThucService {
     };
   }
 
+  async guiOtpDienThoai(phone:string){const {error}=await this.supabase.auth.signInWithOtp({phone,options:{shouldCreateUser:true}});if(error)throw new BadRequestException('Không gửi được OTP. Kiểm tra cấu hình Phone Auth/SMS và số điện thoại');return {thong_bao:'Nếu số điện thoại hợp lệ, mã OTP sẽ được gửi đến số này'};}
+
+  async xacMinhOtpDienThoai(phone:string,otp:string){const {data,error}=await this.supabase.auth.verifyOtp({phone,token:otp,type:'sms'});if(error||!data.session||!data.user)throw new UnauthorizedException('Mã OTP không đúng hoặc đã hết hạn');return {access_token:data.session.access_token,refresh_token:data.session.refresh_token,expires_in:data.session.expires_in,nguoi_dung:{id:data.user.id,phone:data.user.phone}};}
+
   async dangNhap(email: string, matKhau: string) {
     const { data, error } = await this.supabase.auth.signInWithPassword({ email, password: matKhau });
     if (error || !data.session) {
