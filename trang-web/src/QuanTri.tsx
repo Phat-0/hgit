@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import PhongPage from './Phong.js';
 import LichPhong from './LichPhong.js';
+import DonDatPhong from './DonDatPhong.js';
 import LoaiPhongPage from './LoaiPhong.js';
 import ChiNhanhPage from './ChiNhanh.js';
 
@@ -140,9 +141,9 @@ export default function QuanTri(){
           </div>}</div>
           <div className="qt-top-actions"><button title="Thông báo" aria-label="Thông báo" onClick={()=>setMuc('thong-bao')} className="qt-icon-button">♧<i/></button><button title="Người dùng" aria-label="Người dùng" onClick={()=>setMuc('nhan-vien')} className="qt-icon-button">✉</button></div>
         </div>
-        <main className="qt-content">{muc!=='chi-nhanh'&&muc!=='phong'&&muc!=='loai-phong'&&muc!=='lich'&&<div className="qt-page-head"><div><h1>{muc==='tong-quan'?'Bảng điều khiển':danhMuc.find(x=>x.id===muc)?.nhan}</h1></div></div>}
+        <main className="qt-content">{muc!=='chi-nhanh'&&muc!=='phong'&&muc!=='loai-phong'&&muc!=='lich'&&muc!=='dat-phong'&&<div className="qt-page-head"><div><h1>{muc==='tong-quan'?'Bảng điều khiển':danhMuc.find(x=>x.id===muc)?.nhan}</h1></div></div>}
         {thongBao&&<div className="qt-alert" role="status">{thongBao}</div>}
-        {muc==='chi-nhanh'?<ChiNhanhPage token={token}/>:muc==='phong'?<PhongPage token={token}/>:muc==='lich'?<LichPhong token={token}/>:muc==='loai-phong'?<LoaiPhongPage token={token}/>:muc==='tong-quan'?<><div className="qt-stats">{stats.map((s,i)=><article className={'qt-stat qt-tone-'+s.tone} key={s.ten} style={{animationDelay:(i*80)+'ms'}}><div className="qt-stat-icon">{s.icon}</div><p>{s.ten}</p><strong>{s.so.toLocaleString('vi-VN')}</strong><span className="qt-stat-foot">Dữ liệu thực tế</span></article>)}</div>
+        {muc==='chi-nhanh'?<ChiNhanhPage token={token}/>:muc==='phong'?<PhongPage token={token}/>:muc==='lich'?<LichPhong token={token}/>:muc==='dat-phong'?<DonDatPhong token={token}/>:muc==='loai-phong'?<LoaiPhongPage token={token}/>:muc==='tong-quan'?<><div className="qt-stats">{stats.map((s,i)=><article className={'qt-stat qt-tone-'+s.tone} key={s.ten} style={{animationDelay:(i*80)+'ms'}}><div className="qt-stat-icon">{s.icon}</div><p>{s.ten}</p><strong>{s.so.toLocaleString('vi-VN')}</strong><span className="qt-stat-foot">Dữ liệu thực tế</span></article>)}</div>
           <div className="qt-main-grid">
             <section className="qt-chart-card"><div className="qt-card-head"><div><h2><span className="qt-heading-icon">▣</span> Thống kê đặt phòng</h2><p>Biểu đồ minh họa — dữ liệu theo thời gian đang được phát triển</p></div><div className="qt-period">{(['hom-nay','tuan','thang'] as const).map((k,i)=><button key={k} onClick={()=>setKy(k)} className={ky===k?'selected':''}>{['Ngày','Tuần','Tháng'][i]}</button>)}</div></div><div className="qt-chart-legend"><span><i className="qt-dot purple"/>Đơn đặt phòng</span><span><i className="qt-dot pink"/>Doanh thu</span></div><BieuDo thongKe={thongKe!}/></section>
             <section className="qt-side-card qt-status-card"><div className="qt-card-head"><h2><span className="qt-heading-icon">◉</span> Trạng thái Homestay</h2></div><div className="qt-donut-area"><div className="qt-donut" style={{background:thongKe!.tong_homestay>0?`conic-gradient(#24c4ad 0 ${Math.max(0,100-thongKe!.cho_duyet/thongKe!.tong_homestay*100)}%,#ffaf4c 0 100%)`:'#e9e5f6'}}><div><strong>{thongKe!.tong_homestay}</strong><small>Tổng</small></div></div><div className="qt-donut-legend"><p><i className="qt-dot teal"/>Trạng thái khác <strong>{Math.max(0,thongKe!.tong_homestay-thongKe!.cho_duyet)}</strong></p><p><i className="qt-dot orange"/>Chờ duyệt <strong>{thongKe!.cho_duyet}</strong></p><small>Chưa phân tách trạng thái hoạt động và tạm ngừng.</small></div></div></section>
