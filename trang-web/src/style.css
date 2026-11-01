@@ -984,3 +984,20 @@
 .lp-toast{position:fixed!important;right:22px!important;top:80px!important;z-index:99999!important;max-width:min(400px,calc(100vw - 36px))!important;padding:13px 18px!important;background:#173d31!important;color:#fff!important;border-radius:10px!important;box-shadow:0 10px 30px #0003!important;font-size:14px!important;pointer-events:none!important;animation:lp-toast-enter .18s ease-out!important;}
 @keyframes lp-toast-enter{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:480px){.lp-overlay .lp-dialog form>.lp-time-row{grid-template-columns:1fr!important;}}
+
+/* Lịch: các hàng tháng, thứ/ngày, giờ độc lập, không đè lên dữ liệu */
+.lp-grid{border-collapse:separate!important;border-spacing:0!important;}
+.lp-grid thead .lp-month-head th{position:sticky!important;top:0!important;height:32px!important;min-height:32px!important;box-sizing:border-box!important;z-index:16!important;background:#fff!important;vertical-align:middle!important;}
+.lp-grid thead .lp-day-head th{position:sticky!important;top:32px!important;height:46px!important;min-height:46px!important;box-sizing:border-box!important;z-index:15!important;background:#f8faff!important;vertical-align:middle!important;}
+.lp-grid thead tr:last-child th{position:sticky!important;top:78px!important;height:34px!important;min-height:34px!important;box-sizing:border-box!important;z-index:14!important;background:#fff!important;vertical-align:middle!important;}
+.lp-grid thead tr:last-child:nth-child(2) th{top:32px!important;height:46px!important;min-height:46px!important;}
+.lp-grid thead .lp-room{z-index:19!important;background:#fff!important;}
+.lp-grid thead .lp-sticky-day-label{position:sticky!important;left:235px!important;z-index:17!important;}
+/* Mỗi ô giá ngày là một ngày; giá giờ/đêm bám mép nhìn thấy trong đúng dải hiệu lực */
+.lp-grid tbody td.lp-price-band-cell{position:relative!important;overflow:visible!important;padding:0!important;}
+.lp-grid tbody td.lp-price-band-cell.lp-price-inactive{background:#f7f9fd!important;}
+.lp-grid tbody td.lp-price-band-cell>.lp-floating-price{position:sticky!important;left:232px!important;display:inline-flex!important;align-items:center!important;justify-content:flex-start!important;min-width:90px!important;max-width:calc(100% - 4px)!important;width:max-content!important;height:30px!important;padding:0 8px!important;overflow:visible!important;white-space:nowrap!important;z-index:2!important;background:#fff!important;border:1px solid #d8e2f0!important;border-left:3px solid #b5c5ec!important;border-radius:4px!important;box-sizing:border-box!important;}
+/* Thu gọn hộp thiết lập giá, không thay đổi bảng giá chính */
+.lp-overlay .lp-price-dialog{width:min(600px,calc(100vw - 28px))!important;max-width:600px!important;}
+.lp-overlay .lp-price-dialog .lp-price-schedule-form{gap:9px 12px!important;}
+.lp-overlay .lp-price-dialog .lp-weekdays{gap:8px!important;}
