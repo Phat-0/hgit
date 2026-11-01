@@ -1001,3 +1001,15 @@
 .lp-overlay .lp-price-dialog{width:min(600px,calc(100vw - 28px))!important;max-width:600px!important;}
 .lp-overlay .lp-price-dialog .lp-price-schedule-form{gap:9px 12px!important;}
 .lp-overlay .lp-price-dialog .lp-weekdays{gap:8px!important;}
+
+/* Ngày thường trung tính; chỉ hôm nay tô xanh như bảng mẫu */
+.lp-grid thead .lp-day-group .lp-sticky-day-label{background:transparent!important;color:#34445c!important;font-weight:600!important;border-radius:5px!important;}
+.lp-grid thead .lp-day-group.lp-today .lp-sticky-day-label{background:#1769ed!important;color:white!important;font-weight:800!important;}
+/* Tách hàng phòng cho dễ đọc, vẫn giữ cùng cột giờ */
+.lp-grid tbody>tr:not(.lp-price-row)>th.lp-room,.lp-grid tbody>tr:not(.lp-price-row)>td{height:47px!important;min-height:47px!important;}
+.lp-grid tbody>tr:not(.lp-price-row)>th.lp-room{padding-top:13px!important;padding-bottom:13px!important;}
+.lp-grid tbody .lp-price-band-row td{height:42px!important;min-height:42px!important;}
+.lp-grid .lp-span{font-weight:700!important;text-shadow:none!important;}
+.lp-grid .lp-day-click span{font-weight:700!important;text-shadow:none!important;}
+/* Nhập giá: cho phép gõ đè toàn bộ số hiện tại */
+.lp-overlay .lp-price-dialog input[inputmode=numeric]:focus{outline:2px solid #9bb8ff!important;outline-offset:1px!important;}
