@@ -30,6 +30,12 @@ export class XacThucController {
     return this.xacThucService.dangKy(email, matKhau);
   }
 
+  @Post('dien-thoai/gui-otp')
+  guiOtpDienThoai(@Body() body:unknown){const phone=(body as {so_dien_thoai?:unknown}|null)?.so_dien_thoai;if(typeof phone!=='string'||!/^\\+?[0-9]{9,15}$/.test(phone.trim()))throw new BadRequestException('Số điện thoại phải có 9–15 chữ số');return this.xacThucService.guiOtpDienThoai(phone.trim());}
+
+  @Post('dien-thoai/xac-minh')
+  xacMinhDienThoai(@Body() body:unknown){const b=body as {so_dien_thoai?:unknown;otp?:unknown}|null;const phone=b?.so_dien_thoai,otp=b?.otp;if(typeof phone!=='string'||!/^\\+?[0-9]{9,15}$/.test(phone.trim())||typeof otp!=='string'||!/^\\d{4,8}$/.test(otp))throw new BadRequestException('Số điện thoại hoặc mã OTP không hợp lệ');return this.xacThucService.xacMinhOtpDienThoai(phone.trim(),otp);}
+
   @Post('dang-nhap')
   dangNhap(@Body() body: unknown) {
     const { email, matKhau } = kiemTraDuLieu(body);
