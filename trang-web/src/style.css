@@ -972,3 +972,15 @@
 .lp-overlay .lp-price-dialog .lp-weekdays>div>label{display:inline-flex!important;gap:4px!important;align-items:center!important;white-space:nowrap!important;}
 .lp-overlay .lp-price-dialog input[inputmode=numeric]{text-align:left!important;font-variant-numeric:tabular-nums;}
 @media(max-width:550px){.lp-overlay .lp-price-dialog .lp-price-schedule-form{grid-template-columns:1fr!important;}}
+
+/* Lịch phòng: khung giờ một nhãn, hai ô nhập ngang hàng */
+.lp-overlay .lp-dialog form>.lp-time-row{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr)!important;gap:10px!important;align-items:center!important;min-height:36px!important;}
+.lp-overlay .lp-dialog .lp-time-pair{display:flex!important;align-items:center!important;gap:6px!important;min-width:0!important;}
+.lp-overlay .lp-dialog .lp-time-pair>.lp-time-control{flex:1 1 0!important;min-width:0!important;}
+.lp-overlay .lp-dialog .lp-time-pair>.lp-time-control>button{width:100%!important;min-width:0!important;white-space:nowrap!important;}
+.lp-overlay .lp-dialog .lp-time-pair>span{flex:0 0 auto!important;color:#64748b!important;}
+.lp-guest-suggestion{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:5px;margin-top:6px;padding:7px 8px;background:#f0f7ff;border:1px solid #d4e6fa;border-radius:7px;font-size:12px;}
+.lp-guest-suggestion button{border:1px solid #93b9ec;background:white;border-radius:6px;padding:4px 8px;cursor:pointer;}
+.lp-toast{position:fixed!important;right:22px!important;top:80px!important;z-index:99999!important;max-width:min(400px,calc(100vw - 36px))!important;padding:13px 18px!important;background:#173d31!important;color:#fff!important;border-radius:10px!important;box-shadow:0 10px 30px #0003!important;font-size:14px!important;pointer-events:none!important;animation:lp-toast-enter .18s ease-out!important;}
+@keyframes lp-toast-enter{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:480px){.lp-overlay .lp-dialog form>.lp-time-row{grid-template-columns:1fr!important;}}
