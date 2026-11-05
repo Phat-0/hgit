@@ -1084,3 +1084,11 @@
 .dp-create .dp-time-row label{display:flex!important;flex-direction:column!important;gap:5px!important;min-width:0!important}
 .dp-create .dp-time-row input{width:100%!important;min-width:0!important}
 @media(max-width:620px){.dp-create .dp-time-row{grid-template-columns:1fr!important}.dp-create .dp-time-row>div{grid-template-columns:1fr 1fr!important}}
+
+.dp-create{gap:8px!important;padding:16px 20px!important;max-height:90vh!important}
+.dp-create .dp-hint{font-size:11px!important}
+.dp-create .dp-price-info{display:flex;gap:12px;align-items:center;justify-content:flex-end;flex-wrap:wrap;font-size:12px;color:#5c6280}
+.dp-create .dp-price-info button{border:0;background:none;color:#5365d9;cursor:pointer}
+.dp-create .dp-time-row .lp-time-control{width:100%;min-width:0}
+.dp-create .dp-time-row .lp-time-control>button{width:100%;min-height:38px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;color:#25324b;text-align:left;padding:9px 11px;cursor:pointer}
+.dp-create .dp-time-row .lp-time-options{z-index:1100}
