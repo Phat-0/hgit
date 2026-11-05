@@ -11,7 +11,7 @@ function addDays(s:string,n:number){const d=new Date(s+'T00:00:00+07:00');return
 function overlap(x:Span,a:number,b:number){return new Date(x.bat_dau).getTime()<b&&new Date(x.ket_thuc).getTime()>a;}
 async function call<T>(token:string,path:string,method='GET',body?:unknown):Promise<T>{const r=await fetch('/api/quan-tri/lich-phong'+path,{method,headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});const x=await r.json().catch(()=>({})) as {message?:string|string[]};if(!r.ok)throw Error('HTTP '+r.status+': '+(Array.isArray(x.message)?x.message.join(', '):x.message||'Không thể tải dữ liệu từ máy chủ'));return x as T;}
 type RangePickerProps={start:string;end:string;onChange:(a:string,b:string)=>void;compact?:boolean;minDate?:string};
-function RangePicker({start,end,onChange,compact=false,minDate}:RangePickerProps){
+export function RangePicker({start,end,onChange,compact=false,minDate}:RangePickerProps){
  const [open,setOpen]=useState(false),[first,setFirst]=useState<string|null>(null),[month,setMonth]=useState(start.slice(0,7));
  const rangeRef=useRef<HTMLDivElement>(null);
  useEffect(()=>{if(!open)return;const dismiss=(e:PointerEvent)=>{if(rangeRef.current&&!rangeRef.current.contains(e.target as Node)){setOpen(false);setFirst(null);}};document.addEventListener('pointerdown',dismiss);return()=>document.removeEventListener('pointerdown',dismiss);},[open]);
