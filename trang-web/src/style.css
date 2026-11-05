@@ -1056,3 +1056,18 @@
 .dp-create label input,.dp-create label select,.dp-create label textarea,.dp-create .lp-range-control,.dp-create .lp-range-button{width:100%!important;min-width:0!important;box-sizing:border-box!important}
 .dp-create .lp-range-dual{z-index:1100!important}
 @media(max-width:520px){.dp-create label,.dp-create .dp-create-range{grid-template-columns:1fr!important;gap:5px!important}}
+
+/* Thanh tìm kiếm và thao tác cùng một hàng */
+.dp-head{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;flex-wrap:wrap!important;margin-bottom:16px!important}
+.dp-head .dp-filters{display:flex!important;flex:1 1 370px!important;align-items:center!important;gap:8px!important;margin:0!important;min-width:0!important}
+.dp-head .dp-filters .dp-search-label{display:block!important;min-width:160px!important;max-width:410px!important;flex:1 1 260px!important}
+.dp-head .dp-filters input{width:100%!important;min-width:0!important}
+.dp-head .dp-filters button{white-space:nowrap!important;padding:10px 12px!important}
+.dp-head .dp-head-actions{flex:0 0 auto!important}
+/* Nền tím nhạt dùng chung; nội dung nổi trên nền */
+.qt-layout,.qt-layout .qt-workspace,.qt-layout .qt-content{background:#f2effb!important}
+.qt-layout:has(.dp-page) .dp-page{background:#fff!important}
+.dp-create{width:min(760px,calc(100vw - 24px))!important;gap:10px!important}
+.dp-create label,.dp-create .dp-create-range{grid-template-columns:minmax(125px,32%) minmax(0,1fr)!important}
+.dp-create input[inputmode="numeric"]{font-variant-numeric:tabular-nums!important}
+@media(max-width:620px){.dp-head .dp-filters{flex-basis:100%!important}.dp-create label,.dp-create .dp-create-range{grid-template-columns:1fr!important}}
