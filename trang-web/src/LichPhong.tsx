@@ -21,7 +21,7 @@ export function RangePicker({start,end,onChange,compact=false,minDate}:RangePick
  return <div className="lp-calendar-month" key={m}><strong>{new Date(Date.UTC(y,mo-1,1)).toLocaleDateString('vi-VN',{month:'long',year:'numeric',timeZone:'UTC'})}</strong><div className="lp-calendar-week">{['T2','T3','T4','T5','T6','T7','CN'].map(x=><span key={x}>{x}</span>)}</div><div className="lp-calendar-days">{Array.from({length:offset},(_,i)=><span key={'pad'+i}/>)}{Array.from({length:count},(_,i)=>{const d=m+'-'+String(i+1).padStart(2,'0');return <button type="button" key={d} disabled={!!minDate&&d<minDate} className={(d>=start&&d<=end?'lp-in-range ':'')+(d===first?'lp-first':'')} onClick={()=>{if(!first){setFirst(d);}else{onChange(d<first?d:first,d>first?d:first);setFirst(null);setOpen(false);}}}>{i+1}</button>;})}</div></div>;};
  return <div ref={rangeRef} className={'lp-range-control'+(compact?' lp-range-control-compact':'')}><button type="button" className="lp-range-button" onClick={()=>{setOpen(v=>!v);setFirst(null);setMonth(start.slice(0,7));}} aria-expanded={open}><span aria-hidden="true">▦</span>{fmt(start)} <span className="lp-range-dash">–</span> {fmt(end)}</button>{open&&<div className="lp-range-dual"><div className="lp-range-navigation"><button type="button" onClick={()=>setMonth(v=>monthShift(v,-1))}>‹</button><span>{first?'Chọn ngày kết thúc':'Chọn ngày bắt đầu'}</span><button type="button" onClick={()=>setMonth(v=>monthShift(v,1))}>›</button></div><div className="lp-calendar-pair">{renderMonth(month)}{renderMonth(monthShift(month,1))}</div><button type="button" className="lp-range-close" onClick={()=>{setOpen(false);setFirst(null);}}>Đóng</button></div>}</div>;
 }
-function TimePicker({value,onChange,minValue}:{value:string;onChange:(v:string)=>void;minValue?:string}){
+export function TimePicker({value,onChange,minValue}:{value:string;onChange:(v:string)=>void;minValue?:string}){
  const [open,setOpen]=useState(false);
  const pickerRef=useRef<HTMLDivElement>(null);
  useEffect(()=>{if(!open)return;const dismiss=(e:PointerEvent)=>{if(pickerRef.current&&!pickerRef.current.contains(e.target as Node))setOpen(false);};document.addEventListener('pointerdown',dismiss);return()=>document.removeEventListener('pointerdown',dismiss);},[open]);
@@ -45,7 +45,7 @@ export default function LichPhong({token}:{token:string}){
  const [newStatus,setNewStatus]=useState('');
  const nightTo=hourConfig.dem_den||'08:00';
  function saveStatuses(next:string[]){setCustomStatuses(next);localStorage.setItem('lich_phong_trang_thai',JSON.stringify(next));}
- const palette:Record<string,string>={'Trống':'#ffffff','Khóa ngày':'#f5cb65','Khóa giờ':'#f6a75d','Khóa qua đêm':'#c5a2f1','Khóa cố định':'#ea8f9e','Chờ thanh toán':'#b8d7fc','Chờ xác nhận':'#ffe49b','Đã xác nhận':'#9bd9b4','Đã nhận phòng':'#78c4df'};
+ const palette:Record<string,string>={'Trống':'#ffffff','Đang sử dụng':'#78c4df','Cần dọn':'#f6c86a','Đang dọn':'#f5b37a','Chờ kiểm tra':'#b6c7f5','Bảo trì':'#ea8f9e','Bị khóa':'#d0a1dc','Khóa ngày':'#f5cb65','Khóa giờ':'#f6a75d','Khóa qua đêm':'#c5a2f1','Khóa cố định':'#ea8f9e','Chờ thanh toán':'#b8d7fc','Chờ xác nhận':'#ffe49b','Đã xác nhận':'#9bd9b4','Đã nhận phòng':'#78c4df'};
  function tone(k:string){return colors[k]||palette[k]||'#d6c5f4';}
  function setTone(k:string,v:string){setColors(prev=>{const next={...prev,[k]:v};localStorage.setItem('lich_phong_mau',JSON.stringify(next));return next;});}
  const [allBranches,setAllBranches]=useState<[string,string][]>([]);
