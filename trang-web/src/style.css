@@ -1092,3 +1092,11 @@
 .dp-create .dp-time-row .lp-time-control{width:100%;min-width:0}
 .dp-create .dp-time-row .lp-time-control>button{width:100%;min-height:38px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;color:#25324b;text-align:left;padding:9px 11px;cursor:pointer}
 .dp-create .dp-time-row .lp-time-options{z-index:1100}
+
+/* Tạo đơn: hộp gọn, căn giữa như hộp Lịch phòng */
+.dp-modal{display:flex!important;align-items:center!important;justify-content:center!important;padding:18px!important;box-sizing:border-box!important}
+.dp-dialog.dp-create{width:min(580px,calc(100vw - 36px))!important;max-width:580px!important;max-height:calc(100vh - 36px)!important;margin:auto!important;padding:20px 22px!important;gap:9px!important}
+.dp-create .dp-dialog-head{position:relative!important;min-height:36px!important;display:flex!important;align-items:center!important;justify-content:space-between!important}
+.dp-create .dp-dialog-head button{margin-left:auto!important;display:grid!important;place-items:center!important;width:34px!important;height:34px!important;line-height:1!important;padding:0!important}
+.dp-create label,.dp-create .dp-create-range,.dp-create .dp-time-row{grid-template-columns:minmax(105px,32%) minmax(0,1fr)!important;gap:9px!important}
+@media(max-width:540px){.dp-dialog.dp-create{padding:15px!important}.dp-create label,.dp-create .dp-create-range,.dp-create .dp-time-row{grid-template-columns:1fr!important}}
