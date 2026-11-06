@@ -1,3 +1,4 @@
+import {COMBO_THEO_PHONG} from './combo.input.js';
 import {BO_LOC_DON,DON_CO_SO,nhanTrangThaiDon} from './danh-sach-don.sql.js';
 import { randomUUID } from 'node:crypto';
 import {kiemTraCauHinhGio,kiemTraThoiGianDat,type HinhThucDat} from './khung-gio.js';
@@ -11,7 +12,7 @@ export class LichPhongService{
  private async db(){const c=new Client({connectionString:process.env.DATABASE_URL,ssl:{rejectUnauthorized:true},connectionTimeoutMillis:5000,query_timeout:8000});await c.connect();return c;}
  private validId(v:string){if(!UUID.test(v))throw new BadRequestException('ID không hợp lệ');}
  private dates(start:string,end:string){const a=new Date(start),b=new Date(end);if(!Number.isFinite(a.getTime())||!Number.isFinite(b.getTime())||a>=b||b.getTime()-a.getTime()>90*86400000)throw new BadRequestException('Khoảng thời gian không hợp lệ hoặc dài quá 90 ngày');return [a.toISOString(),b.toISOString()];}
- private failure(e:unknown):never{const code=(e as {code?:string})?.code;if(code==='42P01'||code==='42703')throw new ServiceUnavailableException('Database chưa đồng bộ phiên bản mới. Trong thư mục may-chu, chạy npm.cmd run db:dong-bo-dat-phong, sau đó khởi động lại backend. Nếu migration báo lỗi, cần xử lý lỗi đó trước khi mở Lịch hoặc Đơn đặt phòng.');if(code==='23P01'||code==='23505'||code==='P0001')throw new ConflictException('Khoảng thời gian đã có khóa hoặc đơn đặt phòng');throw e;}
+ private failure(e:unknown):never{const code=(e as {code?:string})?.code;if(code==='42P01'||code==='42703')throw new ServiceUnavailableException('Database chưa đồng bộ phiên bản mới. Trong thư mục may-chu, chạy npm.cmd run db:dong-bo-dat-phong và npm.cmd run db:dong-bo-combo, sau đó khởi động lại backend. Nếu migration báo lỗi, cần xử lý lỗi đó trước khi mở Lịch hoặc Đơn đặt phòng.');if(code==='23P01'||code==='23505'||code==='P0001')throw new ConflictException('Khoảng thời gian đã có khóa hoặc đơn đặt phòng');throw e;}
  async calendar(uid:string,branch:string,start:string,end:string){await this.admin.kiemTraQuanTri(uid);if(branch)this.validId(branch);const [a,b]=this.dates(start,end);const c=await this.db();try{
  const rooms=await c.query('SELECT p.id,p.ma_phong,p.ten_phong,p.homestay_id,p.loai_phong_id,h.ten_homestay,p.gia_moi_dem,p.gia_moi_gio,p.gia_moi_ngay,p.gia_phu_thu_gio,p.trang_thai_van_hanh FROM public.phong p JOIN public.homestay h ON h.id=p.homestay_id WHERE ($1::uuid IS NULL OR p.homestay_id=$1) ORDER BY h.ten_homestay,p.ma_phong',[branch||null]);
  const ids=rooms.rows.map(x=>x.id);if(!ids.length)return {phong:[],khoa:[],dat_phong:[],gia:[]};
@@ -47,7 +48,7 @@ export class LichPhongService{
  async bookingOptions(uid:string){
   await this.admin.kiemTraQuanTri(uid);const c=await this.db();try{
    const rooms=await c.query("SELECT p.*,h.ten_homestay,lp.ten_loai,lp.suc_chua FROM public.phong p JOIN public.homestay h ON h.id=p.homestay_id JOIN public.loai_phong lp ON lp.id=p.loai_phong_id WHERE h.trang_thai='Đang hoạt động' AND p.trang_thai_van_hanh NOT IN ('Bảo trì','Bị khóa') ORDER BY h.ten_homestay,p.ma_phong LIMIT 500");
-   const combos=await c.query("SELECT id,homestay_id,ten_combo,gia_combo,so_gio_bao_gom FROM public.combo WHERE trang_thai='Đang bán' ORDER BY ten_combo");
+   const combos=await c.query("SELECT co.id,co.homestay_id,co.ten_combo,co.gia_combo,co.so_gio_bao_gom,co.pham_vi,co.bat_dau,co.ket_thuc,ARRAY(SELECT homestay_id FROM public.combo_chi_nhanh WHERE combo_id=co.id) AS chi_nhanh_ids,ARRAY(SELECT phong_id FROM public.combo_phong WHERE combo_id=co.id) AS phong_ids FROM public.combo co WHERE co.trang_thai='Đang bán' ORDER BY co.ten_combo");
    const config=await c.query('SELECT khung_gio FROM public.cau_hinh_gio_dat_phong WHERE id=1');
    return {rooms:rooms.rows,combos:combos.rows,cau_hinh_gio:kiemTraCauHinhGio(config.rows[0]?.khung_gio)};
   }catch(e){this.failure(e);}finally{await c.end();}
@@ -84,7 +85,7 @@ export class LichPhongService{
    const config=await c.query('SELECT khung_gio FROM public.cau_hinh_gio_dat_phong WHERE id=1 FOR SHARE');
    const hours=kiemTraCauHinhGio(config.rows[0]?.khung_gio);
    kiemTraThoiGianDat(kind,start,end,hours,Number(o.so_gio_toi_thieu));
-   if(comboId){const combo=await c.query("SELECT id FROM public.combo WHERE id=$1 AND homestay_id=$2 AND trang_thai='Đang bán'",[comboId,o.homestay_id]);if(!combo.rowCount)throw new BadRequestException('Combo không hợp lệ hoặc khác chi nhánh');}
+   if(comboId){const combo=await c.query(COMBO_THEO_PHONG+" AND co.trang_thai='Đang bán' AND (co.bat_dau IS NULL OR co.bat_dau<=$4) AND (co.ket_thuc IS NULL OR co.ket_thuc>=$5) AND (co.so_gio_bao_gom IS NULL OR $6='Theo giờ') FOR SHARE OF co",[comboId,o.homestay_id,room,start.toISOString(),end.toISOString(),kind]);if(!combo.rowCount)throw new BadRequestException('Combo không áp dụng cho phòng, kiểu đặt hoặc thời gian đã chọn');}
    const customer=await c.query('SELECT id FROM public.nguoi_dung WHERE so_dien_thoai=$1 LIMIT 1',[phone]);
    const code='DP'+randomUUID().replace(/-/g,'').toUpperCase();
    const snapshot={so_gio_toi_thieu:o.so_gio_toi_thieu,gia_moi_gio:o.gia_moi_gio,gia_moi_ngay:o.gia_moi_ngay,gia_moi_dem:o.gia_moi_dem,gia_phu_thu_gio:o.gia_phu_thu_gio,khung_gio:hours,tien_phong_chot:amount,nguoi_tao_id:uid};

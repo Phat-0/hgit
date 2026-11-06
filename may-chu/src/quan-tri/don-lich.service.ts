@@ -1,3 +1,4 @@
+import {COMBO_THEO_PHONG} from './combo.input.js';
 import {BadRequestException,ConflictException,Injectable,NotFoundException} from '@nestjs/common';
 import {Client} from 'pg';
 import {QuanTriService} from './quan-tri.service.js';
@@ -53,7 +54,7 @@ export class DonLichService{
     savedHours=kiemTraCauHinhGio(config.rows[0]?.khung_gio);
     kiemTraThoiGianDat(kind,start,end,savedHours,Number(p.so_gio_toi_thieu));
    }
-   if(d.combo_id){const combo=await c.query('SELECT id FROM public.combo WHERE id=$1 AND homestay_id=$2',[d.combo_id,p.homestay_id]);if(!combo.rowCount)throw new BadRequestException('Combo của đơn không thuộc chi nhánh mới');}
+   if(d.combo_id&&changedSchedule){const combo=await c.query(COMBO_THEO_PHONG+" AND co.trang_thai='Đang bán' AND (co.bat_dau IS NULL OR co.bat_dau<=$4) AND (co.ket_thuc IS NULL OR co.ket_thuc>=$5) AND (co.so_gio_bao_gom IS NULL OR $6='Theo giờ') FOR SHARE OF co",[d.combo_id,p.homestay_id,room,start.toISOString(),end.toISOString(),kind]);if(!combo.rowCount)throw new BadRequestException('Combo của đơn không áp dụng cho phòng hoặc thời gian mới');}
    const paid=await c.query("SELECT COALESCE(sum(so_tien),0) AS tong FROM public.thanh_toan WHERE dat_phong_id=$1 AND trang_thai='Đã xác nhận'",[id]);
    if(amount+Number(d.tien_dich_vu)-Number(d.tien_giam)<Math.max(Number(d.tien_da_thanh_toan),Number(paid.rows[0]?.tong||0)))throw new ConflictException('Tổng tiền mới thấp hơn tiền đã thu; cần xử lý thanh toán trước');
    const snapshot={...d.cau_hinh_gia_chot,tien_phong_chot:amount,nguoi_sua_id:uid,gia_moi_gio:p.gia_moi_gio,gia_moi_ngay:p.gia_moi_ngay,gia_moi_dem:p.gia_moi_dem,so_gio_toi_thieu:p.so_gio_toi_thieu,gia_phu_thu_gio:p.gia_phu_thu_gio,khung_gio:savedHours};
