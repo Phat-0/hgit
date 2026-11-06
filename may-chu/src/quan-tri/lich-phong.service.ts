@@ -48,9 +48,16 @@ export class LichPhongService{
   const room=String(x.phong_id||''),comboId=String(x.combo_id||''),phone=String(x.so_dien_thoai||'').replace(/[\s().-]/g,'');
   const start=new Date(String(x.nhan_phong_luc||'')),end=new Date(String(x.tra_phong_luc||'')),guests=Number(x.so_khach),amount=Number(x.tien_phong);
   this.validId(room);if(comboId)this.validId(comboId);
-  if(!/^\+?[0-9]{9,15}$/.test(phone)||!Number.isFinite(start.getTime())||!Number.isFinite(end.getTime())||start>=end||start.getTime()<Date.now()-60000||end.getTime()-start.getTime()>31*86400000||!Number.isInteger(guests)||guests<1||guests>100||!Number.isSafeInteger(amount)||amount<0||amount>1e12)throw new BadRequestException('Khách, thời gian hoặc giá phòng không hợp lệ');
-  const state=String(x.trang_thai||'Đã xác nhận'),payment=String(x.trang_thai_thanh_toan||'Chưa thanh toán');
-  if(!['Đã xác nhận','Chờ xác nhận'].includes(state)||!['Chưa thanh toán','Cọc','Đủ'].includes(payment))throw new BadRequestException('Trạng thái không hợp lệ');
+  if(!/^\+?[0-9]{9,15}$/.test(phone))throw new BadRequestException('Số điện thoại khách phải có từ 9 đến 15 chữ số');
+  if(!Number.isFinite(start.getTime())||!Number.isFinite(end.getTime()))throw new BadRequestException('Ngày hoặc giờ nhận/trả phòng không hợp lệ');
+  if(start>=end)throw new BadRequestException('Thời gian trả phòng phải sau thời gian nhận phòng');
+  if(start.getTime()<Date.now()-60000)throw new BadRequestException('Giờ nhận phòng đã qua. Vui lòng chọn giờ sắp tới hoặc ngày khác');
+  if(end.getTime()-start.getTime()>31*86400000)throw new BadRequestException('Mỗi đơn chỉ được đặt tối đa 31 ngày');
+  if(!Number.isInteger(guests)||guests<1||guests>100)throw new BadRequestException('Số khách phải là số nguyên từ 1 đến 100');
+  if(!Number.isSafeInteger(amount)||amount<0||amount>1e12)throw new BadRequestException('Tiền phòng phải là số nguyên VND từ 0 đến 1.000.000.000.000');
+  // Đơn được tạo tại API quản trị luôn xác nhận, không tin trạng thái từ client.
+  const state='Đã xác nhận',payment=String(x.trang_thai_thanh_toan||'Chưa thanh toán');
+  if(!['Chưa thanh toán','Cọc','Đủ'].includes(payment))throw new BadRequestException('Trạng thái thanh toán không hợp lệ');
   const c=await this.db();try{
    await c.query('BEGIN');
    const selected=await c.query('SELECT p.*,l.suc_chua,h.trang_thai AS trang_thai_chi_nhanh FROM public.phong p JOIN public.loai_phong l ON l.id=p.loai_phong_id JOIN public.homestay h ON h.id=p.homestay_id WHERE p.id=$1 FOR UPDATE OF p',[room]);
@@ -68,6 +75,7 @@ export class LichPhongService{
    const r=await c.query(`INSERT INTO public.dat_phong(ma_dat_phong,ten_don,nguoi_dung_id,homestay_id,phong_id,hinh_thuc_dat,nhan_phong_luc,tra_phong_luc,so_khach,trang_thai,tien_phong,het_han_giu_cho,ghi_chu,so_dien_thoai_dat,nguon_dat,can_xac_nhan_lai,trang_thai_thanh_toan,combo_id,cau_hinh_gia_chot)
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NULL,$12,$13,'quan_tri',false,$14,$15,$16::jsonb) RETURNING id,ma_dat_phong,ten_don,hinh_thuc_dat`,
     [code,name,customer.rows[0]?.id??null,o.homestay_id,room,kind,start.toISOString(),end.toISOString(),guests,state,amount,String(x.ghi_chu||'').slice(0,2000),phone,payment,comboId||null,JSON.stringify(snapshot)]);
+   await c.query('UPDATE public.dat_phong SET xac_nhan_luc=now(),nguoi_xac_nhan_id=$1 WHERE id=$2',[uid,r.rows[0].id]);
    await c.query('COMMIT');return r.rows[0];
   }catch(e){await c.query('ROLLBACK');this.failure(e);}finally{await c.end();}
  }

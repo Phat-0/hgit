@@ -1,3 +1,5 @@
+import {RangePicker} from './RangePicker';
+export {RangePicker} from './RangePicker';
 import {khoangThoiGianLich} from './khung-gio-dat-phong';
 import {Fragment,useCallback,useEffect,useMemo,useRef,useState} from 'react';
 type Room={id:string;ma_phong:string;ten_phong:string;homestay_id:string;ten_homestay:string;loai_phong_id?:string;gia_moi_dem:number|string;gia_moi_gio:number|string;gia_moi_ngay:number|string;gia_phu_thu_gio:number|string;trang_thai_van_hanh?:string};
@@ -11,17 +13,6 @@ function shortDay(d:string){const w=new Date(d+'T12:00:00+07:00').getUTCDay();re
 function addDays(s:string,n:number){const d=new Date(s+'T00:00:00+07:00');return dateOnly(new Date(d.getTime()+n*DAY));}
 function overlap(x:Span,a:number,b:number){return new Date(x.bat_dau).getTime()<b&&new Date(x.ket_thuc).getTime()>a;}
 async function call<T>(token:string,path:string,method='GET',body?:unknown):Promise<T>{const r=await fetch('/api/quan-tri/lich-phong'+path,{method,headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});const x=await r.json().catch(()=>({})) as {message?:string|string[]};if(!r.ok)throw Error('HTTP '+r.status+': '+(Array.isArray(x.message)?x.message.join(', '):x.message||'Không thể tải dữ liệu từ máy chủ'));return x as T;}
-type RangePickerProps={start:string;end:string;onChange:(a:string,b:string)=>void;compact?:boolean;minDate?:string};
-export function RangePicker({start,end,onChange,compact=false,minDate}:RangePickerProps){
- const [open,setOpen]=useState(false),[first,setFirst]=useState<string|null>(null),[month,setMonth]=useState(start.slice(0,7));
- const rangeRef=useRef<HTMLDivElement>(null);
- useEffect(()=>{if(!open)return;const dismiss=(e:PointerEvent)=>{if(rangeRef.current&&!rangeRef.current.contains(e.target as Node)){setOpen(false);setFirst(null);}};document.addEventListener('pointerdown',dismiss);return()=>document.removeEventListener('pointerdown',dismiss);},[open]);
- const fmt=(d:string)=>d.split('-').reverse().join('/');
- const monthShift=(m:string,n:number)=>{const [y,mo]=m.split('-').map(Number);const d=new Date(Date.UTC(y,mo-1+n,1));return d.toISOString().slice(0,7);};
- const renderMonth=(m:string)=>{const [y,mo]=m.split('-').map(Number),count=new Date(y,mo,0).getDate(),offset=(new Date(Date.UTC(y,mo-1,1)).getUTCDay()+6)%7;
- return <div className="lp-calendar-month" key={m}><strong>{new Date(Date.UTC(y,mo-1,1)).toLocaleDateString('vi-VN',{month:'long',year:'numeric',timeZone:'UTC'})}</strong><div className="lp-calendar-week">{['T2','T3','T4','T5','T6','T7','CN'].map(x=><span key={x}>{x}</span>)}</div><div className="lp-calendar-days">{Array.from({length:offset},(_,i)=><span key={'pad'+i}/>)}{Array.from({length:count},(_,i)=>{const d=m+'-'+String(i+1).padStart(2,'0');return <button type="button" key={d} disabled={!!minDate&&d<minDate} className={(d>=start&&d<=end?'lp-in-range ':'')+(d===first?'lp-first':'')} onClick={()=>{if(!first){setFirst(d);}else{onChange(d<first?d:first,d>first?d:first);setFirst(null);setOpen(false);}}}>{i+1}</button>;})}</div></div>;};
- return <div ref={rangeRef} className={'lp-range-control'+(compact?' lp-range-control-compact':'')}><button type="button" className="lp-range-button" onClick={()=>{setOpen(v=>!v);setFirst(null);setMonth(start.slice(0,7));}} aria-expanded={open}><span aria-hidden="true">▦</span>{fmt(start)} <span className="lp-range-dash">–</span> {fmt(end)}</button>{open&&<div className="lp-range-dual"><div className="lp-range-navigation"><button type="button" onClick={()=>setMonth(v=>monthShift(v,-1))}>‹</button><span>{first?'Chọn ngày kết thúc':'Chọn ngày bắt đầu'}</span><button type="button" onClick={()=>setMonth(v=>monthShift(v,1))}>›</button></div><div className="lp-calendar-pair">{renderMonth(month)}{renderMonth(monthShift(month,1))}</div><button type="button" className="lp-range-close" onClick={()=>{setOpen(false);setFirst(null);}}>Đóng</button></div>}</div>;
-}
 export function TimePicker({value,onChange,minValue}:{value:string;onChange:(v:string)=>void;minValue?:string}){
  const [open,setOpen]=useState(false);
  const pickerRef=useRef<HTMLDivElement>(null);

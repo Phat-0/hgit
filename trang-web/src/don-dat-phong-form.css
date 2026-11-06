@@ -1,0 +1,9 @@
+.dp-modal>.dp-dialog.dp-create.dp-create-aligned{display:grid!important;grid-template-columns:1fr!important;width:min(640px,calc(100vw - 28px))!important;max-width:640px!important;gap:12px!important;padding:20px 24px!important;align-items:center!important;overflow-y:auto!important}
+.dp-modal>.dp-create-aligned>label,.dp-modal>.dp-create-aligned>.dp-create-range,.dp-modal>.dp-create-aligned>.dp-time-row{display:grid!important;grid-template-columns:145px minmax(0,1fr)!important;grid-column:1/-1!important;align-items:center!important;gap:12px!important;margin:0!important;font-size:13px!important}
+.dp-modal>.dp-create-aligned>label>input,.dp-modal>.dp-create-aligned>label>select{height:40px!important;padding:8px 10px!important}
+.dp-modal>.dp-create-aligned>label>textarea{min-height:70px}
+.dp-modal>.dp-create-aligned>label>input[readonly]{background:#f0f7f2!important;color:#247747!important;font-weight:600}
+.dp-modal>.dp-create-aligned>.dp-time-row>div{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important}
+.dp-modal>.dp-create-aligned>.dp-time-row label{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:4px!important}
+.dp-modal>.dp-create-aligned>.dp-plan-kind{padding-left:157px!important}
+@media(max-width:540px){.dp-modal>.dp-dialog.dp-create.dp-create-aligned{padding:16px!important}.dp-modal>.dp-create-aligned>label,.dp-modal>.dp-create-aligned>.dp-create-range,.dp-modal>.dp-create-aligned>.dp-time-row{grid-template-columns:1fr!important;gap:5px!important}.dp-modal>.dp-create-aligned>.dp-plan-kind{padding-left:0!important}}
