@@ -1,3 +1,5 @@
+> Cập nhật: đã chuẩn bị migration 01/02 và code mới. Xem [hướng dẫn triển khai hiện tại](HUONG-DAN-AP-DUNG-GOP-GIA.md). Nội dung dưới đây ghi nhận khảo sát trước triển khai; chưa chạy SQL trên Supabase.
+
 # Phuong an B - gop goi_gia vao phong (CHUA THUC HIEN)
 Ngay lap: 2026-11-06. KHONG chay DROP TABLE goi_gia cho den khi co ket qua audit SQL va backup.
 

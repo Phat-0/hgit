@@ -1,3 +1,5 @@
+> Cập nhật: đã chuẩn bị migration 01/02 và code mới. Xem [hướng dẫn triển khai hiện tại](HUONG-DAN-AP-DUNG-GOP-GIA.md). Nội dung dưới đây ghi nhận khảo sát trước triển khai; chưa chạy SQL trên Supabase.
+
 # Phương án B: chuyển goi_gia vào phong (CHƯA THỰC THI)
 
 ## Kiểm tra trước
