@@ -1,3 +1,8 @@
+> Cập nhật 06/11/2026: đã triển khai code và migration mở rộng tại
+> `20261106-dong-bo-kieu-dat-va-ten-don.sql`. Quy trình chạy và trạng thái áp dụng
+> xem `DONG-BO-DAT-PHONG.md`. Các đoạn “chưa thực hiện” dưới đây ghi lại kế hoạch
+> ban đầu; chưa có kết nối để áp dụng lên Supabase trong phiên hiện tại.
+
 # Phương án B — Gộp gói giá vào phòng (CHƯA THỰC HIỆN)
 
 ## Trạng thái

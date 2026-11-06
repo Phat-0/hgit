@@ -8,6 +8,8 @@ type Auth=Request & {nguoiDung:{id:string}};
 export class LichPhongController{
  constructor(private readonly service:LichPhongService){}
  @Get() calendar(@Req() r:Auth,@Query('homestay_id') branch:string,@Query('bat_dau') a:string,@Query('ket_thuc') b:string){return this.service.calendar(r.nguoiDung.id,branch||'',a,b);}
+ @Get('cau-hinh-gio') hourSettings(@Req() r:Auth){return this.service.hourSettings(r.nguoiDung.id);}
+ @Patch('cau-hinh-gio') saveHourSettings(@Req() r:Auth,@Body() b:unknown){return this.service.saveHourSettings(r.nguoiDung.id,b);}
  @Get('don-dat-phong/tuy-chon') bookingOptions(@Req() r:Auth){return this.service.bookingOptions(r.nguoiDung.id);}
  @Post('don-dat-phong') createBooking(@Req() r:Auth,@Body() b:unknown){return this.service.createBooking(r.nguoiDung.id,b);}
  @Patch('don-dat-phong/:id') updateBooking(@Req() r:Auth,@Param('id') id:string,@Body() b:unknown){return this.service.updateBooking(r.nguoiDung.id,id,b);}

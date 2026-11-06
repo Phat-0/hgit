@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 type Homestay = { id: string; ten_homestay: string; mo_ta: string | null; dia_chi: string; tinh_thanh: string; so_phong: number; anh_dai_dien: string | null };
-type Phong = { id: string; ma_phong: string; ten_phong: string; ten_loai: string; suc_chua: number; dien_tich_m2: string | null; trang_thai_van_hanh: string; anh_dai_dien: string | null; gia_tu_gio: string | null; gia_tu_dem: string | null };
+type Phong = { so_gio_toi_thieu: number; id: string; ma_phong: string; ten_phong: string; ten_loai: string; suc_chua: number; dien_tich_m2: string | null; trang_thai_van_hanh: string; anh_dai_dien: string | null; gia_tu_gio: string | null; gia_tu_dem: string | null };
 type CheDo = 'gio' | 'ngay';
 
 async function layDuLieu<T>(url: string): Promise<T> {
@@ -10,7 +10,7 @@ async function layDuLieu<T>(url: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 function gia(value: string | null) {
-  return value === null ? 'Chưa có gói giá' : Number(value).toLocaleString('vi-VN') + ' ₫';
+  return value === null ? 'Chưa mở bán' : Number(value).toLocaleString('vi-VN') + ' ₫';
 }
 export default function App() {
   const [cheDo, setCheDo] = useState<CheDo>('ngay');
@@ -58,7 +58,7 @@ export default function App() {
     {chon && <section className="panel rooms" id="phong"><div className="section-heading"><div><p className="eyebrow">DANH SÁCH PHÒNG</p><h2>{chon.ten_homestay}</h2></div><button className="secondary" onClick={()=>setChon(null)}>Đóng</button></div>
       {dangTaiPhong ? <p>Đang tải phòng...</p> : phongs.length === 0 ? <p>Chưa có phòng phù hợp.</p> : <div className="room-grid">{phongs.map(p=><article className="room" key={p.id}>
         <div className="room-photo">{p.anh_dai_dien ? <img src={p.anh_dai_dien} alt={p.ten_phong}/> : <span>PHÒNG HOMESTAY</span>}</div>
-        <div className="room-info"><span className="location">{p.ten_loai} • {p.suc_chua} khách</span><h3>{p.ten_phong}</h3><p>Mã phòng: {p.ma_phong} • {p.trang_thai_van_hanh}</p><div className="price">{gia(cheDo === 'gio' ? p.gia_tu_gio : p.gia_tu_dem)} <small>{cheDo === 'gio' ? '/ gói theo giờ' : '/ gói theo đêm'}</small></div></div>
+        <div className="room-info"><span className="location">{p.ten_loai} • {p.suc_chua} khách</span><h3>{p.ten_phong}</h3><p>Mã phòng: {p.ma_phong} • {p.trang_thai_van_hanh}</p><div className="price">{gia(cheDo === 'gio' ? p.gia_tu_gio : p.gia_tu_dem)} <small>{cheDo === 'gio' ? '/ '+p.so_gio_toi_thieu+' giờ đầu' : '/ đêm'}</small></div></div>
       </article>)}</div>}
       <p className="notice">Giá hiển thị là giá cơ bản tham khảo, không phải báo giá cuối cùng. Chức năng kiểm tra lịch trống và xác nhận đặt phòng đang được xây dựng.</p>
     </section>}

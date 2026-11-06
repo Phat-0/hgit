@@ -21,7 +21,7 @@ const danhMuc: {id:Muc; nhan:string; icon:string}[] = [
   {id:'chi-nhanh',nhan:'Chi nhánh',icon:'▥'},
   {id:'phong',nhan:'Phòng',icon:'▤'},
   {id:'loai-phong',nhan:'Loại phòng',icon:'▥'},
-  {id:'goi-combo',nhan:'Gói giá & Combo',icon:'◈'},
+  {id:'goi-combo',nhan:'Giá phòng & Combo',icon:'◈'},
   {id:'dat-phong',nhan:'Đơn đặt phòng',icon:'▣'},
   {id:'trang-chu',nhan:'Trang chủ',icon:'⌂'},
   {id:'nhan-vien',nhan:'Nhân viên',icon:'♙'},
