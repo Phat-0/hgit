@@ -1,0 +1,9 @@
+/* Vùng dữ liệu chiếm sẵn chiều cao trang; phân trang giữ ở đáy kể cả bảng rỗng. */
+.qt-layout .qt-workspace{display:flex!important;flex-direction:column!important;min-height:100dvh!important}
+.qt-layout .qt-content:has(>.cn-page),.qt-layout .qt-content:has(>.dp-page),.qt-layout .qt-content:has(>.lp-page){display:flex!important;flex-direction:column!important;flex:1 0 auto!important;min-height:0!important}
+.qt-layout .qt-content>.cn-page,.qt-layout .qt-content>.dp-page,.qt-layout .qt-content>.lp-page{display:flex!important;flex-direction:column!important;flex:1 0 auto!important;min-height:0!important;padding-bottom:0!important;box-sizing:border-box}
+.qt-layout .cn-page>.cn-panel{display:flex!important;flex-direction:column!important;flex:1 0 auto!important}
+.qt-layout .cn-page .cn-table-wrap,.qt-layout .dp-page .dp-table-wrap{flex:1 0 auto!important;min-height:320px!important}
+.qt-layout .cn-page .cn-pagination,.qt-layout .dp-page .dp-count{margin-top:auto!important;flex:none!important}
+.qt-layout:has(.lp-page) .lp-page>.lp-scroll{flex:1 1 auto!important;min-height:320px!important;max-height:calc(100dvh - 160px)!important}
+.qt-layout .cn-toolbar,.qt-layout .dp-head,.qt-layout .dp-tabs,.qt-layout .lp-toolbar{flex:none!important}

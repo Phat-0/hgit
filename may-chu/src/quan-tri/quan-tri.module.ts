@@ -1,3 +1,5 @@
+import {DonLichController} from './don-lich.controller.js';
+import {DonLichService} from './don-lich.service.js';
 import { Module } from '@nestjs/common';
 import { XacThucModule } from '../xac-thuc/xac-thuc.module.js';
 import { QuanTriController } from './quan-tri.controller.js';
@@ -11,5 +13,5 @@ import { LoaiPhongController } from './loai-phong.controller.js';
 import { LichPhongController } from './lich-phong.controller.js';
 import { LichPhongService } from './lich-phong.service.js';
 
-@Module({ imports: [XacThucModule], controllers: [QuanTriController, ChiNhanhController, PhongController, LoaiPhongController, LichPhongController], providers: [QuanTriService, ChiNhanhService, PhongService, LoaiPhongService, LichPhongService] })
+@Module({ imports: [XacThucModule], controllers: [QuanTriController, ChiNhanhController, PhongController, LoaiPhongController, LichPhongController, DonLichController], providers: [QuanTriService, ChiNhanhService, PhongService, LoaiPhongService, LichPhongService, DonLichService] })
 export class QuanTriModule {}

@@ -1,0 +1,8 @@
+/* Một nguồn bề rộng cho cột tiêu đề, nền nửa giờ và thanh đơn. */
+.lp-page .lp-grid{width:var(--lich-width)!important;table-layout:fixed!important}
+.lp-page .lp-grid .lp-timeline-td{padding:0!important;border-left:0!important;border-right:0!important}
+.lp-page .lp-grid .lp-timeline{position:relative!important;width:100%!important;min-width:0!important;max-width:100%!important;overflow:hidden!important}
+.lp-page .lp-grid .lp-hour-background{display:grid!important;grid-template-columns:repeat(var(--lich-slots),minmax(0,1fr));width:100%!important;gap:0!important}
+.lp-page .lp-grid .lp-hour-background>button{width:100%!important;min-width:0!important;max-width:none!important;box-sizing:border-box!important}
+.lp-page .lp-grid .lp-hour{padding-left:3px!important;text-align:left!important}
+.lp-page .lp-grid .lp-timeline .lp-span{margin:0!important;min-width:0!important;max-width:none!important;box-sizing:border-box!important;border:0!important;border-radius:0!important;box-shadow:inset -1px 0 #28446960!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}

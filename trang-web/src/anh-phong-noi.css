@@ -1,0 +1,4 @@
+.anh-phong-noi{position:fixed;inset:0;z-index:12000;background:#091122de;display:grid;place-items:center;padding:30px;box-sizing:border-box}
+.anh-phong-noi>button{position:absolute;top:16px;right:20px;width:42px;height:42px;border:0;border-radius:50%;font-size:30px;background:white;color:#172033;cursor:pointer}
+.anh-phong-noi figure{margin:0;max-width:100%;text-align:center}.anh-phong-noi img{display:block;max-width:min(1200px,calc(100vw - 60px));max-height:calc(100dvh - 110px);object-fit:contain;border-radius:8px}.anh-phong-noi figcaption{color:white;padding-top:10px}
+.cn-photo-open{border:0!important;background:transparent!important;padding:0!important;cursor:zoom-in!important;display:inline-flex!important}.cn-room-images img{cursor:zoom-in}
