@@ -69,7 +69,7 @@ export class ComboService {
         'SELECT id,ten_homestay FROM public.homestay ORDER BY ten_homestay',
       );
       const rooms = await c.query(
-        'SELECT id,homestay_id,ma_phong,ten_phong FROM public.phong ORDER BY homestay_id,ma_phong',
+        'SELECT p.id,p.homestay_id,p.ma_phong,p.ten_phong,p.loai_phong_id,l.ten_loai FROM public.phong p JOIN public.loai_phong l ON l.id=p.loai_phong_id ORDER BY p.homestay_id,p.ma_phong',
       );
       const rows = await Promise.all(
         combos.rows.map(async (row) => {

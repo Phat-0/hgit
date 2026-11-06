@@ -19,12 +19,12 @@ Trong `may-chu/.env`, cấu hình SUPABASE_URL và SUPABASE_SERVICE_ROLE_KEY đ�
 ## Sử dụng
 
 - Danh sách chỉ còn Combo. Màn hình máy tính có bốn thẻ ảnh mỗi hàng; màn hình hẹp tự giảm cột. Tên và giá nằm trên ảnh. Biểu tượng xanh khi đang bán và trong thời gian áp dụng, đỏ khi chưa chạy, hết hạn hoặc tạm ngưng.
-- Nhấp thẻ để mở chi tiết bên phải. Các thẻ nhường chỗ với chuyển động FLIP. Trên màn hình nhỏ, thông tin nằm trên lưới để tránh ép nội dung. Hỗ trợ tùy chọn giảm chuyển động của hệ điều hành.
-- Tìm kiếm mở rộng khi được chọn; lọc theo chi nhánh và ngày áp dụng. Bỏ lọc để xem lại toàn bộ.
-- Tạo/sửa bằng form thống nhất nhãn trái, ô nhập phải; điện thoại chuyển một cột. Chọn tệp ảnh và xem trước; khi sửa không chọn tệp mới thì giữ ảnh cũ.
-- Phạm vi: toàn bộ chi nhánh; chọn nhiều chi nhánh; hoặc chọn các phòng ở nhiều chi nhánh. Lọc phòng trong form không làm mất các phòng đã chọn ở chi nhánh khác.
+- Nhấp thẻ mở hộp chi tiết giữa màn hình. Thông tin chia thành hai cặp nhãn/giá trị mỗi hàng, ảnh và giá ở đầu; mô tả/phạm vi dài có thanh cuộn bên trong. Có nút sửa, xóa và đóng.
+- Tìm kiếm mở rộng khi được chọn; lọc theo chi nhánh, ngày áp dụng và phân loại Combo dịch vụ/Combo giờ. Phân loại nằm cạnh nút Làm mới. Bỏ lọc để xóa điều kiện chi nhánh/ngày/từ khóa.
+- Tạo/sửa bằng form hai cột, mỗi trường có nhãn trái và ô nhập phải; điện thoại chuyển một cột. Chọn tệp ảnh và xem trước; khi sửa không chọn tệp mới thì giữ ảnh cũ.
+- Phạm vi: toàn bộ chi nhánh; chọn nhiều chi nhánh; hoặc chọn các phòng ở nhiều chi nhánh. Lọc phòng theo chi nhánh và loại phòng không làm mất lựa chọn ở chi nhánh khác. Hai khung cạnh nhau gồm danh sách để chọn và các phòng đã chọn, hỗ trợ chọn tất cả kết quả lọc hoặc bỏ từng phòng.
 - Combo giờ cần số giờ bao gồm (1–744); combo dịch vụ không có số giờ. Giá dùng cùng ô nhập tiền của ứng dụng: nhập 250 → lưu 250.000 VND.
-- Thời gian bắt đầu/kết thúc tính theo UTC+7. Đơn phải nằm hoàn toàn trong khoảng áp dụng. Combo giờ chỉ được chọn cho đơn theo giờ. Điều kiện phòng, phạm vi và thời gian được kiểm tra lại tại backend khi tạo hoặc đổi lịch đơn.
+- Chọn khoảng ngày bằng cùng bộ lịch của Đơn đặt phòng; giờ bắt đầu và giờ kết thúc đặt cạnh nhau. Thời gian tính theo UTC+7. Đơn phải nằm hoàn toàn trong khoảng áp dụng. Combo giờ chỉ được chọn cho đơn theo giờ. Điều kiện phòng, phạm vi và thời gian được kiểm tra lại tại backend khi tạo hoặc đổi lịch đơn.
 - Xóa cần xác nhận. Khóa ngoại chặn xóa combo đã dùng trong đơn/chi tiết dịch vụ; chọn Tạm ngưng nếu muốn ngừng bán. Giá tiền đã chốt của đơn cũ không bị đổi khi sửa giá combo.
 - Combo cũ đang gắn dịch vụ riêng của một chi nhánh không thể tự mở rộng sang chi nhánh khác.
 

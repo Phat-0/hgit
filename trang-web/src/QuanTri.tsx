@@ -143,7 +143,7 @@ export default function QuanTri(){
           </div>}</div>
           <div className="qt-top-actions"><button title="Thông báo" aria-label="Thông báo" onClick={()=>setMuc('thong-bao')} className="qt-icon-button">♧<i/></button><button title="Người dùng" aria-label="Người dùng" onClick={()=>setMuc('nhan-vien')} className="qt-icon-button">✉</button></div>
         </div>
-        <main className="qt-content">{muc!=='chi-nhanh'&&muc!=='phong'&&muc!=='loai-phong'&&muc!=='lich'&&muc!=='dat-phong'&&<div className="qt-page-head"><div><h1>{muc==='tong-quan'?'Bảng điều khiển':danhMuc.find(x=>x.id===muc)?.nhan}</h1></div></div>}
+        <main className="qt-content">{muc!=='chi-nhanh'&&muc!=='phong'&&muc!=='loai-phong'&&muc!=='lich'&&muc!=='dat-phong'&&muc!=='goi-combo'&&<div className="qt-page-head"><div><h1>{muc==='tong-quan'?'Bảng điều khiển':danhMuc.find(x=>x.id===muc)?.nhan}</h1></div></div>}
         {thongBao&&<div className="qt-alert" role="status">{thongBao}</div>}
         {muc==='chi-nhanh'?<ChiNhanhPage token={token}/>:muc==='phong'?<PhongPage token={token}/>:muc==='lich'?<LichPhong token={token}/>:muc==='dat-phong'?<DonDatPhong token={token}/>:muc==='loai-phong'?<LoaiPhongPage token={token}/>:muc==='goi-combo'?<GoiGiaCombo token={token}/>:muc==='tong-quan'?<><div className="qt-stats">{stats.map((s,i)=><article className={'qt-stat qt-tone-'+s.tone} key={s.ten} style={{animationDelay:(i*80)+'ms'}}><div className="qt-stat-icon">{s.icon}</div><p>{s.ten}</p><strong>{s.so.toLocaleString('vi-VN')}</strong><span className="qt-stat-foot">Dữ liệu thực tế</span></article>)}</div>
           <div className="qt-main-grid">

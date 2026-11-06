@@ -663,3 +663,414 @@
     transition: none !important;
   }
 }
+/* Bố cục gọn: thanh công cụ sát header, form hai cột, chi tiết giữa màn hình. */
+.gc-page.combo-page {
+  padding: 16px;
+  min-height: 0;
+  border-radius: 12px;
+  box-shadow: none;
+}
+.combo-page .cm-header {
+  gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+.combo-page .cm-header h1 {
+  font-size: 19px;
+}
+.combo-page .cm-tools {
+  gap: 8px;
+}
+.combo-page .cm-list-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.combo-page .cm-list-actions select,
+.combo-page .cm-refresh {
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid #e3ddeb;
+  border-radius: 9px;
+  background: #fff;
+  color: #695779;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.combo-page .cm-refresh:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.combo-page .cm-gallery {
+  display: block;
+  flex: 1 0 auto;
+  padding-bottom: 16px;
+}
+.combo-page .cm-cards {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.cm-dialog.cm-create-dialog {
+  width: min(1080px, 100%);
+}
+.cm-dialog > header {
+  padding: 15px 22px;
+  min-height: 36px;
+}
+.cm-dialog > header > button {
+  display: grid;
+  place-items: center;
+  flex: 0 0 34px;
+  line-height: 1;
+  padding: 0;
+  margin: 0;
+  align-self: center;
+  box-sizing: border-box;
+}
+.cm-dialog .cm-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 26px;
+  padding: 20px 22px;
+  align-items: start;
+}
+.cm-dialog .cm-row {
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 10px;
+  font-size: 13px;
+  min-width: 0;
+}
+.cm-dialog .cm-row > span {
+  padding-top: 9px;
+}
+.cm-dialog .cm-row > input,
+.cm-dialog .cm-row > select,
+.cm-dialog .cm-row > textarea {
+  padding: 9px 10px;
+}
+.cm-dialog .cm-preview {
+  width: 90px;
+  height: 64px;
+}
+.cm-dialog .cm-upload {
+  gap: 8px;
+  align-items: center;
+}
+.cm-dialog .cm-upload > small {
+  font-size: 11px;
+}
+.cm-dialog .cm-row:has(.cm-upload) {
+  grid-row: span 2;
+}
+.cm-dialog .cm-time-hint {
+  grid-column: 1/-1;
+  margin: 0;
+  font-size: 11px;
+}
+.cm-dialog .cm-room-area {
+  grid-column: 1/-1;
+  border: 1px solid #e8e0f1;
+  border-radius: 12px;
+  padding: 12px;
+  min-width: 0;
+  background: #fcfaff;
+}
+.cm-dialog .cm-room-filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.cm-dialog .cm-room-filters select {
+  width: 50%;
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid #e1dbe9;
+  border-radius: 8px;
+  background: white;
+  color: #655775;
+  font: inherit;
+  font-size: 13px;
+}
+.cm-dialog .cm-room-panes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.cm-dialog .cm-room-panes > div {
+  min-width: 0;
+}
+.cm-dialog .cm-pane-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.cm-dialog .cm-pane-title button {
+  border: 0;
+  background: none;
+  padding: 2px;
+  color: #8558bd;
+  cursor: pointer;
+  font-size: 11px;
+}
+.cm-dialog .cm-room-panes .cm-checks,
+.cm-dialog .cm-selected-rooms {
+  height: 150px;
+  max-height: 150px;
+  overflow: auto;
+  box-sizing: border-box;
+  background: white;
+  border: 1px solid #e3dceb;
+  border-radius: 9px;
+  padding: 10px;
+}
+.cm-dialog .cm-selected-rooms {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cm-dialog .cm-selected-rooms > div {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #f0eaf6;
+  padding-bottom: 7px;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.cm-dialog .cm-selected-rooms small {
+  display: block;
+  font-size: 11px;
+  color: #96879f;
+  line-height: 1.5;
+}
+.cm-dialog .cm-selected-rooms button {
+  width: 25px;
+  height: 25px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 7px;
+  color: #bc4c70;
+  background: #fff0f5;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0;
+}
+.cm-dialog .cm-date-range .lp-range-control {
+  width: 100%;
+  min-width: 0;
+}
+.cm-dialog .cm-date-range .lp-range-button {
+  width: 100%;
+  height: 38px;
+  justify-content: center;
+  font-size: 12px;
+  white-space: normal;
+}
+.cm-dialog .cm-time-range > div {
+  display: flex;
+  gap: 10px;
+}
+.cm-dialog .cm-time-range label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #8f7c9e;
+  flex: 1;
+  min-width: 0;
+}
+.cm-dialog .cm-time-range input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 4px;
+  border: 1px solid #e1dbe9;
+  border-radius: 8px;
+  font: inherit;
+  background: white;
+  color: #4b3e5b;
+  box-sizing: border-box;
+}
+.cm-dialog.cm-view-dialog {
+  width: min(880px, 100%);
+  background: linear-gradient(130deg, #fff, #f4edff 65%, #ebfaff);
+  border: 1px solid #d1b5f7;
+  box-shadow:
+    0 0 35px #be99f95c,
+    0 28px 90px #20103c40;
+}
+.cm-view-dialog .cm-detail-centered {
+  padding: 16px 22px 22px;
+  overflow: auto;
+  min-height: 0;
+}
+.cm-view-dialog .cm-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #9375ac;
+  font-size: 12px;
+}
+.cm-view-dialog .cm-detail-head > div {
+  display: flex;
+  gap: 8px;
+}
+.cm-view-dialog .cm-detail-head button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #e0d2ef;
+  border-radius: 8px;
+  background: #fffc;
+  color: #8359b5;
+  cursor: pointer;
+}
+.cm-view-dialog .cm-detail-head button.cm-danger {
+  color: #ce4c6a;
+}
+.cm-view-dialog .cm-detail-image {
+  width: 140px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 12px;
+  float: left;
+  margin: 14px 20px 18px 0;
+}
+.cm-view-dialog .cm-detail h2 {
+  font-size: 21px;
+  margin: 18px 0 8px;
+  overflow-wrap: anywhere;
+}
+.cm-view-dialog .cm-detail-price {
+  display: block;
+  color: #8654c4;
+  font-size: 25px;
+  margin: 0 0 9px;
+}
+.cm-view-dialog .cm-status {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  background: #fce5ed;
+  color: #ad4c69;
+}
+.cm-view-dialog .cm-status.running {
+  background: #dff8ec;
+  color: #19865e;
+}
+.cm-view-dialog .cm-detail dl {
+  clear: both;
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr) 100px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px 12px;
+  padding-top: 15px;
+  border-top: 1px solid #e3d7f2;
+  margin: 18px 0 0;
+  font-size: 13px;
+}
+.cm-view-dialog .cm-detail dt {
+  color: #8c799c;
+  line-height: 1.6;
+}
+.cm-view-dialog .cm-detail dd {
+  margin: 0;
+  line-height: 1.6;
+  max-height: 110px;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+.cm-view-dialog .cm-detail .cm-description {
+  white-space: pre-wrap;
+  grid-column: 2/-1;
+  max-height: 150px;
+}
+.lp-range-dual.lp-range-portal {
+  z-index: 12050 !important;
+}
+@media (max-width: 1000px) {
+  .combo-page .cm-header .cm-tools {
+    order: 0;
+    flex-basis: auto;
+  }
+  .combo-page .cm-header {
+    flex-wrap: wrap;
+  }
+  .combo-page .cm-header > .cm-primary {
+    margin-left: auto;
+  }
+}
+@media (max-width: 760px) {
+  .combo-page .cm-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cm-dialog .cm-fields {
+    grid-template-columns: 1fr;
+    padding: 16px;
+    gap: 12px;
+  }
+  .cm-dialog .cm-row:has(.cm-upload) {
+    grid-row: auto;
+  }
+  .cm-dialog .cm-row {
+    grid-template-columns: 110px minmax(0, 1fr);
+  }
+  .cm-dialog .cm-room-panes {
+    grid-template-columns: 1fr;
+  }
+  .cm-dialog .cm-room-panes .cm-checks,
+  .cm-dialog .cm-selected-rooms {
+    height: 130px;
+    max-height: 130px;
+  }
+  .cm-view-dialog .cm-detail dl {
+    grid-template-columns: 100px minmax(0, 1fr);
+  }
+  .cm-view-dialog .cm-detail .cm-description {
+    grid-column: auto;
+  }
+  .cm-dialog .cm-room-filters {
+    flex-wrap: wrap;
+  }
+  .cm-dialog .cm-room-filters select {
+    width: 100%;
+  }
+}
+@media (max-width: 420px) {
+  .cm-dialog .cm-row {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  .cm-dialog .cm-row > span {
+    padding-top: 0;
+  }
+  .cm-view-dialog .cm-detail-image {
+    width: 95px;
+    height: 85px;
+    margin-right: 12px;
+  }
+  .cm-view-dialog .cm-detail-price {
+    font-size: 21px;
+  }
+  .combo-page .cm-list-actions {
+    flex-wrap: wrap;
+  }
+}
+.combo-page .cm-bottom-count {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid #eee8f5;
+  color: #9786a8;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.cm-dialog footer {
+  margin: 0;
+  text-align: initial;
+}
