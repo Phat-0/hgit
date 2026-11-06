@@ -1,3 +1,4 @@
+import {BO_LOC_DON,DON_CO_SO,nhanTrangThaiDon} from './danh-sach-don.sql.js';
 import { randomUUID } from 'node:crypto';
 import {kiemTraCauHinhGio,kiemTraThoiGianDat,type HinhThucDat} from './khung-gio.js';
 import {BadRequestException,ConflictException,Injectable,NotFoundException,ServiceUnavailableException} from '@nestjs/common';
@@ -16,11 +17,25 @@ export class LichPhongService{
  const ids=rooms.rows.map(x=>x.id);if(!ids.length)return {phong:[],khoa:[],dat_phong:[],gia:[]};
  const [locks,bookings,prices]=await (async()=>{
  const locks=await c.query("SELECT id,phong_id,bat_dau,ket_thuc,ly_do,loai_khoa,co_dinh,ghi_chu,ten_khach,so_dien_thoai,gia_ghi_nhan FROM public.chan_lich_phong WHERE phong_id=ANY($1::uuid[]) AND bat_dau<$3 AND ket_thuc>$2 ORDER BY bat_dau",[ids,a,b]).catch(async e=>{if((e as {code?:string}).code==='42703')return c.query("SELECT id,phong_id,bat_dau,ket_thuc,ly_do,'gio'::text AS loai_khoa,false AS co_dinh,NULL::text AS ghi_chu,NULL::text AS ten_khach,NULL::text AS so_dien_thoai,NULL::numeric AS gia_ghi_nhan FROM public.chan_lich_phong WHERE phong_id=ANY($1::uuid[]) AND bat_dau<$3 AND ket_thuc>$2 ORDER BY bat_dau",[ids,a,b]);throw e;});
- const bookings=await c.query("SELECT d.id,d.phong_id,d.nhan_phong_luc AS bat_dau,d.tra_phong_luc AS ket_thuc,d.trang_thai,d.hinh_thuc_dat,d.ten_don,d.ma_dat_phong,COALESCE(NULLIF(trim(n.ho_ten),''),d.ma_dat_phong) AS ten_khach FROM public.dat_phong d LEFT JOIN public.nguoi_dung n ON n.id=d.nguoi_dung_id WHERE d.phong_id=ANY($1::uuid[]) AND d.nhan_phong_luc<$3 AND d.tra_phong_luc>$2 AND d.trang_thai IN ('Chờ thanh toán','Chờ xác nhận','Đã xác nhận','Đã nhận phòng')",[ids,a,b]);
+ const bookings=await c.query("SELECT d.id,d.phong_id,d.nhan_phong_luc AS bat_dau,d.tra_phong_luc AS ket_thuc,d.trang_thai,d.hinh_thuc_dat,d.ten_don,d.ma_dat_phong,COALESCE(NULLIF(NULLIF(trim(d.ten_don),d.ma_dat_phong),''),NULLIF(trim(n.ho_ten),''),d.ma_dat_phong) AS ten_khach FROM public.dat_phong d LEFT JOIN public.nguoi_dung n ON n.id=d.nguoi_dung_id WHERE d.phong_id=ANY($1::uuid[]) AND d.nhan_phong_luc<$3 AND d.tra_phong_luc>$2 AND d.trang_thai IN ('Chờ thanh toán','Chờ xác nhận','Đã xác nhận','Đã nhận phòng')",[ids,a,b]);
  const prices=await c.query("SELECT id,phong_id,loai_gia,bat_dau,ket_thuc,gia,phu_thu_gio,ten,thu_trong_tuan,ngay_tao,muc_uu_tien FROM public.gia_lich_phong WHERE phong_id=ANY($1::uuid[]) AND bat_dau<$3 AND ket_thuc>$2 ORDER BY muc_uu_tien,ngay_tao,id",[ids,a,b]);return [locks,bookings,prices] as const;})();
  return {phong:rooms.rows,khoa:locks.rows,dat_phong:bookings.rows,gia:prices.rows};
  }catch(e){this.failure(e);}finally{await c.end();}}
- async bookingList(uid:string,status:string,search:string){await this.admin.kiemTraQuanTri(uid);const c=await this.db();try{const r=await c.query(`SELECT d.id,d.ten_don,d.ma_dat_phong,d.hinh_thuc_dat,d.nhan_phong_luc,d.tra_phong_luc,d.trang_thai,d.tong_tien,d.ghi_chu,d.ngay_tao,d.so_dien_thoai_dat,d.trang_thai_thanh_toan,d.tien_da_thanh_toan,d.khach_xac_nhan_den_luc,d.da_nhan_phong_luc,d.da_tra_phong_luc,d.can_xac_nhan_lai,n.ho_ten,COALESCE(d.so_dien_thoai_dat,n.so_dien_thoai) AS so_dien_thoai,p.ten_phong,p.ma_phong,p.trang_thai_van_hanh AS tinh_trang_phong_hien_tai,h.ten_homestay FROM public.dat_phong d LEFT JOIN public.nguoi_dung n ON n.id=d.nguoi_dung_id LEFT JOIN public.phong p ON p.id=d.phong_id LEFT JOIN public.homestay h ON h.id=d.homestay_id WHERE ($1::text='' OR ($1='Chưa nhận phòng' AND d.trang_thai IN ('Chờ xác nhận','Đã xác nhận') AND d.tra_phong_luc + interval '30 minutes' <= now() AND d.khach_xac_nhan_den_luc IS NULL AND d.da_nhan_phong_luc IS NULL) OR ($1='Thanh toán' AND d.trang_thai_thanh_toan IN ('Cọc','Chưa thanh toán')) OR ($1='Đã thanh toán' AND d.trang_thai_thanh_toan='Đủ') OR ($1='Chưa thanh toán' AND d.trang_thai_thanh_toan IN ('Cọc','Chưa thanh toán')) OR d.trang_thai=$1) AND ($2::text='' OR d.ten_don ILIKE '%'||$2||'%' OR d.ma_dat_phong ILIKE '%'||$2||'%' OR COALESCE(n.ho_ten,'') ILIKE '%'||$2||'%' OR COALESCE(d.so_dien_thoai_dat,n.so_dien_thoai,'') ILIKE '%'||$2||'%') ORDER BY d.ngay_tao DESC LIMIT 300`,[status,search]);return r.rows.map(x=>({...x,combo:null,anh:null,trang_thai_hien_thi:x.khach_xac_nhan_den_luc?'Khách đã đến':!x.da_nhan_phong_luc&&['Chờ xác nhận','Đã xác nhận'].includes(x.trang_thai)&&new Date(x.tra_phong_luc).getTime()+1800000<=Date.now()?'Chưa nhận phòng':x.trang_thai}));}catch(e){this.failure(e);}finally{await c.end();}}
+ async bookingList(uid:string,status:string,search:string){
+  await this.admin.kiemTraQuanTri(uid);
+  if(!Object.hasOwn(BO_LOC_DON,status)||search.length>150)throw new BadRequestException('Bộ lọc đơn không hợp lệ');
+  const c=await this.db();try{
+   const result=await c.query(DON_CO_SO+' SELECT * FROM ket_qua WHERE '+BO_LOC_DON[status]+' ORDER BY ngay_tao DESC,id DESC LIMIT 300',[search.trim()]);
+   return result.rows.map(x=>({...x,anh:null,trang_thai_hien_thi:nhanTrangThaiDon(x)}));
+  }catch(e){this.failure(e);}finally{await c.end();}
+ }
+ async bookingCounts(uid:string,search:string){
+  await this.admin.kiemTraQuanTri(uid);if(search.length>150)throw new BadRequestException('Từ khóa tối đa 150 ký tự');
+  const c=await this.db();try{
+   const columns=Object.entries(BO_LOC_DON).map(([key,condition])=>`count(*) FILTER (WHERE ${condition})::int AS "${key||'Tất cả'}"`);
+   const result=await c.query(DON_CO_SO+' SELECT '+columns.join(',')+' FROM ket_qua',[search.trim()]);return result.rows[0];
+  }catch(e){this.failure(e);}finally{await c.end();}
+ }
  async hourSettings(uid:string){
   await this.admin.kiemTraQuanTri(uid);const c=await this.db();
   try{const r=await c.query('SELECT khung_gio FROM public.cau_hinh_gio_dat_phong WHERE id=1');if(!r.rowCount)throw new BadRequestException('Chưa có thiết lập giờ trong DB');return kiemTraCauHinhGio(r.rows[0].khung_gio);}catch(e){this.failure(e);}finally{await c.end();}
@@ -41,8 +56,9 @@ export class LichPhongService{
   await this.admin.kiemTraQuanTri(uid);
   if(!body||typeof body!=='object'||Array.isArray(body))throw new BadRequestException('Dữ liệu không hợp lệ');
   const x=body as Record<string,unknown>;
-  const name=typeof x.ten_don==='string'?x.ten_don.trim():'';
-  if(!name||name.length>150)throw new BadRequestException('Tên đơn phải có từ 1 đến 150 ký tự');
+  const guestName=x.ten_khach??x.ten_don;
+  const name=typeof guestName==='string'?guestName.trim():'';
+  if(!name||name.length>150)throw new BadRequestException('Tên khách hàng phải có từ 1 đến 150 ký tự');
   const kind=String(x.hinh_thuc_dat||'') as HinhThucDat;
   if(!['Theo giờ','Theo ngày','Theo đêm'].includes(kind))throw new BadRequestException('Chọn Theo giờ, Theo ngày hoặc Qua đêm');
   const room=String(x.phong_id||''),comboId=String(x.combo_id||''),phone=String(x.so_dien_thoai||'').replace(/[\s().-]/g,'');

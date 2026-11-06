@@ -18,6 +18,7 @@ describe('Tạo đơn tại trang quản trị',()=>{
   expect(insert.params[9]).toBe('Đã xác nhận');
   expect(calls.some(x=>x.sql.includes('xac_nhan_luc=now()')&&x.params[0]===room)).toBe(true);
  });
+ it('nhận tên khách qua trường ten_khach, giữ tương thích dữ liệu tên cũ',async()=>{const {service,calls}=setup();await service.createBooking(room,{...valid,ten_khach:'Nguyễn Văn An'});const insert=calls.find(x=>x.sql.startsWith('INSERT INTO public.dat_phong'))!;expect(insert.params[1]).toBe('Nguyễn Văn An');});
  it.each([
   [{so_dien_thoai:'abc'},'Số điện thoại'],
   [{nhan_phong_luc:'khong-phai-ngay'},'Ngày hoặc giờ'],

@@ -12,7 +12,7 @@ export class DonLichService{
  async detail(uid:string,id:string){
   await this.admin.kiemTraQuanTri(uid);this.id(id);const c=await this.db();try{
    const result=await c.query(`SELECT d.*,p.ten_phong,p.ma_phong,h.ten_homestay,
-    COALESCE(n.ho_ten,'Khách chưa có tài khoản') AS ten_khach,
+    COALESCE(NULLIF(NULLIF(btrim(d.ten_don),d.ma_dat_phong),''),NULLIF(btrim(n.ho_ten),''),'Chưa có tên khách') AS ten_khach,
     COALESCE(d.so_dien_thoai_dat,n.so_dien_thoai) AS so_dien_thoai,
     co.ten_combo FROM public.dat_phong d JOIN public.phong p ON p.id=d.phong_id
     JOIN public.homestay h ON h.id=d.homestay_id LEFT JOIN public.nguoi_dung n ON n.id=d.nguoi_dung_id
@@ -23,10 +23,11 @@ export class DonLichService{
  async edit(uid:string,id:string,body:unknown){
   await this.admin.kiemTraQuanTri(uid);this.id(id);
   if(!body||typeof body!=='object'||Array.isArray(body))throw new BadRequestException('Dữ liệu đơn không hợp lệ');
-  const x=body as Record<string,unknown>,allowed=['ten_don','phong_id','hinh_thuc_dat','nhan_phong_luc','tra_phong_luc','so_khach','tien_phong','so_dien_thoai','ghi_chu'];
+  const x=body as Record<string,unknown>,allowed=['ten_khach','ten_don','phong_id','hinh_thuc_dat','nhan_phong_luc','tra_phong_luc','so_khach','tien_phong','so_dien_thoai','ghi_chu'];
   if(Object.keys(x).some(k=>!allowed.includes(k)))throw new BadRequestException('Trường dữ liệu không được phép');
-  const name=typeof x.ten_don==='string'?x.ten_don.trim():'',room=String(x.phong_id||''),kind=String(x.hinh_thuc_dat||'') as HinhThucDat;
-  this.id(room);if(!name||name.length>150)throw new BadRequestException('Tên đơn phải có từ 1 đến 150 ký tự');
+  const guestName=x.ten_khach??x.ten_don;
+  const name=typeof guestName==='string'?guestName.trim():'',room=String(x.phong_id||''),kind=String(x.hinh_thuc_dat||'') as HinhThucDat;
+  this.id(room);if(!name||name.length>150)throw new BadRequestException('Tên khách hàng phải có từ 1 đến 150 ký tự');
   if(!['Theo giờ','Theo ngày','Theo đêm'].includes(kind))throw new BadRequestException('Hình thức đặt không hợp lệ');
   const start=new Date(String(x.nhan_phong_luc||'')),end=new Date(String(x.tra_phong_luc||'')),guests=Number(x.so_khach),amount=Number(x.tien_phong);
   const phone=String(x.so_dien_thoai||'').replace(/[\s().-]/g,''),note=String(x.ghi_chu||'').trim();
@@ -61,7 +62,7 @@ export class DonLichService{
     nguoi_dung_id=CASE WHEN so_dien_thoai_dat IS DISTINCT FROM $10 THEN NULL ELSE nguoi_dung_id END,
     ghi_chu=$11,cau_hinh_gia_chot=$12::jsonb,goi_gia_id=NULL,ngay_cap_nhat=now() WHERE id=$1`,
     [id,name,room,p.homestay_id,kind,start.toISOString(),end.toISOString(),guests,amount,phone,note,JSON.stringify(snapshot)]);
-   await c.query('INSERT INTO public.nhat_ky_don_dat_phong(dat_phong_id,nguoi_thuc_hien_id,hanh_dong,du_lieu_cu,du_lieu_moi) VALUES($1,$2,$3,$4::jsonb,$5::jsonb)',[id,uid,'sua_tu_lich',JSON.stringify({ten_don:d.ten_don,phong_id:d.phong_id,nhan_phong_luc:d.nhan_phong_luc,tra_phong_luc:d.tra_phong_luc,tien_phong:d.tien_phong}),JSON.stringify(x)]);
+   await c.query('INSERT INTO public.nhat_ky_don_dat_phong(dat_phong_id,nguoi_thuc_hien_id,hanh_dong,du_lieu_cu,du_lieu_moi) VALUES($1,$2,$3,$4::jsonb,$5::jsonb)',[id,uid,'sua_tu_lich',JSON.stringify({ten_khach:d.ten_don,phong_id:d.phong_id,nhan_phong_luc:d.nhan_phong_luc,tra_phong_luc:d.tra_phong_luc,tien_phong:d.tien_phong}),JSON.stringify(x)]);
    await c.query('COMMIT');return {ok:true};
   }catch(e){await c.query('ROLLBACK');this.failure(e);}finally{await c.end();}
  }
