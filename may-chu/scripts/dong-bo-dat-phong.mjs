@@ -1,13 +1,34 @@
 import 'dotenv/config';
 import {Client} from 'pg';
 import {readFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
 
 const version='20261106-dong-bo-kieu-dat-va-ten-don';
 if(!process.env.DATABASE_URL){
   console.error('Thiếu DATABASE_URL trong may-chu/.env; chưa thay đổi database.');
   process.exit(1);
 }
-const client=new Client({connectionString:process.env.DATABASE_URL,ssl:{rejectUnauthorized:true},connectionTimeoutMillis:10000});
+// Nạp CA trực tiếp: NODE_EXTRA_CA_CERTS chỉ có tác dụng khi Node khởi động.
+// Dùng cùng file CA với start-dev.mjs, đường dẫn độc lập thư mục terminal.
+const caUrl=new URL('../certificates/supabase-ca.crt',import.meta.url);
+let ca;
+try{
+  ca=await readFile(caUrl,'utf8');
+  console.log('[TLS] Đang dùng CA:',fileURLToPath(caUrl));
+}catch(error){
+  if(error?.code!=='ENOENT')throw error;
+  console.warn('[TLS] Chưa có certificates/supabase-ca.crt; dùng CA mặc định của Node.');
+}
+const connectionUrl=new URL(process.env.DATABASE_URL);
+// pg phân tích các tùy chọn SSL trong URL sau cấu hình Client. Không để URL
+// ghi đè CA ở trên hoặc vô hiệu hóa kiểm tra chứng chỉ.
+for(const key of ['ssl','sslmode','sslrootcert','sslcert','sslkey','uselibpqcompat']){
+  if(connectionUrl.searchParams.has(key)){
+    console.error('Hãy bỏ tham số '+key+' khỏi DATABASE_URL để migration dùng CA và xác minh TLS được cấu hình trong script. Chưa thay đổi database.');
+    process.exit(1);
+  }
+}
+const client=new Client({connectionString:process.env.DATABASE_URL,ssl:{rejectUnauthorized:true,...(ca?{ca}:{})},connectionTimeoutMillis:10000});
 try{
   await client.connect();
   await client.query('BEGIN');

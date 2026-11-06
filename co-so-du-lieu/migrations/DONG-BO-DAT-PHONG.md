@@ -38,7 +38,9 @@ npm.cmd run db:dong-bo-dat-phong
 
 Runner dùng một transaction, khóa migration, đối chiếu số đơn và tổng tiền
 trước/sau, rollback nếu lỗi, ghi phiên bản để không chạy trùng lần sau. Node 24
-được dùng với system CA; không tắt kiểm tra TLS. Không chạy đồng thời trực tiếp
+được dùng với system CA và script tự đọc `may-chu/certificates/supabase-ca.crt`
+nếu có; không tắt kiểm tra TLS. Không đặt tham số SSL trong DATABASE_URL để tránh
+ghi đè cấu hình CA của script. Không chạy đồng thời trực tiếp
 file SQL và runner; nếu đã chạy SQL trực tiếp thì không chạy lại runner.
 
 Sau migration, chạy code backend và frontend mới cùng nhau. Vào Lịch → Thiết
