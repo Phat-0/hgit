@@ -39,3 +39,32 @@
 - Trạng thái gói giá `hieu_luc` chuyển thành trạng thái mở bán theo từng hình thức; không trộn với trạng thái vận hành phòng.
 
 **Tài liệu này không phải SQL migration xóa bảng. Không thực thi DROP TABLE trước khi kiểm tra và xác nhận.**
+
+## Chốt yêu cầu form và kết quả rà soát ngày 06/11/2026
+
+- Tài liệu này là đầu mối cho phương án B; các bản kế hoạch tên khác chỉ là bản tham khảo cũ.
+- “Loại phòng muốn đặt” là **nhãn hiển thị của hình thức đặt**, chọn Theo giờ / Theo ngày / Qua đêm. Không tạo cột hay giá trị nghiệp vụ tên “Loại phòng muốn đặt”, không thêm bộ chọn `loai_phong_id`. Loại phòng thực tế được suy ra từ phòng đã chọn.
+- Dùng lại RangePicker và TimePicker của trang Lịch; ngày/đêm lấy giờ nhận/trả trong `lich_phong_gio`, giờ cho phép chọn trong khung đã thiết lập. Thiết lập hiện nằm trong localStorage, chưa phải cấu hình chung ở server; khi chuyển đổi API cần đưa cấu hình về server để kiểm tra thống nhất.
+- Giai đoạn trước migration vẫn cần gói tương ứng duy nhất để tương thích API. Không suy đoán hình thức theo tên gói; không gửi đơn Theo ngày dưới giá trị Theo đêm. Nếu chưa có cấu hình hoặc có nhiều gói cùng hình thức thì chặn lưu và báo rõ.
+- Ngoài API tạo đơn, `may-chu/src/homestay/homestay.service.ts` còn lấy giá hiển thị từ `goi_gia`; `GoiGiaCombo.tsx` còn tab Gói giá. Phải chuyển các nơi này sang giá phòng trước khi loại bỏ bảng. Giữ mục Combo để quản lý chương trình độc lập.
+
+## Chuyển trạng thái và số giờ tối thiểu
+
+- Chuyển `hieu_luc` thành `mo_ban_theo_gio`, `mo_ban_theo_ngay`, `mo_ban_theo_dem` trên phòng. Giá bằng 0 không có nghĩa là đóng bán. Khi một loại/hình thức có cả gói bật và tắt, đưa vào danh sách xung đột để chọn mapping; không tự OR trạng thái.
+- Thêm `so_gio_toi_thieu` trên phòng, số nguyên dương, tương ứng số giờ đầu được bao gồm trong giá gói giờ hiện tại. Chưa áp mặc định 1 cho dữ liệu cũ; gói có NULL phải được đối chiếu ý nghĩa trước.
+- Giá `gia_moi_gio` đang được form hiểu là giá trọn N giờ đầu. Phải chốt ý nghĩa này cùng màn quản lý phòng; nếu đổi thành đơn giá mỗi giờ thì phải đổi công thức đồng thời, không chỉ chuyển số tiền.
+
+## Các migration cần tạo sau audit
+
+1. **Mở rộng**: chỉ thêm cột nullable/snapshot và hỗ trợ hình thức Theo ngày trong CHECK khi triển khai hỗ trợ ngày. Không đổi dữ liệu lịch sử Theo đêm chỉ dựa trên tên gói. Không xóa cột/bảng.
+2. **Mapping và backfill**: lập bảng đối chiếu `goi_gia_id -> phong_id + hinh_thuc_dat`, giữ giá trị cũ/mới và trạng thái; mapping một gói có thể tới nhiều phòng cùng loại. Dừng nếu giá hiện tại khác giá nguồn, thiếu mapping, nhiều nguồn xung đột hoặc quy tắc giá chưa có đích. Sao chép snapshot đơn từ dữ liệu giao dịch, không thay tiền đã chốt bằng giá mới. Đối chiếu từng ID, không chỉ tổng tiền.
+3. **Chuyển ứng dụng**: API nhận `phong_id` và `hinh_thuc_dat`; kiểm tra mở bán, số giờ tối thiểu, giờ cấu hình, giá, combo và trùng lịch phía server; bỏ bắt buộc `goi_gia_id` trong cùng đợt triển khai tương thích. Giữ nguyên EXCLUDE chống trùng lịch. Chuyển mọi truy vấn giá hiển thị và quản lý sang phòng.
+4. **Thu gọn riêng**: sau khi không còn ứng dụng ghi schema cũ và kiểm tra dependency thực tế lại, xử lý toàn bộ FK của `goi_gia`, chuyển/lưu trữ quy tắc, rồi mới bỏ cột/bảng bằng RESTRICT. Không dùng CASCADE; nếu gặp phụ thuộc bất ngờ thì dừng.
+
+Mỗi pha chạy trong transaction có kiểm tra trước/sau. Sao lưu cả dữ liệu, schema, policy và mapping; diễn tập phục hồi trên DB thử nghiệm. Trước pha xóa có thể rollback ứng dụng khi vẫn giữ cấu trúc cũ; sau pha xóa phải khôi phục cả cấu trúc và dữ liệu/mapping cùng phiên bản ứng dụng. Không dùng một rollback tự tạo lại bảng rỗng.
+
+## Phạm vi kiểm chứng
+
+Đã kiểm tra tham chiếu trong mã nguồn và schema được commit. Script audit bao gồm FK hai chiều của phòng/gói ở mọi schema, dependency catalog, function/procedure, view/materialized view, policy, trigger, dữ liệu xung đột, đơn sai liên kết và quy tắc mồ côi. SQL động và tích hợp bên ngoài vẫn cần rà soát riêng.
+
+**Chưa chạy bất kỳ SQL nào trên Supabase; chưa có kết quả audit dữ liệu hoặc catalog thực tế. Vì vậy chưa đủ cơ sở xác nhận có thể xóa `goi_gia`.** Không có migration phá hủy nào được tạo trong đợt này.
