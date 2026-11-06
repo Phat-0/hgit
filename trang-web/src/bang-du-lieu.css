@@ -7,3 +7,18 @@
 .qt-layout .cn-page .cn-pagination,.qt-layout .dp-page .dp-count{margin-top:auto!important;flex:none!important}
 .qt-layout:has(.lp-page) .lp-page>.lp-scroll{flex:1 1 auto!important;min-height:320px!important;max-height:calc(100dvh - 160px)!important}
 .qt-layout .cn-toolbar,.qt-layout .dp-head,.qt-layout .dp-tabs,.qt-layout .lp-toolbar{flex:none!important}
+
+/* Cùng bề rộng và khoảng nền tím nhạt cho mọi trang quản trị. */
+.qt-layout.qt-layout,.qt-layout.qt-layout .qt-workspace,.qt-layout.qt-layout .qt-content{background:#f2effb!important}
+.qt-layout .qt-workspace>.qt-content{width:100%!important;max-width:none!important;min-width:0!important;margin:0!important;padding:16px!important;box-sizing:border-box!important;align-items:stretch!important}
+.qt-layout .qt-workspace>.qt-content>.cn-page,.qt-layout .qt-workspace>.qt-content>.dp-page,.qt-layout .qt-workspace>.qt-content>.lp-page,.qt-layout .qt-workspace>.qt-content>.gc-page{width:100%!important;max-width:100%!important;min-width:0!important;margin:0!important;box-sizing:border-box!important}
+.qt-layout .qt-content>.cn-page>.cn-panel{width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important}
+/* Contain ngăn độ rộng tối thiểu của bảng làm nở flex cha/trang. */
+.qt-layout .qt-content .dp-table-wrap,.qt-layout .qt-content .lp-scroll,.qt-layout .qt-content .cn-table-wrap{min-width:0!important;max-width:100%!important;width:100%!important;box-sizing:border-box!important;contain:inline-size;overflow-x:auto!important;overscroll-behavior-x:contain}
+.qt-layout .qt-content .dp-table-wrap{flex:1 1 auto!important;overflow-y:auto!important;scrollbar-gutter:stable}
+.qt-layout .qt-content .dp-page .dp-table{width:100%!important;min-width:1080px!important;max-width:none!important}
+.qt-layout .qt-content .dp-page .dp-head,.qt-layout .qt-content .dp-page .dp-filters{min-width:0!important;max-width:100%!important;flex-wrap:wrap!important}
+.qt-layout .qt-content .dp-page .dp-tabs{min-width:0!important;max-width:100%!important;overflow-x:auto!important}
+.qt-layout .qt-content .cn-panel,.qt-layout .qt-content .dp-page,.qt-layout .qt-content .lp-page{background:#fff!important;border:1px solid #e5e1f1!important;border-radius:12px!important}
+@media(max-width:760px){.qt-layout .qt-workspace>.qt-content{padding:10px!important}}
+.qt-layout .qt-content .dp-head .dp-filters label{min-width:0!important;max-width:100%!important;flex:1 1 260px!important}
