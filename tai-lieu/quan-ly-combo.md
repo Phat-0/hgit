@@ -18,9 +18,11 @@ Trong `may-chu/.env`, cấu hình SUPABASE_URL và SUPABASE_SERVICE_ROLE_KEY đ�
 
 ## Sử dụng
 
+Nền qt-layout dùng gradient tím bóng chung; thẻ nội dung vẫn trắng. Tên trang Combo ở hàng trên, bộ lọc khoảng ngày, tìm kiếm, chi nhánh và thao tác được căn cùng hàng bên dưới. Khi chưa chọn ngày, danh sách vẫn hiển thị toàn bộ thời gian.
+
 - Danh sách chỉ còn Combo. Màn hình máy tính có bốn thẻ ảnh mỗi hàng; màn hình hẹp tự giảm cột. Tên và giá nằm trên ảnh. Biểu tượng xanh khi đang bán và trong thời gian áp dụng, đỏ khi chưa chạy, hết hạn hoặc tạm ngưng.
-- Nhấp thẻ mở hộp chi tiết giữa màn hình. Thông tin chia thành hai cặp nhãn/giá trị mỗi hàng, ảnh và giá ở đầu; mô tả/phạm vi dài có thanh cuộn bên trong. Có nút sửa, xóa và đóng.
-- Tìm kiếm mở rộng khi được chọn; lọc theo chi nhánh, ngày áp dụng và phân loại Combo dịch vụ/Combo giờ. Phân loại nằm cạnh nút Làm mới. Bỏ lọc để xóa điều kiện chi nhánh/ngày/từ khóa.
+- Nhấp thẻ mở hộp chi tiết giữa màn hình. Tên combo và giá nằm trên đầu cạnh nút đóng, hàng dưới dành riêng cho ảnh (nhấn để phóng to), bắt đầu/kết thúc cùng một hàng; mô tả/phạm vi dài có thanh cuộn bên trong. Có nút sửa, xóa và đóng.
+- Tìm kiếm mở rộng khi được chọn; lọc theo chi nhánh, khoảng từ ngày–đến ngày và phân loại Combo dịch vụ/Combo giờ. Phân loại nằm cạnh nút Làm mới. Bỏ lọc để xóa điều kiện chi nhánh/ngày/từ khóa.
 - Tạo/sửa bằng form hai cột, mỗi trường có nhãn trái và ô nhập phải; điện thoại chuyển một cột. Chọn tệp ảnh và xem trước; khi sửa không chọn tệp mới thì giữ ảnh cũ.
 - Phạm vi: toàn bộ chi nhánh; chọn nhiều chi nhánh; hoặc chọn các phòng ở nhiều chi nhánh. Lọc phòng theo chi nhánh và loại phòng không làm mất lựa chọn ở chi nhánh khác. Hai khung cạnh nhau gồm danh sách để chọn và các phòng đã chọn, hỗ trợ chọn tất cả kết quả lọc hoặc bỏ từng phòng.
 - Combo giờ cần số giờ bao gồm (1–744); combo dịch vụ không có số giờ. Giá dùng cùng ô nhập tiền của ứng dụng: nhập 250 → lưu 250.000 VND.

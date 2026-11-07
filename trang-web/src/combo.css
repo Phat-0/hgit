@@ -1074,3 +1074,366 @@
   margin: 0;
   text-align: initial;
 }
+/* Đầu trang hai hàng: tên trang ở trên, bộ lọc và thao tác cùng một trục bên dưới. */
+.combo-page .cm-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px 10px;
+}
+.combo-page .cm-header > h1 {
+  grid-column: 1/-1;
+  margin: 0 0 3px;
+  line-height: 1.4;
+}
+.combo-page .cm-header .cm-tools {
+  order: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.combo-page .cm-tools > .lp-range-control {
+  flex: 0 0 auto;
+}
+.combo-page .cm-tools .lp-range-button {
+  height: 40px;
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: 13px;
+  border-radius: 9px;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+.combo-page .cm-tools > select {
+  height: 40px;
+  max-width: 170px;
+  min-width: 110px;
+  flex: 1;
+}
+.combo-page .cm-search {
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+.combo-page .cm-search input {
+  width: 80px;
+}
+.combo-page .cm-search:focus-within input,
+.combo-page .cm-search:has(input:not(:placeholder-shown)) input {
+  width: 145px;
+}
+.combo-page .cm-list-actions {
+  align-items: center;
+  gap: 8px;
+}
+.combo-page .cm-list-actions select,
+.combo-page .cm-list-actions .cm-refresh,
+.combo-page .cm-header > .cm-primary {
+  height: 40px;
+  box-sizing: border-box;
+  margin: 0;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0 12px;
+}
+.combo-page .cm-list-actions select {
+  max-width: 155px;
+}
+/* Cùng kích thước và đường căn cho form tạo mới/chỉnh sửa. */
+.cm-create-dialog .cm-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+  align-items: start;
+}
+.cm-create-dialog .cm-row {
+  grid-template-columns: 105px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  min-height: 40px;
+  margin: 0;
+}
+.cm-create-dialog .cm-row > span {
+  padding-top: 10px;
+  line-height: 20px;
+  font-size: 13px;
+  min-width: 0;
+}
+.cm-create-dialog .cm-row > input,
+.cm-create-dialog .cm-row > select {
+  height: 40px;
+  box-sizing: border-box;
+  font-size: 13px;
+  padding: 0 10px;
+  line-height: normal;
+}
+.cm-create-dialog .cm-row > textarea {
+  box-sizing: border-box;
+  min-height: 82px;
+  padding: 10px;
+  line-height: 1.5;
+  font-size: 13px;
+}
+.cm-create-dialog .cm-date-range .lp-range-button {
+  height: 40px;
+  min-height: 40px;
+  box-sizing: border-box;
+}
+.cm-create-dialog .cm-time-range > div {
+  height: 40px;
+  align-items: center;
+}
+.cm-create-dialog .cm-time-range input {
+  height: 40px;
+  box-sizing: border-box;
+}
+.cm-create-dialog .cm-row.cm-form-image {
+  grid-row: auto;
+}
+.cm-create-dialog .cm-form-image .cm-preview {
+  height: 66px;
+  width: 90px;
+}
+.cm-create-dialog .cm-form-image .cm-upload {
+  align-items: center;
+  min-width: 0;
+}
+.cm-create-dialog .cm-form-image .cm-upload > small {
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.cm-create-dialog .cm-service-note > small {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  line-height: 1.5;
+  color: #9c8ca8;
+}
+.cm-create-dialog .cm-branch-area {
+  grid-column: 1/-1;
+}
+.cm-create-dialog .cm-branch-area .cm-checks {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.cm-dialog > header .cm-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-shrink: 0;
+}
+.cm-dialog > header .cm-title-actions > button {
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: #f2eaf9;
+  color: #816391;
+  cursor: pointer;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  margin: 0;
+  font-size: 24px;
+  line-height: 1;
+}
+.cm-view-dialog > header {
+  gap: 18px;
+  align-items: center;
+}
+.cm-view-dialog > header > h2 {
+  font-size: 20px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.cm-view-dialog .cm-header-price {
+  font-size: 21px;
+  color: #8750c4;
+  white-space: nowrap;
+}
+.cm-view-dialog .cm-detail-centered {
+  padding: 18px 22px 22px;
+}
+.cm-view-dialog .cm-detail-images {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  border: 1px solid #e4d8f1;
+  border-radius: 12px;
+  background: linear-gradient(130deg, #fff9, #eee2fa99);
+  overflow: hidden;
+  min-height: 180px;
+}
+.cm-view-dialog .cm-image-button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 200px;
+  padding: 10px;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+.cm-view-dialog .cm-image-button img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+}
+.cm-view-dialog .cm-image-button > span {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #fffd;
+  color: #8c70a3;
+  font-size: 11px;
+}
+.cm-view-dialog .cm-image-empty {
+  font-size: 13px;
+  color: #a18bae;
+  padding: 40px;
+}
+.cm-view-dialog .cm-detail-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+}
+.cm-view-dialog .cm-icon-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cm-view-dialog .cm-icon-actions button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #d7c4e9;
+  border-radius: 9px;
+  background: #fffc;
+  color: #8756b5;
+  cursor: pointer;
+}
+.cm-view-dialog .cm-icon-actions button svg {
+  display: block;
+}
+.cm-view-dialog .cm-icon-actions button.cm-danger {
+  color: #d05c78;
+}
+.cm-view-dialog .cm-detail dl.cm-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 22px;
+  margin: 0;
+  padding-top: 15px;
+  clear: none;
+}
+.cm-view-dialog .cm-info-grid > div:not(.cm-validity) {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  min-width: 0;
+}
+.cm-view-dialog .cm-info-grid .cm-validity {
+  grid-column: 1/-1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+.cm-view-dialog .cm-validity > div {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+}
+.cm-view-dialog .cm-info-grid .cm-info-description {
+  grid-column: 1/-1;
+}
+.cm-view-dialog .cm-info-description dd {
+  white-space: pre-wrap;
+  max-height: 130px;
+}
+@media (max-width: 1200px) {
+  .combo-page .cm-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .combo-page .cm-header .cm-tools {
+    grid-column: 1/-1;
+    flex-wrap: wrap;
+  }
+  .combo-page .cm-header .cm-tools > select {
+    flex: 0 1 190px;
+  }
+  .combo-page .cm-header > .cm-primary {
+    justify-self: end;
+  }
+}
+@media (max-width: 760px) {
+  .cm-create-dialog .cm-fields {
+    grid-template-columns: 1fr;
+  }
+  .cm-create-dialog .cm-branch-area .cm-checks {
+    grid-template-columns: 1fr;
+  }
+  .cm-create-dialog .cm-form-description {
+    grid-column: auto;
+  }
+  .cm-view-dialog .cm-detail dl.cm-info-grid {
+    grid-template-columns: 1fr;
+  }
+  .cm-view-dialog .cm-header-price {
+    font-size: 17px;
+  }
+  .cm-view-dialog > header > h2 {
+    font-size: 18px;
+  }
+  .cm-dialog > header .cm-title-actions {
+    gap: 9px;
+  }
+  .cm-view-dialog .cm-validity > div {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .cm-view-dialog .cm-info-grid .cm-validity {
+    gap: 12px;
+  }
+  .combo-page .cm-header .cm-tools {
+    gap: 8px;
+  }
+  .combo-page .cm-header .cm-search:focus-within input {
+    width: 125px;
+  }
+  .cm-view-dialog .cm-image-button {
+    height: 170px;
+  }
+}
+@media (max-width: 420px) {
+  .cm-create-dialog .cm-row {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  .cm-create-dialog .cm-row > span {
+    padding-top: 0;
+  }
+  .cm-view-dialog > header {
+    flex-wrap: wrap;
+  }
+  .cm-view-dialog > header .cm-title-actions {
+    margin-left: auto;
+  }
+}
