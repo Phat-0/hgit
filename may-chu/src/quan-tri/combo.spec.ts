@@ -26,7 +26,7 @@ function setup(failInsert = false) {
     kiemTraQuanTri: async () => {},
   } as unknown as QuanTriService);
   const calls: string[] = [];
-  const remove = vi.fn(async () => ({ error: null })),
+  const remove = vi.fn(async (_keys?: string[]) => ({ error: null })),
     upload = vi.fn(async () => ({ error: null }));
   Object.assign(s, {
     storage: () => ({ remove, upload }),
@@ -34,6 +34,8 @@ function setup(failInsert = false) {
       end: async () => {},
       query: async (sql: string) => {
         calls.push(sql);
+        if (sql.startsWith('SELECT dv.homestay_id'))
+          return { rowCount: 0, rows: [] };
         if (sql.startsWith('INSERT INTO public.combo(') && failInsert)
           throw Error('Lỗi ghi DB');
         return {
@@ -108,5 +110,65 @@ describe('Combo: dữ liệu và quyền', () => {
     await expect(s.save(id, null, valid, png)).rejects.toThrow('Lỗi ghi DB');
     expect(calls.at(-1)).toBe('ROLLBACK');
     expect(remove).toHaveBeenCalledOnce();
+  });
+});
+
+describe('Combo nhiều ảnh', () => {
+  it('tạo nhiều tệp trong một transaction', async () => {
+    const { s, upload, calls } = setup();
+    await s.save(id, null, valid, [png, png, png]);
+    expect(upload).toHaveBeenCalledTimes(3);
+    expect(calls.at(-1)).toBe('COMMIT');
+  });
+  it('không upload nếu vượt giới hạn tám ảnh', async () => {
+    const { s, upload } = setup();
+    await expect(s.save(id, null, valid, Array(9).fill(png))).rejects.toThrow(
+      'tối đa 8',
+    );
+    expect(upload).not.toHaveBeenCalled();
+  });
+  it('không nhận khóa ảnh từ combo khác', async () => {
+    const { s, upload, calls } = setup();
+    await expect(
+      s.save(id, id, { ...valid, giu_anh: ['combo-khac/anh.png'] }, [png]),
+    ).rejects.toThrow('không thuộc combo');
+    expect(upload).not.toHaveBeenCalled();
+    expect(calls.at(-1)).toBe('ROLLBACK');
+  });
+  it('dọn các ảnh đã upload khi tệp tiếp theo tải thất bại', async () => {
+    const { s, upload, remove, calls } = setup();
+    upload.mockResolvedValueOnce({ error: null });
+    upload.mockResolvedValueOnce({
+      error: { message: 'Tải ảnh lỗi' },
+    } as never);
+    await expect(s.save(id, null, valid, [png, png])).rejects.toThrow(
+      'Tải ảnh lỗi',
+    );
+    expect(remove).toHaveBeenCalledOnce();
+    expect(remove.mock.calls[0][0]).toHaveLength(1);
+    expect(calls.at(-1)).toBe('ROLLBACK');
+  });
+  it('giữ ảnh cũ khi chỉ sửa thông tin, không cần tải lại tệp', async () => {
+    const { s, upload, calls } = setup();
+    const keys = [id + '/a.png', id + '/b.png'];
+    Object.assign(s, {
+      db: async () => ({
+        end: async () => {},
+        query: async (sql: string) => {
+          calls.push(sql);
+          if (sql.startsWith('SELECT dv.homestay_id'))
+            return { rowCount: 0, rows: [] };
+          return {
+            rowCount: 1,
+            rows: sql.startsWith('SELECT anh_dai_dien')
+              ? [{ anh_dai_dien: keys[0], anh_combo: keys }]
+              : [{ id }],
+          };
+        },
+      }),
+    });
+    await s.save(id, id, valid);
+    expect(upload).not.toHaveBeenCalled();
+    expect(calls.at(-1)).toBe('COMMIT');
   });
 });

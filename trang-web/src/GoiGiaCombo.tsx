@@ -9,6 +9,7 @@ import {
 import type { FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { RangePicker } from "./RangePicker";
+import ChonGio from "./ChonGio";
 import AnhPhongNoi from "./AnhPhongNoi";
 import NhapTien from "./NhapTien";
 import "./combo.css";
@@ -22,7 +23,9 @@ type Room = {
   ten_loai: string;
 };
 type Scope = "toan_he_thong" | "chi_nhanh" | "phong";
+type ComboImage = { key: string; url: string | null };
 type Combo = {
+  anh: ComboImage[];
   id: string;
   ten_combo: string;
   gia_combo: number | string;
@@ -153,8 +156,10 @@ export default function GoiGiaCombo({ token }: { token: string }) {
     >(null),
     [editing, setEditing] = useState<Combo | null>(null),
     [draft, setDraft] = useState<Draft>(blank),
-    [file, setFile] = useState<File | null>(null),
-    [preview, setPreview] = useState(""),
+    [files, setFiles] = useState<File[]>([]),
+    [keptImages, setKeptImages] = useState<ComboImage[]>([]),
+    [lightboxUrl, setLightboxUrl] = useState(""),
+    [previews, setPreviews] = useState<string[]>([]),
     [busy, setBusy] = useState(false),
     [formError, setFormError] = useState(""),
     [hourly, setHourly] = useState(false),
@@ -189,14 +194,10 @@ export default function GoiGiaCombo({ token }: { token: string }) {
     return () => clearInterval(timer);
   }, [load]);
   useEffect(() => {
-    if (!file) {
-      setPreview("");
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    setPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
+    const urls = files.map((file) => URL.createObjectURL(file));
+    setPreviews(urls);
+    return () => urls.forEach((url) => URL.revokeObjectURL(url));
+  }, [files]);
   useEffect(() => {
     if (!modal) return;
     trigger.current = document.activeElement as HTMLElement;
@@ -204,7 +205,8 @@ export default function GoiGiaCombo({ token }: { token: string }) {
     document.body.style.overflow = "hidden";
     dialog.current?.querySelector<HTMLElement>("button,input")?.focus();
     const key = (e: KeyboardEvent) => {
-      if (document.querySelector(".lp-range-portal,.anh-phong-noi")) return;
+      if (document.querySelector(".lp-range-portal,.anh-phong-noi,.cg-portal"))
+        return;
       if (e.key === "Escape" && !busy) setModal(null);
       if (e.key === "Tab" && dialog.current) {
         const els = Array.from(
@@ -336,13 +338,14 @@ export default function GoiGiaCombo({ token }: { token: string }) {
     setHourly(!!c?.so_gio_bao_gom);
     setRoomBranch("");
     setRoomType("");
-    setFile(null);
+    setFiles([]);
+    setKeptImages(c?.anh ?? []);
     setFormError("");
     setModal(mode);
   }
   async function save(e: FormEvent) {
     e.preventDefault();
-    if (modal === "create" && !file) {
+    if (!files.length && !keptImages.length) {
       setFormError("Vui lòng chọn tệp ảnh combo.");
       return;
     }
@@ -371,13 +374,14 @@ export default function GoiGiaCombo({ token }: { token: string }) {
         "du_lieu",
         JSON.stringify({
           ...draft,
+          giu_anh: keptImages.map((image) => image.key),
           gia_combo: Number(draft.gia_combo),
           so_gio_bao_gom: hourly ? Number(draft.so_gio_bao_gom) : null,
           bat_dau: start.toISOString(),
           ket_thuc: end.toISOString(),
         }),
       );
-      if (file) body.append("file", file);
+      files.forEach((file) => body.append("files", file));
       const result = await request<{ id: string }>(
         token,
         editing ? "/" + editing.id : "",
@@ -420,7 +424,7 @@ export default function GoiGiaCombo({ token }: { token: string }) {
           <RangePicker
             start={filterStart}
             end={filterEnd}
-            placeholder={dateFiltered ? undefined : "Từ ngày – Đến ngày"}
+
             onChange={(a, b) => {
               setFilterStart(a);
               setFilterEnd(b);
@@ -603,20 +607,32 @@ export default function GoiGiaCombo({ token }: { token: string }) {
                     className="cm-detail cm-detail-centered"
                   >
                     <div className="cm-detail-images">
-                      {active.anh_dai_dien ? (
+                      {(active.anh?.length
+                        ? active.anh
+                            .map((image) => image.url)
+                            .filter((url): url is string => !!url)
+                        : active.anh_dai_dien
+                          ? [active.anh_dai_dien]
+                          : []
+                      ).map((url, index) => (
                         <button
                           type="button"
+                          key={url}
                           className="cm-image-button"
-                          aria-label="Phóng to ảnh combo"
-                          onClick={() => setImageOpen(true)}
+                          aria-label={"Phóng to ảnh combo " + (index + 1)}
+                          onClick={() => {
+                            setLightboxUrl(url);
+                            setImageOpen(true);
+                          }}
                         >
                           <img
-                            src={active.anh_dai_dien}
-                            alt={active.ten_combo}
+                            src={url}
+                            alt={active.ten_combo + " · ảnh " + (index + 1)}
                           />
                           <span>Nhấn để xem ảnh</span>
                         </button>
-                      ) : (
+                      ))}
+                      {!active.anh?.length && !active.anh_dai_dien && (
                         <div className="cm-image-empty">
                           Chưa có ảnh chương trình
                         </div>
@@ -1063,30 +1079,26 @@ export default function GoiGiaCombo({ token }: { token: string }) {
                       <div>
                         <label>
                           Từ
-                          <input
-                            aria-label="Giờ bắt đầu áp dụng"
-                            type="time"
-                            required
+                          <ChonGio
+                            label="Giờ bắt đầu áp dụng"
                             value={draft.bat_dau.slice(11, 16)}
-                            onChange={(e) =>
+                            onChange={(value) =>
                               setDraft({
                                 ...draft,
                                 bat_dau:
                                   (draft.bat_dau.slice(0, 10) || today) +
                                   "T" +
-                                  e.target.value,
+                                  value,
                               })
                             }
                           />
                         </label>
                         <label>
                           Đến
-                          <input
-                            aria-label="Giờ kết thúc áp dụng"
-                            type="time"
-                            required
+                          <ChonGio
+                            label="Giờ kết thúc áp dụng"
                             value={draft.ket_thuc.slice(11, 16)}
-                            onChange={(e) =>
+                            onChange={(value) =>
                               setDraft({
                                 ...draft,
                                 ket_thuc:
@@ -1094,7 +1106,7 @@ export default function GoiGiaCombo({ token }: { token: string }) {
                                     draft.bat_dau.slice(0, 10) ||
                                     today) +
                                   "T" +
-                                  e.target.value,
+                                  value,
                               })
                             }
                           />
@@ -1118,47 +1130,110 @@ export default function GoiGiaCombo({ token }: { token: string }) {
                       <span>
                         Ảnh <b>*</b>
                       </span>
-                      <div className="cm-upload">
-                        <div className="cm-preview">
-                          {preview || editing?.anh_dai_dien ? (
-                            <img
-                              src={preview || editing!.anh_dai_dien!}
-                              alt="Ảnh xem trước"
-                            />
-                          ) : (
-                            <span>Chưa chọn ảnh</span>
-                          )}
-                        </div>
-                        <label className="cm-file-label">
-                          Chọn tệp ảnh
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            onChange={(e) => {
-                              const f = e.target.files?.[0];
-                              if (!f) return;
-                              if (
-                                ![
-                                  "image/jpeg",
-                                  "image/png",
-                                  "image/webp",
-                                ].includes(f.type) ||
-                                f.size > 5242880
-                              ) {
-                                setFormError(
-                                  "Chọn ảnh JPG, PNG hoặc WebP tối đa 5 MB.",
-                                );
+                      <div className="cm-multi-upload">
+                        <div className="cm-upload-toolbar">
+                          <label className="cm-file-label">
+                            + Thêm ảnh
+                            <input
+                              type="file"
+                              multiple
+                              accept="image/jpeg,image/png,image/webp"
+                              onChange={(e) => {
+                                const next = Array.from(e.target.files || []);
                                 e.target.value = "";
-                                return;
-                              }
-                              setFile(f);
-                              setFormError("");
-                            }}
-                          />
-                        </label>
-                        <small>
-                          {file?.name || "JPG, PNG, WebP · tối đa 5 MB"}
-                        </small>
+                                if (
+                                  next.some(
+                                    (f) =>
+                                      ![
+                                        "image/jpeg",
+                                        "image/png",
+                                        "image/webp",
+                                      ].includes(f.type) || f.size > 5242880,
+                                  )
+                                ) {
+                                  setFormError(
+                                    "Chọn JPG, PNG hoặc WebP tối đa 5 MB mỗi ảnh.",
+                                  );
+                                  return;
+                                }
+                                if (
+                                  next.length +
+                                    files.length +
+                                    keptImages.length >
+                                  8
+                                ) {
+                                  setFormError("Mỗi combo tối đa 8 ảnh.");
+                                  return;
+                                }
+                                setFiles((v) => [...v, ...next]);
+                                setFormError("");
+                              }}
+                            />
+                          </label>
+                          <small>
+                            {keptImages.length + files.length}/8 ảnh · tối đa 5
+                            MB/ảnh
+                          </small>
+                        </div>
+                        <div className="cm-image-previews">
+                          {keptImages.map((image, i) => (
+                            <div key={image.key}>
+                              {image.url && (
+                                <img
+                                  src={image.url}
+                                  alt={"Ảnh đã lưu " + (i + 1)}
+                                />
+                              )}
+                              <button
+                                type="button"
+                                aria-label={"Bỏ ảnh đã lưu " + (i + 1)}
+                                onClick={() =>
+                                  setKeptImages((v) =>
+                                    v.filter((x) => x.key !== image.key),
+                                  )
+                                }
+                              >
+                                ×
+                              </button>
+                              <small>{i === 0 ? "Ảnh bìa" : "Đã lưu"}</small>
+                              {i > 0 && (
+                                <button
+                                  type="button"
+                                  className="cm-set-cover"
+                                  onClick={() =>
+                                    setKeptImages((v) => [
+                                      image,
+                                      ...v.filter((x) => x.key !== image.key),
+                                    ])
+                                  }
+                                >
+                                  Đặt bìa
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          {previews.map((url, i) => (
+                            <div key={url}>
+                              <img src={url} alt={"Ảnh mới " + (i + 1)} />
+                              <button
+                                type="button"
+                                aria-label={"Bỏ ảnh mới " + (i + 1)}
+                                onClick={() =>
+                                  setFiles((v) =>
+                                    v.filter((_, index) => index !== i),
+                                  )
+                                }
+                              >
+                                ×
+                              </button>
+                              <small>
+                                {!keptImages.length && i === 0
+                                  ? "Ảnh bìa"
+                                  : "Ảnh mới"}
+                              </small>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                     <small className="cm-time-hint">
@@ -1193,9 +1268,9 @@ export default function GoiGiaCombo({ token }: { token: string }) {
           </div>,
           document.body,
         )}
-      {imageOpen && active?.anh_dai_dien && (
+      {imageOpen && lightboxUrl && active && (
         <AnhPhongNoi
-          url={active.anh_dai_dien}
+          url={lightboxUrl}
           title={active.ten_combo}
           label="Xem ảnh combo"
           onClose={() => setImageOpen(false)}

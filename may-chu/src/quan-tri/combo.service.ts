@@ -48,7 +48,7 @@ export class ComboService {
     const code = (e as { code?: string }).code;
     if (['42P01', '42703'].includes(code || ''))
       throw new ServiceUnavailableException(
-        'Chưa đồng bộ Combo. Chạy npm.cmd run db:dong-bo-combo trong may-chu.',
+        'Chưa đồng bộ Combo. Chạy npm.cmd run db:dong-bo-combo và npm.cmd run db:anh-combo trong may-chu.',
       );
     if (code === '23503' || code === '23001')
       throw new ConflictException(
@@ -73,12 +73,21 @@ export class ComboService {
       );
       const rows = await Promise.all(
         combos.rows.map(async (row) => {
-          if (!row.anh_dai_dien) return row;
-          const { data, error } = await this.storage().createSignedUrl(
-            String(row.anh_dai_dien),
-            3600,
+          const keys: string[] = row.anh_combo?.length
+            ? row.anh_combo
+            : row.anh_dai_dien
+              ? [row.anh_dai_dien]
+              : [];
+          const images = await Promise.all(
+            keys.map(async (key) => {
+              const { data, error } = await this.storage().createSignedUrl(
+                key,
+                3600,
+              );
+              return { key, url: error ? null : data.signedUrl };
+            }),
           );
-          return { ...row, anh_dai_dien: error ? null : data.signedUrl };
+          return { ...row, anh: images, anh_dai_dien: images[0]?.url ?? null };
         }),
       );
       return { combos: rows, chi_nhanh: branches.rows, phong: rooms.rows };
@@ -122,26 +131,40 @@ export class ComboService {
       throw new BadRequestException('Nội dung tệp không đúng định dạng ảnh');
     return entry[0];
   }
-  async save(uid: string, id: string | null, body: unknown, file?: ImageFile) {
+  async save(
+    uid: string,
+    id: string | null,
+    body: unknown,
+    files?: ImageFile | ImageFile[],
+  ) {
     await this.admin.kiemTraQuanTri(uid);
     if (id) this.id(id);
     const x = docCombo(body);
-    if (!id && !file) throw new BadRequestException('Vui lòng chọn ảnh combo');
-    const ext = file ? this.image(file) : null,
+    const incoming = files ? (Array.isArray(files) ? files : [files]) : [];
+    if (incoming.length > 8)
+      throw new BadRequestException('Mỗi combo tối đa 8 ảnh');
+    if (!id && !incoming.length)
+      throw new BadRequestException('Vui lòng chọn ảnh combo');
+    const extensions = incoming.map((file) => this.image(file)),
       c = await this.db();
-    let uploaded: string | null = null,
-      oldImage: string | null = null,
+    const uploaded: string[] = [];
+    let oldImages: string[] = [],
+      removed: string[] = [],
       committed = false;
     try {
       await c.query('BEGIN');
       const comboId = id || randomUUID();
       if (id) {
         const old = await c.query(
-          'SELECT anh_dai_dien FROM public.combo WHERE id=$1 FOR UPDATE',
+          'SELECT anh_dai_dien,anh_combo FROM public.combo WHERE id=$1 FOR UPDATE',
           [id],
         );
         if (!old.rowCount) throw new NotFoundException('Không tìm thấy combo');
-        oldImage = old.rows[0].anh_dai_dien;
+        oldImages = old.rows[0].anh_combo?.length
+          ? old.rows[0].anh_combo
+          : old.rows[0].anh_dai_dien
+            ? [old.rows[0].anh_dai_dien]
+            : [];
       }
       if (x.branches.length) {
         const r = await c.query(
@@ -186,9 +209,16 @@ export class ComboService {
             );
         }
       }
-      let image = oldImage;
-      if (file) {
-        const key = comboId + '/' + randomUUID() + '.' + ext;
+      const kept = [...new Set(x.keepImages ?? oldImages)];
+      if (kept.some((key) => !oldImages.includes(key)))
+        throw new BadRequestException('Ảnh giữ lại không thuộc combo này');
+      if (kept.length + incoming.length > 8)
+        throw new BadRequestException('Mỗi combo tối đa 8 ảnh');
+      if (!kept.length && !incoming.length)
+        throw new BadRequestException('Combo cần ít nhất một ảnh');
+      for (let i = 0; i < incoming.length; i++) {
+        const file = incoming[i],
+          key = comboId + '/' + randomUUID() + '.' + extensions[i];
         const { error } = await this.storage().upload(key, file.buffer, {
           contentType: file.mimetype,
           upsert: false,
@@ -197,9 +227,10 @@ export class ComboService {
           throw new BadRequestException(
             'Không lưu được tệp ảnh: ' + error.message,
           );
-        uploaded = key;
-        image = key;
+        uploaded.push(key);
       }
+      const images = [...kept, ...uploaded];
+      removed = oldImages.filter((key) => !kept.includes(key));
       const args = [
         comboId,
         x.branches.length === 1 ? x.branches[0] : null,
@@ -211,10 +242,11 @@ export class ComboService {
         x.start,
         x.end,
         x.scope,
-        image,
+        images[0],
+        images,
       ];
       await c.query(
-        `INSERT INTO public.combo(id,homestay_id,ten_combo,mo_ta,gia_combo,so_gio_bao_gom,trang_thai,bat_dau,ket_thuc,pham_vi,anh_dai_dien) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT(id) DO UPDATE SET homestay_id=$2,ten_combo=$3,mo_ta=$4,gia_combo=$5,so_gio_bao_gom=$6,trang_thai=$7,bat_dau=$8,ket_thuc=$9,pham_vi=$10,anh_dai_dien=$11`,
+        `INSERT INTO public.combo(id,homestay_id,ten_combo,mo_ta,gia_combo,so_gio_bao_gom,trang_thai,bat_dau,ket_thuc,pham_vi,anh_dai_dien,anh_combo) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::text[]) ON CONFLICT(id) DO UPDATE SET homestay_id=$2,ten_combo=$3,mo_ta=$4,gia_combo=$5,so_gio_bao_gom=$6,trang_thai=$7,bat_dau=$8,ket_thuc=$9,pham_vi=$10,anh_dai_dien=$11,anh_combo=$12::text[]`,
         args,
       );
       await c.query('DELETE FROM public.combo_chi_nhanh WHERE combo_id=$1', [
@@ -236,16 +268,16 @@ export class ComboService {
       await c.query('COMMIT');
       committed = true;
       // Dọn ảnh cũ sau commit; lỗi dọn không làm client hiểu nhầm rằng lưu thất bại.
-      if (uploaded && oldImage)
+      if (removed.length)
         await this.storage()
-          .remove([oldImage])
+          .remove(removed)
           .catch(() => {});
       return { id: comboId };
     } catch (e) {
       if (!committed) await c.query('ROLLBACK').catch(() => {});
-      if (uploaded && !committed)
+      if (uploaded.length && !committed)
         await this.storage()
-          .remove([uploaded])
+          .remove(uploaded)
           .catch(() => {});
       this.failure(e);
     } finally {
@@ -258,13 +290,17 @@ export class ComboService {
     const c = await this.db();
     try {
       const r = await c.query(
-        'DELETE FROM public.combo WHERE id=$1 RETURNING anh_dai_dien',
+        'DELETE FROM public.combo WHERE id=$1 RETURNING anh_dai_dien,anh_combo',
         [id],
       );
       if (!r.rowCount) throw new NotFoundException('Không tìm thấy combo');
       if (r.rows[0].anh_dai_dien) {
         try {
-          await this.storage().remove([r.rows[0].anh_dai_dien]);
+          await this.storage().remove(
+            r.rows[0].anh_combo?.length
+              ? r.rows[0].anh_combo
+              : [r.rows[0].anh_dai_dien],
+          );
         } catch {
           /* Dữ liệu đã xóa; không báo thất bại vì lỗi dọn Storage. */
         }

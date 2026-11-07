@@ -1437,3 +1437,19 @@
     margin-left: auto;
   }
 }
+/* Thanh lọc tự xuống hàng, không co mất ô tìm kiếm. */
+.combo-page .cm-header{display:flex;flex-wrap:wrap;gap:12px 10px;align-items:center}
+.combo-page .cm-header>h1{flex:0 0 100%;margin-bottom:2px}
+.combo-page .cm-header .cm-tools{display:flex;flex:1 1 460px;flex-wrap:wrap;gap:8px;min-width:0}
+.combo-page .cm-header .cm-search{display:flex!important;visibility:visible!important;opacity:1!important;flex:1 0 150px;min-width:150px;height:40px}
+.combo-page .cm-header .cm-search input{display:block!important;width:100%!important;min-width:0!important;flex:1;opacity:1!important;visibility:visible!important}
+.combo-page .cm-tools>.lp-range-control{flex:0 0 auto;max-width:100%}
+.combo-page .cm-tools .lp-range-button{font-size:12px;padding:0 8px;min-width:0;gap:5px;max-width:100%}
+.combo-page .cm-header .cm-tools>select{flex:0 1 165px;min-width:125px}
+.cm-create-dialog .cm-time-range .cg-trigger{flex:1;min-width:0;height:40px}
+.cm-create-dialog .cm-form-image .cm-multi-upload{min-width:0}
+.cm-upload-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.cm-upload-toolbar small{font-size:11px;color:#9b88a7}
+.cm-image-previews{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.cm-image-previews>div{position:relative;width:82px;min-height:80px;flex-shrink:0;border:1px solid #e4d7f0;border-radius:8px;overflow:hidden;background:#faf7fe}.cm-image-previews img{display:block;width:82px;height:58px;object-fit:cover}.cm-image-previews>div>button:not(.cm-set-cover){position:absolute;top:2px;right:2px;border:0;background:#fffd;color:#b34f75;border-radius:50%;width:20px;height:20px;padding:0;cursor:pointer;line-height:20px;font-size:16px}.cm-image-previews small{display:block;font-size:10px;color:#9b80af;text-align:center;padding:3px}.cm-image-previews .cm-set-cover{display:block;width:100%;border:0;background:#efe3fc;color:#8d57b9;font-size:10px;padding:3px;cursor:pointer}
+.cm-view-dialog .cm-detail-images{justify-content:flex-start;gap:12px;padding:10px;box-sizing:border-box;overflow-x:auto;min-height:150px;overscroll-behavior-x:contain}
+.cm-view-dialog .cm-detail-images .cm-image-button{width:220px;flex:0 0 220px;height:170px;border:1px solid #e1d3ee;border-radius:9px;background:#fff9}
+.cm-view-dialog .cm-detail-images .cm-image-button:only-child{width:100%;flex-basis:100%}

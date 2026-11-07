@@ -1,5 +1,5 @@
 /* Portal nổi trên mọi hộp cuộn; giới hạn theo viewport thay vì khung form. */
-body>.lp-range-dual.lp-range-portal{position:fixed!important;right:auto!important;z-index:10000!important;box-sizing:border-box;width:min(510px,calc(100vw - 24px))!important;max-width:calc(100vw - 24px)!important;max-height:calc(100dvh - 24px);overflow:auto;overscroll-behavior:contain}
+body>.lp-range-dual.lp-range-portal{position:fixed!important;right:auto!important;z-index:15000!important;box-sizing:border-box;width:min(510px,calc(100vw - 24px))!important;max-width:calc(100vw - 24px)!important;max-height:calc(100dvh - 24px);overflow:auto;overscroll-behavior:contain}
 .lp-range-portal button{cursor:pointer}
 .lp-range-portal .lp-calendar-month{min-width:0}
 @media(max-width:540px){body>.lp-range-portal .lp-calendar-pair{display:grid;grid-template-columns:1fr;gap:16px}}

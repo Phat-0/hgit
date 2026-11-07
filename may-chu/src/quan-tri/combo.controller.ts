@@ -8,11 +8,11 @@ import {
   Post,
   Put,
   Req,
-  UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import type { Request } from 'express';
 import { SupabaseAuthGuard } from '../xac-thuc/supabase-auth.guard.js';
 import { ComboService } from './combo.service.js';
@@ -24,8 +24,8 @@ type ImageFile = {
   originalname: string;
 };
 const upload = () =>
-  FileInterceptor('file', {
-    limits: { fileSize: 5242880, files: 1, fields: 1, fieldSize: 200000 },
+  FilesInterceptor('files', 8, {
+    limits: { fileSize: 5242880, files: 8, fields: 1, fieldSize: 200000 },
   });
 function payload(value: unknown): unknown {
   if (typeof value !== 'string')
@@ -46,17 +46,17 @@ export class ComboController {
   @Post() @UseInterceptors(upload()) create(
     @Req() req: AuthRequest,
     @Body('du_lieu') value: unknown,
-    @UploadedFile() file?: ImageFile,
+    @UploadedFiles() files?: ImageFile[],
   ) {
-    return this.service.save(req.nguoiDung.id, null, payload(value), file);
+    return this.service.save(req.nguoiDung.id, null, payload(value), files);
   }
   @Put(':id') @UseInterceptors(upload()) update(
     @Req() req: AuthRequest,
     @Param('id') id: string,
     @Body('du_lieu') value: unknown,
-    @UploadedFile() file?: ImageFile,
+    @UploadedFiles() files?: ImageFile[],
   ) {
-    return this.service.save(req.nguoiDung.id, id, payload(value), file);
+    return this.service.save(req.nguoiDung.id, id, payload(value), files);
   }
   @Delete(':id') remove(@Req() req: AuthRequest, @Param('id') id: string) {
     return this.service.remove(req.nguoiDung.id, id);

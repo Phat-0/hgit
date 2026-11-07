@@ -6,6 +6,7 @@ export function docCombo(body: unknown) {
     throw new BadRequestException('Dữ liệu combo không hợp lệ');
   const x = body as Record<string, unknown>;
   const allowed = [
+    'giu_anh',
     'ten_combo',
     'gia_combo',
     'mo_ta',
@@ -75,7 +76,16 @@ export function docCombo(body: unknown) {
     throw new BadRequestException(
       'Thời gian kết thúc phải sau thời gian bắt đầu',
     );
+  const keepImages = x.giu_anh === undefined ? undefined : x.giu_anh;
+  if (
+    keepImages !== undefined &&
+    (!Array.isArray(keepImages) ||
+      keepImages.length > 8 ||
+      keepImages.some((v) => typeof v !== 'string' || v.length > 512))
+  )
+    throw new BadRequestException('Danh sách ảnh giữ lại không hợp lệ');
   return {
+    keepImages: keepImages as string[] | undefined,
     name,
     description,
     price,

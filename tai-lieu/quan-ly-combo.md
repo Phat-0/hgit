@@ -7,6 +7,7 @@ cd D:\DoAnTotNghiep
 git pull origin main
 cd may-chu
 npm.cmd run db:dong-bo-combo
+npm.cmd run db:anh-combo
 npm.cmd run start:dev
 ```
 
@@ -18,15 +19,15 @@ Trong `may-chu/.env`, cấu hình SUPABASE_URL và SUPABASE_SERVICE_ROLE_KEY đ�
 
 ## Sử dụng
 
-Nền qt-layout dùng gradient tím bóng chung; thẻ nội dung vẫn trắng. Tên trang Combo ở hàng trên, bộ lọc khoảng ngày, tìm kiếm, chi nhánh và thao tác được căn cùng hàng bên dưới. Khi chưa chọn ngày, danh sách vẫn hiển thị toàn bộ thời gian.
+Nền qt-layout dùng gradient tím bóng chung; thẻ nội dung vẫn trắng. Tên trang Combo ở hàng trên, bộ lọc khoảng ngày, tìm kiếm, chi nhánh và thao tác được căn cùng hàng bên dưới. Bộ lọc hiển thị sẵn ngày; trước khi chọn lại khoảng ngày, danh sách vẫn hiển thị toàn bộ thời gian.
 
 - Danh sách chỉ còn Combo. Màn hình máy tính có bốn thẻ ảnh mỗi hàng; màn hình hẹp tự giảm cột. Tên và giá nằm trên ảnh. Biểu tượng xanh khi đang bán và trong thời gian áp dụng, đỏ khi chưa chạy, hết hạn hoặc tạm ngưng.
 - Nhấp thẻ mở hộp chi tiết giữa màn hình. Tên combo và giá nằm trên đầu cạnh nút đóng, hàng dưới dành riêng cho ảnh (nhấn để phóng to), bắt đầu/kết thúc cùng một hàng; mô tả/phạm vi dài có thanh cuộn bên trong. Có nút sửa, xóa và đóng.
 - Tìm kiếm mở rộng khi được chọn; lọc theo chi nhánh, khoảng từ ngày–đến ngày và phân loại Combo dịch vụ/Combo giờ. Phân loại nằm cạnh nút Làm mới. Bỏ lọc để xóa điều kiện chi nhánh/ngày/từ khóa.
-- Tạo/sửa bằng form hai cột, mỗi trường có nhãn trái và ô nhập phải; điện thoại chuyển một cột. Chọn tệp ảnh và xem trước; khi sửa không chọn tệp mới thì giữ ảnh cũ.
+- Tạo/sửa bằng form hai cột, mỗi trường có nhãn trái và ô nhập phải; điện thoại chuyển một cột. Chọn nhiều tệp ảnh và xem trước (tối đa 8 ảnh, mỗi ảnh 5 MB); có thể bỏ từng ảnh và đặt ảnh đã lưu làm bìa. Khi sửa không chọn tệp mới thì giữ ảnh cũ. Migration db:anh-combo chuyển ảnh bìa cũ sang danh sách ảnh mà không xóa tệp.
 - Phạm vi: toàn bộ chi nhánh; chọn nhiều chi nhánh; hoặc chọn các phòng ở nhiều chi nhánh. Lọc phòng theo chi nhánh và loại phòng không làm mất lựa chọn ở chi nhánh khác. Hai khung cạnh nhau gồm danh sách để chọn và các phòng đã chọn, hỗ trợ chọn tất cả kết quả lọc hoặc bỏ từng phòng.
 - Combo giờ cần số giờ bao gồm (1–744); combo dịch vụ không có số giờ. Giá dùng cùng ô nhập tiền của ứng dụng: nhập 250 → lưu 250.000 VND.
-- Chọn khoảng ngày bằng cùng bộ lịch của Đơn đặt phòng; giờ bắt đầu và giờ kết thúc đặt cạnh nhau. Thời gian tính theo UTC+7. Đơn phải nằm hoàn toàn trong khoảng áp dụng. Combo giờ chỉ được chọn cho đơn theo giờ. Điều kiện phòng, phạm vi và thời gian được kiểm tra lại tại backend khi tạo hoặc đổi lịch đơn.
+- Chọn khoảng ngày bằng cùng bộ lịch của Đơn đặt phòng; giờ bắt đầu và giờ kết thúc đặt cạnh nhau, bấm cả ô để mở bộ chọn Giờ/Phút và bấm ngoài để đóng. Thời gian tính theo UTC+7. Đơn phải nằm hoàn toàn trong khoảng áp dụng. Combo giờ chỉ được chọn cho đơn theo giờ. Điều kiện phòng, phạm vi và thời gian được kiểm tra lại tại backend khi tạo hoặc đổi lịch đơn.
 - Xóa cần xác nhận. Khóa ngoại chặn xóa combo đã dùng trong đơn/chi tiết dịch vụ; chọn Tạm ngưng nếu muốn ngừng bán. Giá tiền đã chốt của đơn cũ không bị đổi khi sửa giá combo.
 - Combo cũ đang gắn dịch vụ riêng của một chi nhánh không thể tự mở rộng sang chi nhánh khác.
 
