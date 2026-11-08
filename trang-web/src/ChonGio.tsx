@@ -5,10 +5,12 @@ export default function ChonGio({
   value,
   onChange,
   label,
+  step=1,
 }: {
   value: string;
   onChange: (v: string) => void;
   label: string;
+  step?: number;
 }) {
   const [open, setOpen] = useState(false),
     [position, setPosition] = useState({ top: 0, left: 0 });
@@ -110,8 +112,8 @@ export default function ChonGio({
                 <div key={name}>
                   <span>{name}</span>
                   <div>
-                    {Array.from({ length: index ? 60 : 24 }, (_, i) =>
-                      String(i).padStart(2, "0"),
+                    {Array.from({ length: index ? Math.ceil(60/step) : 24 }, (_, i) =>
+                      String(index?i*step:i).padStart(2, "0"),
                     ).map((v) => (
                       <button
                         type="button"

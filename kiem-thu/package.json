@@ -1,0 +1,7 @@
+{
+  "name":"kiem-thu-homestay",
+  "private":true,
+  "type":"module",
+  "scripts":{"test":"node trang-khach-chat.integration.mjs"},
+  "devDependencies":{"@electric-sql/pglite":"0.5.15"}
+}

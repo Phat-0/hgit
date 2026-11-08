@@ -1,0 +1,132 @@
+import 'dotenv/config';
+import { Client } from 'pg';
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+
+const version = '20261108-trang-khach-va-chat';
+if (!process.env.DATABASE_URL) {
+  console.error(
+    'Thiếu DATABASE_URL trong may-chu/.env; chưa thay đổi database.',
+  );
+  process.exit(1);
+}
+// Nạp CA trực tiếp: NODE_EXTRA_CA_CERTS chỉ có tác dụng khi Node khởi động.
+// Dùng cùng file CA với start-dev.mjs, đường dẫn độc lập thư mục terminal.
+const caUrl = new URL('../certificates/supabase-ca.crt', import.meta.url);
+let ca;
+try {
+  ca = await readFile(caUrl, 'utf8');
+  console.log('[TLS] Đang dùng CA:', fileURLToPath(caUrl));
+} catch (error) {
+  if (error?.code !== 'ENOENT') throw error;
+  console.warn(
+    '[TLS] Chưa có certificates/supabase-ca.crt; dùng CA mặc định của Node.',
+  );
+}
+const connectionUrl = new URL(process.env.DATABASE_URL);
+// pg phân tích các tùy chọn SSL trong URL sau cấu hình Client. Không để URL
+// ghi đè CA ở trên hoặc vô hiệu hóa kiểm tra chứng chỉ.
+for (const key of [
+  'ssl',
+  'sslmode',
+  'sslrootcert',
+  'sslcert',
+  'sslkey',
+  'uselibpqcompat',
+]) {
+  if (connectionUrl.searchParams.has(key)) {
+    console.error(
+      'Hãy bỏ tham số ' +
+        key +
+        ' khỏi DATABASE_URL để migration dùng CA và xác minh TLS được cấu hình trong script. Chưa thay đổi database.',
+    );
+    process.exit(1);
+  }
+}
+const client = new Client({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: true, ...(ca ? { ca } : {}) },
+  connectionTimeoutMillis: 10000,
+});
+try {
+  await client.connect();
+  await client.query('BEGIN');
+  await client.query('SELECT pg_advisory_xact_lock(20261106,2)');
+  await client.query(`CREATE TABLE IF NOT EXISTS public.migrations_ung_dung (
+    phien_ban text PRIMARY KEY,ngay_chay timestamptz NOT NULL DEFAULT now()
+  )`);
+  await client.query(
+    'ALTER TABLE public.migrations_ung_dung ENABLE ROW LEVEL SECURITY',
+  );
+  await client.query(
+    'REVOKE ALL ON public.migrations_ung_dung FROM anon,authenticated',
+  );
+  const existing = await client.query(
+    'SELECT phien_ban FROM public.migrations_ung_dung WHERE phien_ban=$1',
+    [version],
+  );
+  if (existing.rowCount) {
+    await client.query('COMMIT');
+    console.log('Migration đã được áp dụng; không chạy lại.');
+  } else {
+    const totals = () =>
+      client.query(
+        'SELECT count(*)::text AS so_don,COALESCE(sum(tien_phong),0)::text AS tien_phong,COALESCE(sum(tong_tien),0)::text AS tong_tien FROM public.dat_phong',
+      );
+    // Giữ nguyên đơn và tổng tiền trong lúc đối chiếu trước/sau.
+    await client.query(
+      'LOCK TABLE public.dat_phong IN SHARE ROW EXCLUSIVE MODE',
+    );
+    await client.query('LOCK TABLE public.combo IN SHARE ROW EXCLUSIVE MODE');
+    const comboTotals = () =>
+      client.query(
+        'SELECT count(*)::text AS so_combo,COALESCE(sum(gia_combo),0)::text AS tong_gia FROM public.combo',
+      );
+    const foreignKeys = (oids = null) =>
+      client.query(
+        "SELECT oid::text,conname,pg_get_constraintdef(oid) AS dinh_nghia FROM pg_constraint WHERE contype='f' AND confrelid='public.combo'::regclass AND ($1::oid[] IS NULL OR oid=ANY($1::oid[])) ORDER BY oid",
+        [oids],
+      );
+    const comboBefore = (await comboTotals()).rows,
+      keysBefore = (await foreignKeys()).rows;
+    const before = (await totals()).rows[0];
+    const sql = await readFile(
+      new URL(`../../co-so-du-lieu/migrations/${version}.sql`, import.meta.url),
+      'utf8',
+    );
+    await client.query(
+      sql.replace(/^BEGIN;\s*$/m, '').replace(/^COMMIT;\s*$/m, ''),
+    );
+    const after = (await totals()).rows[0];
+    if (
+      JSON.stringify(comboBefore) !==
+        JSON.stringify((await comboTotals()).rows) ||
+      JSON.stringify(keysBefore) !==
+        JSON.stringify(
+          (await foreignKeys(keysBefore.map((row) => row.oid))).rows,
+        )
+    )
+      throw new Error(
+        'Số combo, giá combo hoặc khóa ngoại tham chiếu combo thay đổi ngoài dự kiến',
+      );
+    if (JSON.stringify(before) !== JSON.stringify(after))
+      throw new Error('Số đơn hoặc tổng tiền thay đổi ngoài dự kiến');
+    await client.query(
+      'INSERT INTO public.migrations_ung_dung(phien_ban) VALUES($1)',
+      [version],
+    );
+    await client.query('COMMIT');
+    console.log(
+      'Đã đồng bộ trang khách, chống gửi trùng và chat riêng tư. Số đơn/tổng tiền được giữ nguyên.',
+    );
+  }
+} catch (error) {
+  await client.query('ROLLBACK').catch(() => {});
+  console.error(
+    'Migration không hoàn tất, đã rollback:',
+    error instanceof Error ? error.message : 'Lỗi database',
+  );
+  process.exitCode = 1;
+} finally {
+  await client.end().catch(() => {});
+}

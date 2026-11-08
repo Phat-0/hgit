@@ -1,3 +1,4 @@
+import {KhachHangModule} from './khach-hang/khach-hang.module.js';
 import { Module } from '@nestjs/common';
 import { XacThucModule } from './xac-thuc/xac-thuc.module.js';
 import { HomestayModule } from './homestay/homestay.module.js';
@@ -6,7 +7,7 @@ import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 
 @Module({
-  imports: [XacThucModule, HomestayModule, QuanTriModule],
+  imports: [KhachHangModule, XacThucModule, HomestayModule, QuanTriModule],
   controllers: [AppController],
   providers: [AppService],
 })

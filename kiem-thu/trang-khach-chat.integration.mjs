@@ -1,0 +1,274 @@
+import { fileURLToPath } from "node:url";
+import { PGlite } from "@electric-sql/pglite";
+import { btree_gist } from "@electric-sql/pglite/contrib/btree_gist";
+import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
+import fs from "node:fs";
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+const root = fileURLToPath(new URL("../", import.meta.url)).replace(
+    /[\\/]$/,
+    "",
+  ),
+  db = new PGlite({ extensions: { btree_gist, pgcrypto } });
+await db.exec(
+  "CREATE SCHEMA auth;CREATE TABLE auth.users(id uuid PRIMARY KEY);CREATE ROLE anon;CREATE ROLE authenticated;CREATE SCHEMA storage;CREATE TABLE storage.buckets(id text PRIMARY KEY,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);",
+);
+for (const f of [
+  "homestay.sql",
+  "lich-phong-quan-tri.sql",
+  "them-ghi-chu-khoa-phong.sql",
+  "thong-tin-khach-lich-khoa.sql",
+  "dat-phong-khach-chua-co-tai-khoan.sql",
+  "dong-bo-combo-va-chung-tu.sql",
+  "20261106-dong-bo-kieu-dat-va-ten-don.sql",
+  "20261106-quan-ly-combo.sql",
+  "20261107-nhieu-anh-combo.sql",
+])
+  await db.exec(
+    fs.readFileSync(root + "/co-so-du-lieu/migrations/" + f, "utf8"),
+  );
+const uid = randomUUID(),
+  other = randomUUID(),
+  admin = randomUUID(),
+  branch = randomUUID(),
+  type = randomUUID(),
+  room = randomUUID(),
+  room2 = randomUUID();
+await db.query("INSERT INTO auth.users VALUES($1),($2),($3)", [
+  uid,
+  other,
+  admin,
+]);
+for (const id of [uid, other, admin])
+  await db.query("INSERT INTO public.nguoi_dung(id,ho_ten) VALUES($1,$2)", [
+    id,
+    "Khách thử",
+  ]);
+await db.query(
+  "INSERT INTO public.homestay(id,ten_homestay,dia_chi,tinh_thanh,trang_thai) VALUES($1,'Chi nhánh A','Địa chỉ','TP HCM','Đang hoạt động')",
+  [branch],
+);
+await db.query(
+  "INSERT INTO public.loai_phong(id,homestay_id,ten_loai,suc_chua) VALUES($1,$2,'Cao cấp',2)",
+  [type, branch],
+);
+for (const id of [room, room2])
+  await db.query(
+    "INSERT INTO public.phong(id,homestay_id,loai_phong_id,ma_phong,ten_phong,gia_moi_gio,gia_phu_thu_gio,so_gio_toi_thieu) VALUES($1,$2,$3,$4,'Phòng thử',200000,50000,2)",
+    [id, branch, type, id.slice(0, 5)],
+  );
+const legacyThread = (
+  await db.query(
+    "INSERT INTO public.cuoc_tro_chuyen(khach_hang_id) VALUES($1) RETURNING id",
+    [uid],
+  )
+).rows[0].id;
+await db.query(
+  "INSERT INTO public.tin_nhan(cuoc_tro_chuyen_id,nguoi_gui_id,loai_nguoi_gui,noi_dung) VALUES($1,$2,'Khách hàng','Tin trước migration')",
+  [legacyThread, uid],
+);
+const beforeKeys = (
+  await db.query(
+    "SELECT oid,conname,pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE contype='f' AND connamespace='public'::regnamespace ORDER BY oid",
+  )
+).rows;
+await db.exec(
+  fs.readFileSync(
+    root + "/co-so-du-lieu/migrations/20261108-trang-khach-va-chat.sql",
+    "utf8",
+  ),
+);
+assert.deepEqual(
+  (
+    await db.query(
+      "SELECT oid,conname,pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE oid=ANY($1::oid[]) ORDER BY oid",
+      [beforeKeys.map((r) => r.oid)],
+    )
+  ).rows,
+  beforeKeys,
+);
+assert.equal(
+  (
+    await db.query(
+      "SELECT noi_dung FROM public.tin_nhan WHERE cuoc_tro_chuyen_id=$1",
+      [legacyThread],
+    )
+  ).rows[0].noi_dung,
+  "Tin trước migration",
+);
+assert.equal(
+  (
+    await db.query(
+      "SELECT nguoi_dung_id FROM public.thanh_vien_tro_chuyen WHERE cuoc_tro_chuyen_id=$1",
+      [legacyThread],
+    )
+  ).rows[0].nguoi_dung_id,
+  uid,
+);
+await db.query(
+  "INSERT INTO public.nguoi_dung_vai_tro(nguoi_dung_id,vai_tro_id) SELECT $1,id FROM public.vai_tro WHERE ma_vai_tro='Quản trị hệ thống'",
+  [admin],
+);
+const connection = async () => ({
+  query: async (sql, args) => {
+    const r = await db.query(sql, args);
+    return { ...r, rowCount: r.rows.length || r.affectedRows || 0 };
+  },
+  end: async () => {},
+});
+const users = {
+  a: { id: uid, phone: "+84901234567", phone_verified: true },
+  b: { id: other, phone: "+84901234567", phone_verified: false },
+  admin: { id: admin, phone_verified: false },
+};
+const conn = {
+  db: connection,
+  identity: async (token) => (token ? users[token] : null),
+  id: (value) => {
+    if (!/^[a-f0-9-]{36}$/.test(value)) throw Error("ID");
+    return value;
+  },
+  staff: async (c, id) => id === admin,
+};
+const { KetNoiKhachService } = await import(
+  root + "/may-chu/dist/khach-hang/ket-noi.service.js"
+);
+conn.staff = (c, id, branch) =>
+  KetNoiKhachService.prototype.staff.call(conn, c, id, branch);
+const { TrangKhachService } = await import(
+  root + "/may-chu/dist/khach-hang/trang-khach.service.js"
+);
+const { ChatService } = await import(
+  root + "/may-chu/dist/khach-hang/chat.service.js"
+);
+const service = new TrangKhachService(conn),
+  chat = new ChatService(conn);
+const day = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10),
+  q = {
+    bat_dau: day + "T08:00:00+07:00",
+    ket_thuc: day + "T11:00:00+07:00",
+    hinh_thuc_dat: "Theo giờ",
+  };
+assert.equal((await service.rooms(q)).length, 2);
+const combo = (
+  await db.query(
+    "INSERT INTO public.combo(homestay_id,ten_combo,gia_combo,so_gio_bao_gom,pham_vi) VALUES($1,'Combo thử',150000,2,'toan_he_thong') RETURNING id",
+    [branch],
+  )
+).rows[0].id;
+assert.equal(
+  (await service.combos({ ...q, phong_id: room }))[0].tong_gia,
+  200000,
+);
+const body = {
+  ...q,
+  phong_id: room,
+  ten_khach: "Khách vãng lai",
+  so_dien_thoai: "0901234567",
+  so_khach: 1,
+  tien_phong: 1,
+  trang_thai: "Đã xác nhận",
+  khoa_yeu_cau: randomUUID(),
+};
+const booking = await service.create(body);
+assert.equal(Number(booking.tong_tien), 250000);
+assert.equal(booking.trang_thai, "Chờ xác nhận");
+assert.equal((await service.create(body)).ma_dat_phong, booking.ma_dat_phong);
+await assert.rejects(
+  () => service.create({ ...body, khoa_yeu_cau: randomUUID() }),
+  /vừa được đặt/,
+);
+assert.equal((await service.rooms(q)).length, 1);
+assert.equal((await service.history("b")).length, 0);
+const history = await service.history("a");
+assert.equal(history.length, 1);
+assert.equal(history[0].ma_dat_phong, booking.ma_dat_phong);
+assert.equal((await service.history("b")).length, 0);
+await db.query(
+  "UPDATE public.dat_phong SET het_han_giu_cho=now()-interval '1 minute' WHERE ma_dat_phong=$1",
+  [booking.ma_dat_phong],
+);
+assert.equal((await service.rooms(q)).length, 2);
+assert.equal(
+  (
+    await db.query(
+      "SELECT trang_thai FROM public.dat_phong WHERE ma_dat_phong=$1",
+      [booking.ma_dat_phong],
+    )
+  ).rows[0].trang_thai,
+  "Hết hạn",
+);
+const guest = await chat.start({ chi_nhanh_id: branch });
+assert.ok(guest.guest_token);
+const nonce = randomUUID();
+await chat.send(
+  guest.id,
+  { noi_dung: "Chào nhân viên", ma_phia_khach: nonce },
+  undefined,
+  guest.guest_token,
+);
+await chat.send(
+  guest.id,
+  { noi_dung: "Chào nhân viên", ma_phia_khach: nonce },
+  undefined,
+  guest.guest_token,
+);
+assert.equal(
+  (await chat.messages(guest.id, undefined, guest.guest_token)).tin_nhan.length,
+  1,
+);
+await assert.rejects(
+  () => chat.messages(guest.id, undefined, "a".repeat(64)),
+  /Không có quyền/,
+);
+await chat.send(
+  guest.id,
+  { noi_dung: "Chào bạn", ma_phia_khach: randomUUID() },
+  "admin",
+);
+assert.equal(
+  (await chat.messages(guest.id, undefined, guest.guest_token)).tin_nhan.length,
+  2,
+);
+const direct = await chat.start({ nguoi_nhan_id: other }, "a");
+await chat.send(
+  direct.id,
+  { noi_dung: "Tin riêng", ma_phia_khach: randomUUID() },
+  "a",
+);
+assert.equal((await chat.messages(direct.id, "b")).tin_nhan.length, 1);
+await assert.rejects(() => chat.messages(direct.id, "admin"), /Không có quyền/);
+const reverse = await chat.start({ nguoi_nhan_id: uid }, "b");
+assert.equal(reverse.id, direct.id);
+const linked = await chat.start(
+  { chi_nhanh_id: branch },
+  "a",
+  guest.guest_token,
+);
+assert.equal(linked.id, guest.id);
+await assert.rejects(
+  () => chat.start({ chi_nhanh_id: branch }, "b", guest.guest_token),
+  /tài khoản khác/,
+);
+await assert.rejects(
+  () => chat.messages(guest.id, undefined, guest.guest_token),
+  /Không có quyền/,
+);
+const { GioiHanTruyCapService } = await import(
+  root + "/may-chu/dist/xac-thuc/gioi-han.service.js"
+);
+const limiter = new GioiHanTruyCapService();
+limiter.pool = {
+  query: async (sql, args) => db.query(sql, args),
+  end: async () => {},
+};
+await limiter.limit("local", "test", 2);
+await limiter.limit("local", "test", 2);
+await assert.rejects(
+  () => limiter.limit("local", "test", 2),
+  (e) => e.getStatus() === 429,
+);
+console.log(
+  "PASS PostgreSQL: giữ khóa ngoại và chat cũ qua migration, giới hạn truy cập 429;  tìm phòng/giá server/không tin giá và trạng thái client/giữ phòng/gửi trùng/chống trùng/nhận đơn chỉ qua SĐT đã xác minh/hết hạn; chat guest/staff/IDOR/direct riêng tư/kết nối guest sau đăng nhập/chống gửi trùng.",
+);
+await db.close();

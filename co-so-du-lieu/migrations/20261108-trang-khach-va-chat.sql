@@ -1,0 +1,23 @@
+BEGIN;
+CREATE TABLE public.gioi_han_truy_cap(khoa text PRIMARY KEY,so_lan integer NOT NULL,het_han timestamptz NOT NULL);
+ALTER TABLE public.gioi_han_truy_cap ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.dat_phong ADD COLUMN IF NOT EXISTS khoa_yeu_cau uuid;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_dat_phong_yeu_cau ON public.dat_phong(khoa_yeu_cau) WHERE khoa_yeu_cau IS NOT NULL;
+CREATE INDEX idx_dat_phong_het_han_khach ON public.dat_phong(het_han_giu_cho) WHERE nguon_dat='khach' AND trang_thai='Chờ xác nhận';
+ALTER TABLE public.cuoc_tro_chuyen ALTER COLUMN khach_hang_id DROP NOT NULL;
+ALTER TABLE public.cuoc_tro_chuyen ADD COLUMN khach_vang_lai_hash text;
+ALTER TABLE public.cuoc_tro_chuyen ADD COLUMN loai text NOT NULL DEFAULT 'ho_tro' CHECK(loai IN ('ho_tro','truc_tiep'));
+ALTER TABLE public.cuoc_tro_chuyen ADD COLUMN khoa_truc_tiep text UNIQUE;
+CREATE INDEX idx_chat_ho_tro_chi_nhanh ON public.cuoc_tro_chuyen(homestay_id,ngay_cap_nhat DESC) WHERE loai='ho_tro';
+CREATE UNIQUE INDEX uq_chat_guest ON public.cuoc_tro_chuyen(khach_vang_lai_hash) WHERE khach_vang_lai_hash IS NOT NULL;
+CREATE TABLE public.thanh_vien_tro_chuyen(cuoc_tro_chuyen_id uuid NOT NULL REFERENCES public.cuoc_tro_chuyen(id) ON DELETE CASCADE,nguoi_dung_id uuid NOT NULL REFERENCES public.nguoi_dung(id) ON DELETE RESTRICT,PRIMARY KEY(cuoc_tro_chuyen_id,nguoi_dung_id));
+INSERT INTO public.thanh_vien_tro_chuyen SELECT id,khach_hang_id FROM public.cuoc_tro_chuyen WHERE khach_hang_id IS NOT NULL;
+ALTER TABLE public.thanh_vien_tro_chuyen ENABLE ROW LEVEL SECURITY;
+DO $$ DECLARE r record; BEGIN FOR r IN SELECT conname FROM pg_constraint WHERE conrelid='public.tin_nhan'::regclass AND contype='c' AND pg_get_constraintdef(oid) ILIKE '%loai_nguoi_gui%' LOOP EXECUTE format('ALTER TABLE public.tin_nhan DROP CONSTRAINT %I',r.conname); END LOOP; END $$;
+ALTER TABLE public.tin_nhan ADD CONSTRAINT tin_nhan_nguoi_gui_hop_le CHECK((loai_nguoi_gui IN ('AI','Hệ thống','Khách vãng lai') AND nguoi_gui_id IS NULL) OR (loai_nguoi_gui IN ('Khách hàng','Nhân viên') AND nguoi_gui_id IS NOT NULL));
+ALTER TABLE public.tin_nhan ADD COLUMN ma_phia_khach uuid;
+CREATE UNIQUE INDEX uq_chat_gui_lai ON public.tin_nhan(cuoc_tro_chuyen_id,ma_phia_khach) WHERE ma_phia_khach IS NOT NULL;
+CREATE INDEX idx_chat_thanh_vien ON public.thanh_vien_tro_chuyen(nguoi_dung_id);
+REVOKE ALL ON public.gioi_han_truy_cap,public.thanh_vien_tro_chuyen FROM anon,authenticated;
+-- Không cấp SELECT công khai cho đơn, hội thoại, danh bạ hay tin nhắn.
+COMMIT;

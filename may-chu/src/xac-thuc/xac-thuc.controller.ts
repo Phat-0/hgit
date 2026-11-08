@@ -1,3 +1,4 @@
+import {GioiHanTruyCapService} from './gioi-han.service.js';
 import { BadRequestException, Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { SupabaseAuthGuard } from './supabase-auth.guard.js';
@@ -22,7 +23,7 @@ function kiemTraDuLieu(body: unknown): { email: string; matKhau: string } {
 
 @Controller('xac-thuc')
 export class XacThucController {
-  constructor(private readonly xacThucService: XacThucService) {}
+  constructor(private readonly xacThucService: XacThucService,private readonly limiter:GioiHanTruyCapService) {}
 
   @Post('dang-ky')
   dangKy(@Body() body: unknown) {
@@ -31,10 +32,10 @@ export class XacThucController {
   }
 
   @Post('dien-thoai/gui-otp')
-  guiOtpDienThoai(@Body() body:unknown){const phone=(body as {so_dien_thoai?:unknown}|null)?.so_dien_thoai;if(typeof phone!=='string'||!/^\\+?[0-9]{9,15}$/.test(phone.trim()))throw new BadRequestException('Số điện thoại phải có 9–15 chữ số');return this.xacThucService.guiOtpDienThoai(phone.trim());}
+  async guiOtpDienThoai(@Req() r:Request,@Body() body:unknown){await this.limiter.limit(r.ip||'unknown','otp',5,600);const phone=(body as {so_dien_thoai?:unknown}|null)?.so_dien_thoai;if(typeof phone!=='string'||!/^\+?[0-9]{9,15}$/.test(phone.trim()))throw new BadRequestException('Số điện thoại phải có 9–15 chữ số');return this.xacThucService.guiOtpDienThoai(phone.trim());}
 
   @Post('dien-thoai/xac-minh')
-  xacMinhDienThoai(@Body() body:unknown){const b=body as {so_dien_thoai?:unknown;otp?:unknown}|null;const phone=b?.so_dien_thoai,otp=b?.otp;if(typeof phone!=='string'||!/^\\+?[0-9]{9,15}$/.test(phone.trim())||typeof otp!=='string'||!/^\\d{4,8}$/.test(otp))throw new BadRequestException('Số điện thoại hoặc mã OTP không hợp lệ');return this.xacThucService.xacMinhOtpDienThoai(phone.trim(),otp);}
+  async xacMinhDienThoai(@Req() r:Request,@Body() body:unknown){await this.limiter.limit(r.ip||'unknown','verify',10,600);const b=body as {so_dien_thoai?:unknown;otp?:unknown}|null;const phone=b?.so_dien_thoai,otp=b?.otp;if(typeof phone!=='string'||!/^\+?[0-9]{9,15}$/.test(phone.trim())||typeof otp!=='string'||!/^\d{4,8}$/.test(otp))throw new BadRequestException('Số điện thoại hoặc mã OTP không hợp lệ');return this.xacThucService.xacMinhOtpDienThoai(phone.trim(),otp);}
 
   @Post('dang-nhap')
   dangNhap(@Body() body: unknown) {
