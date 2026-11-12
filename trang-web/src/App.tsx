@@ -404,6 +404,7 @@ export default function App() {
           H<span>◆</span>meStay
         </a>
         <nav>
+          <button onClick={()=>window.dispatchEvent(new Event('homestay:mo-chat'))}>Hỗ trợ</button>
           {home?.hien_phong && <a href="#phong-khach">Khám phá phòng</a>}
           <button onClick={() => void myBookings()}>Đơn của tôi</button>
           {token ? (

@@ -1,3 +1,5 @@
+import { TienIchChatController } from './tien-ich-chat.controller.js';
+import { TienIchChatService } from './tien-ich-chat.service.js';
 import {
   TrangChuController,
   TrangChuKhachController,
@@ -25,6 +27,7 @@ import { LichPhongService } from './lich-phong.service.js';
 @Module({
   imports: [XacThucModule],
   controllers: [
+    TienIchChatController,
     TrangChuController,
     TrangChuKhachController,
     NhanVienController,
@@ -37,6 +40,7 @@ import { LichPhongService } from './lich-phong.service.js';
     DonLichController,
   ],
   providers: [
+    TienIchChatService,
     TrangChuService,
     NhanVienService,
     ComboService,

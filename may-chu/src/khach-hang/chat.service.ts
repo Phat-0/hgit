@@ -1,10 +1,17 @@
 import {
+  chatStorage,
+  docTepChat,
+  type ChatFile,
+  type StoredFile,
+} from './chat-tep.js';
+import {
   BadRequestException,
   ForbiddenException,
   Injectable,
   UnauthorizedException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { KetNoiKhachService, hash, type KhachDb } from './ket-noi.service.js';
 @Injectable()
 export class ChatService {
@@ -104,6 +111,10 @@ export class ChatService {
         );
         if (existing.rowCount) {
           const id = existing.rows[0].id;
+          if (existing.rows[0].homestay_id !== branch)
+            throw new BadRequestException(
+              'Phiên hỗ trợ không thuộc chi nhánh đang chọn',
+            );
           if (
             existing.rows[0].khach_hang_id &&
             existing.rows[0].khach_hang_id !== user?.id
@@ -191,7 +202,13 @@ export class ChatService {
       await c.end();
     }
   }
-  async list(authorization?: string, token?: string, query = '', offset = 0) {
+  async list(
+    authorization?: string,
+    token?: string,
+    query = '',
+    offset = 0,
+    simple = false,
+  ) {
     const user = await this.conn.identity(authorization),
       guestHash = this.guest(token);
     if (!user && !guestHash) throw new UnauthorizedException();
@@ -220,7 +237,7 @@ export class ChatService {
           AND (d.doc_den_luc IS NULL OR (m.ngay_gui,m.id)>(d.doc_den_luc,d.doc_den_id))) AS chua_doc
         FROM eligible e LEFT JOIN LATERAL(SELECT noi_dung,ngay_gui FROM public.tin_nhan WHERE cuoc_tro_chuyen_id=e.id ORDER BY ngay_gui DESC,id DESC LIMIT 1) last ON true
         LEFT JOIN public.trang_thai_doc_chat d ON d.cuoc_tro_chuyen_id=e.id AND d.khoa_nguoi_doc=$3
-        WHERE e.member OR e.staff OR ($2::text IS NOT NULL AND e.khach_vang_lai_hash=$2 AND (e.khach_hang_id IS NULL OR e.khach_hang_id=$1))
+        WHERE (e.member OR e.staff OR ($2::text IS NOT NULL AND e.khach_vang_lai_hash=$2 AND (e.khach_hang_id IS NULL OR e.khach_hang_id=$1))) AND (NOT $6::boolean OR e.loai='ho_tro' AND (e.khach_hang_id=$1 OR e.khach_vang_lai_hash=$2))
       ), filtered AS(SELECT * FROM items WHERE $4='' OR position($4 in translate(lower(ten_hien_thi||' '||coalesce(ten_homestay,'')),'àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ','aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd'))>0), page AS(SELECT * FROM filtered ORDER BY coalesce(tin_cuoi_luc,ngay_cap_nhat) DESC,id DESC LIMIT 40 OFFSET $5)
       SELECT coalesce((SELECT jsonb_agg(p ORDER BY coalesce(p.tin_cuoi_luc,p.ngay_cap_nhat) DESC,p.id DESC) FROM page p),'[]') AS hoi_thoai,(SELECT count(*)::int FROM filtered) AS tong_so,coalesce((SELECT sum(chua_doc)::int FROM items),0) AS tong_chua_doc`,
         [
@@ -234,6 +251,7 @@ export class ChatService {
             .replace(/[\u0300-\u036f]/g, '')
             .replace(/đ/g, 'd'),
           offset,
+          simple,
         ],
       );
       return { toi: user?.id || null, ...r.rows[0] };
@@ -275,17 +293,35 @@ export class ChatService {
     authorization?: string,
     token?: string,
     before?: string,
+    around?: string,
   ) {
     const user = await this.conn.identity(authorization),
       c = await this.conn.db();
     try {
       const { t: thread, staff } = await this.access(c, id, user?.id, token);
       if (before) this.conn.id(before);
+      if (around) {
+        this.conn.id(around);
+        const anchor = await c.query(
+          'SELECT 1 FROM public.tin_nhan WHERE id=$1 AND cuoc_tro_chuyen_id=$2',
+          [around, id],
+        );
+        if (!anchor.rowCount)
+          throw new BadRequestException('Tin không thuộc cuộc trò chuyện');
+      }
       const r = await c.query(
-        `SELECT t.id,t.nguoi_gui_id,t.loai_nguoi_gui,t.noi_dung,t.ngay_gui,COALESCE(n.ho_ten,t.loai_nguoi_gui) AS ten_nguoi_gui FROM public.tin_nhan t LEFT JOIN public.nguoi_dung n ON n.id=t.nguoi_gui_id WHERE t.cuoc_tro_chuyen_id=$1 AND ($2::uuid IS NULL OR (t.ngay_gui,t.id)<(SELECT ngay_gui,id FROM public.tin_nhan WHERE id=$2 AND cuoc_tro_chuyen_id=$1)) ORDER BY t.ngay_gui DESC,t.id DESC LIMIT 60`,
-        [id, before || null],
+        `SELECT t.id,t.nguoi_gui_id,t.loai_nguoi_gui,t.noi_dung,t.ngay_gui,COALESCE(n.ho_ten,t.loai_nguoi_gui) AS ten_nguoi_gui FROM public.tin_nhan t LEFT JOIN public.nguoi_dung n ON n.id=t.nguoi_gui_id WHERE t.cuoc_tro_chuyen_id=$1 AND ($2::uuid IS NULL OR (t.ngay_gui,t.id)<(SELECT ngay_gui,id FROM public.tin_nhan WHERE id=$2 AND cuoc_tro_chuyen_id=$1)) AND ($3::uuid IS NULL OR (t.ngay_gui,t.id)<=(SELECT ngay_gui,id FROM public.tin_nhan WHERE id=$3 AND cuoc_tro_chuyen_id=$1)) ORDER BY t.ngay_gui DESC,t.id DESC LIMIT 60`,
+        [id, before || null, around || null],
+      );
+      const attachments = await c.query(
+        'SELECT * FROM public.tep_tin_chat WHERE tin_nhan_id=ANY($1::uuid[])',
+        [r.rows.map((m) => m.id)],
+      );
+      const signed = await Promise.all(
+        attachments.rows.map((f) => this.signed(f)),
       );
       return {
+        duoc_dung_mau: !!staff,
         toi: user?.id ?? null,
         tin_nhan: r.rows.reverse().map((m) => {
           const own = user
@@ -294,6 +330,7 @@ export class ChatService {
                 m.loai_nguoi_gui === 'Khách vãng lai')
             : m.loai_nguoi_gui === 'Khách vãng lai';
           return {
+            tep: signed.find((f) => f.tin_nhan_id === m.id) || null,
             id: m.id,
             nguoi_gui_id: m.nguoi_gui_id,
             noi_dung: m.noi_dung,
@@ -309,6 +346,221 @@ export class ChatService {
           };
         }),
         co_tin_cu: r.rows.length === 60,
+      };
+    } finally {
+      await c.end();
+    }
+  }
+  private readonly signedLinks = new Map<
+    string,
+    { url: string; until: number }
+  >();
+  private storage() {
+    return chatStorage();
+  }
+  private async signed(file: StoredFile) {
+    const { duong_dan, ...publicData } = file;
+    const cached = this.signedLinks.get(duong_dan);
+    if (cached && cached.until > Date.now())
+      return { ...publicData, url: cached.url };
+    const { data, error } = await this.storage().createSignedUrl(
+      duong_dan,
+      900,
+      file.la_anh ? undefined : { download: file.ten_tep },
+    );
+    if (error || !data)
+      throw new ServiceUnavailableException('Chưa tải được tệp đính kèm');
+    if (this.signedLinks.size >= 1000)
+      this.signedLinks.delete(this.signedLinks.keys().next().value!);
+    this.signedLinks.set(duong_dan, {
+      url: data.signedUrl,
+      until: Date.now() + 600000,
+    });
+    return { ...publicData, url: data.signedUrl };
+  }
+  async upload(
+    id: string,
+    x: Record<string, unknown>,
+    file: ChatFile | undefined,
+    authorization?: string,
+    token?: string,
+  ) {
+    const info = docTepChat(file);
+    this.conn.id(String(x.ma_phia_khach || ''));
+    const content = typeof x.noi_dung === 'string' ? x.noi_dung.trim() : '';
+    if (content.length > 4000)
+      throw new BadRequestException('Nội dung tối đa 4.000 ký tự');
+    const user = await this.conn.identity(authorization),
+      c = await this.conn.db();
+    let uploaded = '',
+      commitAttempted = false;
+    try {
+      await c.query('BEGIN');
+      const { t, staff } = await this.access(c, id, user?.id, token);
+      if (t.trang_thai !== 'Đang mở')
+        throw new BadRequestException('Hội thoại đã đóng');
+      await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,7))', [
+        id,
+      ]);
+      const old = await c.query(
+        'SELECT id FROM public.tin_nhan WHERE cuoc_tro_chuyen_id=$1 AND ma_phia_khach=$2',
+        [id, x.ma_phia_khach],
+      );
+      if (old.rowCount) {
+        await c.query('COMMIT');
+        return { ok: true, id: old.rows[0].id };
+      }
+      const quota = await c.query(
+        "SELECT count(*)::int AS n,coalesce(sum(dung_luong),0)::bigint AS bytes FROM public.tep_tin_chat WHERE cuoc_tro_chuyen_id=$1 AND ngay_tao>now()-interval '1 hour'",
+        [id],
+      );
+      if (
+        quota.rows[0].n >= 20 ||
+        Number(quota.rows[0].bytes) + file!.size > 209715200
+      )
+        throw new BadRequestException(
+          'Cuộc trò chuyện đạt giới hạn tệp trong giờ này. Vui lòng thử lại sau',
+        );
+      const message = randomUUID(),
+        key = id + '/' + message + '.' + info.ext;
+      const result = await this.storage().upload(key, file!.buffer, {
+        contentType: info.mime,
+        upsert: false,
+      });
+      if (result.error)
+        throw new ServiceUnavailableException(
+          'Tải tệp chưa thành công. Hãy thử lại',
+        );
+      uploaded = key;
+      await c.query(
+        'INSERT INTO public.tin_nhan(id,cuoc_tro_chuyen_id,nguoi_gui_id,loai_nguoi_gui,noi_dung,duong_dan_tep,ma_phia_khach) VALUES($1,$2,$3,$4,$5,$6,$7)',
+        [
+          message,
+          id,
+          user?.id || null,
+          user ? (staff ? 'Nhân viên' : 'Khách hàng') : 'Khách vãng lai',
+          content || 'Đã gửi ' + (info.image ? 'ảnh: ' : 'tệp: ') + info.name,
+          key,
+          x.ma_phia_khach,
+        ],
+      );
+      await c.query(
+        'INSERT INTO public.tep_tin_chat(tin_nhan_id,cuoc_tro_chuyen_id,duong_dan,ten_tep,mime,dung_luong,la_anh) VALUES($1,$2,$3,$4,$5,$6,$7)',
+        [message, id, key, info.name, info.mime, file!.size, info.image],
+      );
+      await c.query(
+        'UPDATE public.cuoc_tro_chuyen SET ngay_cap_nhat=now() WHERE id=$1',
+        [id],
+      );
+      commitAttempted = true;
+      await c.query('COMMIT');
+      return { ok: true, id: message };
+    } catch (e) {
+      await c.query('ROLLBACK').catch(() => {});
+      if (uploaded && !commitAttempted)
+        await this.storage()
+          .remove([uploaded])
+          .catch(() => {});
+      throw e;
+    } finally {
+      await c.end();
+    }
+  }
+  async files(
+    id: string,
+    kind: string,
+    query: string,
+    offset: number,
+    authorization?: string,
+    token?: string,
+  ) {
+    if (
+      !['anh', 'tep'].includes(kind) ||
+      query.length > 100 ||
+      !Number.isInteger(offset) ||
+      offset < 0 ||
+      offset > 1000000
+    )
+      throw new BadRequestException('Bộ lọc tệp không hợp lệ');
+    const u = await this.conn.identity(authorization),
+      c = await this.conn.db();
+    try {
+      await this.access(c, id, u?.id, token);
+      const r = await c.query(
+        'SELECT * FROM public.tep_tin_chat WHERE cuoc_tro_chuyen_id=$1 AND la_anh=$2 AND position(lower($3) in lower(ten_tep))>0 ORDER BY ngay_tao DESC,id DESC LIMIT 41 OFFSET $4',
+        [id, kind === 'anh', query, offset],
+      );
+      return {
+        tep: await Promise.all(r.rows.slice(0, 40).map((f) => this.signed(f))),
+        con_tiep: r.rows.length > 40,
+      };
+    } finally {
+      await c.end();
+    }
+  }
+  async searchMessages(
+    id: string,
+    query: string,
+    offset: number,
+    authorization?: string,
+    token?: string,
+  ) {
+    if (
+      query.trim().length < 2 ||
+      query.length > 100 ||
+      !Number.isInteger(offset) ||
+      offset < 0 ||
+      offset > 1000000
+    )
+      throw new BadRequestException('Nhập từ 2 đến 100 ký tự');
+    const u = await this.conn.identity(authorization),
+      c = await this.conn.db();
+    try {
+      await this.access(c, id, u?.id, token);
+      const r = await c.query(
+        "SELECT m.id,m.noi_dung,m.ngay_gui FROM public.tin_nhan m WHERE m.cuoc_tro_chuyen_id=$1 AND (position(lower($2) in lower(coalesce(m.noi_dung,'')))>0 OR EXISTS(SELECT 1 FROM public.tep_tin_chat f WHERE f.tin_nhan_id=m.id AND position(lower($2) in lower(f.ten_tep))>0)) ORDER BY m.ngay_gui DESC,m.id DESC LIMIT 41 OFFSET $3",
+        [id, query.trim(), offset],
+      );
+      return { tin_nhan: r.rows.slice(0, 40), con_tiep: r.rows.length > 40 };
+    } finally {
+      await c.end();
+    }
+  }
+  async replies(id: string, authorization?: string, token?: string) {
+    const u = await this.conn.identity(authorization);
+    if (!u) throw new UnauthorizedException();
+    const c = await this.conn.db();
+    try {
+      const { t, staff } = await this.access(c, id, u.id, token);
+      if (!staff && !(await this.conn.staff(c, u.id, t.homestay_id)))
+        throw new ForbiddenException(
+          'Chỉ nhân viên hỗ trợ dùng câu trả lời mẫu',
+        );
+      const r = await c.query(
+        'SELECT * FROM public.cau_tra_loi_mau WHERE hien AND (homestay_id IS NULL OR homestay_id=$1) ORDER BY nhom,tieu_de,id',
+        [t.homestay_id],
+      );
+      const context = await c.query(
+        'SELECT n.ho_ten,h.ten_homestay FROM public.cuoc_tro_chuyen t LEFT JOIN public.nguoi_dung n ON n.id=t.khach_hang_id LEFT JOIN public.homestay h ON h.id=t.homestay_id WHERE t.id=$1',
+        [id],
+      );
+      return {
+        mau: r.rows.map((m) => {
+          let text = m.noi_dung
+            .replace(
+              /{{ten_khach}}/g,
+              context.rows[0].ho_ten || '{{ten_khach}}',
+            )
+            .replace(
+              /{{chi_nhanh}}/g,
+              context.rows[0].ten_homestay || '{{chi_nhanh}}',
+            );
+          return {
+            ...m,
+            noi_dung_da_dien: text,
+            du_gui_ngay: !/{{[^}]+}}/.test(text),
+          };
+        }),
       };
     } finally {
       await c.end();

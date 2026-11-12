@@ -1,4 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import QuanLyCauTraLoi from "./QuanLyCauTraLoi";
+import ChatCongCu from "./ChatCongCu";
+import { TepDinhKem, chatUpload, sizeTep, type TepChat } from "./chat-tep";
+import "./chat-tien-ich.css";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { khachApi } from "./khach-api";
 import "./tro-chuyen.css";
 type Thread = {
@@ -12,6 +22,7 @@ type Thread = {
 };
 type Message = {
   id: string;
+  tep?: TepChat | null;
   nguoi_gui_id: string | null;
   cua_toi: boolean;
   noi_dung: string;
@@ -46,10 +57,12 @@ export default function TroChuyen({
   token,
   branch,
   inline = false,
+  admin = false,
 }: {
   token?: string;
   branch?: string;
   inline?: boolean;
+  admin?: boolean;
 }) {
   const [open, setOpen] = useState(false),
     [threads, setThreads] = useState<Thread[]>([]),
@@ -68,6 +81,53 @@ export default function TroChuyen({
     [unread, setUnread] = useState(0),
     [older, setOlder] = useState(false),
     [loadingOlder, setLoadingOlder] = useState(false);
+  const [manageTemplates, setManageTemplates] = useState(false);
+  const [hidden, setHidden] = useState(
+      () =>
+        sessionStorage.getItem(
+          "homestay_chat_hidden:" + (admin ? "admin" : "guest"),
+        ) === "1",
+    ),
+    [tool, setTool] = useState<"tim" | "anh" | "tep" | "mau" | null>(null),
+    [canReply, setCanReply] = useState(false),
+    [selectedFile, setSelectedFile] = useState<File | null>(null),
+    [preview, setPreview] = useState(""),
+    [contextMode, setContextMode] = useState(false),
+    [newIncoming, setNewIncoming] = useState(false),
+    [hint, setHint] = useState("");
+  const sendLock = useRef(false),
+    olderLock = useRef(false),
+    restore = useRef<{ id: string; height: number; top: number } | null>(null),
+    fileInput = useRef<HTMLInputElement>(null),
+    autoStarting = useRef(false),
+    autoAttempted = useRef(""),
+    latestPoll = useRef("");
+  useEffect(() => {
+    const fn = () => {
+      setHidden(false);
+      sessionStorage.removeItem(
+        "homestay_chat_hidden:" + (admin ? "admin" : "guest"),
+      );
+      setOpen(true);
+    };
+    window.addEventListener("homestay:mo-chat", fn);
+    return () => window.removeEventListener("homestay:mo-chat", fn);
+  }, [admin]);
+  useEffect(() => {
+    if (inline) {
+      setHidden(false);
+      sessionStorage.removeItem("homestay_chat_hidden:admin");
+    }
+  }, [inline]);
+  useEffect(() => {
+    if (!selectedFile?.type.startsWith("image/")) {
+      setPreview("");
+      return;
+    }
+    const url = URL.createObjectURL(selectedFile);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [selectedFile]);
   const [guest, setGuest] = useState(
     () =>
       sessionStorage.getItem("homestay_chat_guest:" + (branch || "all")) || "",
@@ -79,7 +139,12 @@ export default function TroChuyen({
     nearBottom = useRef(true),
     readIds = useRef<Record<string, string>>({}),
     listSerial = useRef(0),
-    pending = useRef<{ thread: string; text: string; id: string } | null>(null),
+    pending = useRef<{
+      thread: string;
+      text: string;
+      id: string;
+      file?: File | null;
+    } | null>(null),
     historyInitial = useRef(false);
   active.current = current;
   useEffect(() => {
@@ -103,6 +168,12 @@ export default function TroChuyen({
   useEffect(() => {
     setMessages([]);
     setText("");
+    setTool(null);
+    setContextMode(false);
+    setNewIncoming(false);
+    setSelectedFile(null);
+    setHint("");
+    latestPoll.current = "";
     setOlder(false);
     historyInitial.current = false;
     pending.current = null;
@@ -122,6 +193,7 @@ export default function TroChuyen({
           new URLSearchParams({
             tim: peopleMode ? "" : search,
             bo_qua: String(i * 40),
+            don_gian: admin ? "0" : "1",
           }),
         "GET",
         undefined,
@@ -135,7 +207,7 @@ export default function TroChuyen({
     setThreads([...new Map(all.map((t) => [t.id, t])).values()]);
     setTotal(response.tong_so);
     setUnread(response.tong_chua_doc || 0);
-  }, [token, guest, search, pages, peopleMode]);
+  }, [token, guest, search, pages, peopleMode, admin]);
   useEffect(() => {
     let alive = true;
     const poll = () => {
@@ -184,19 +256,26 @@ export default function TroChuyen({
     };
   }, [peopleMode, search, token]);
   useEffect(() => {
-    if (!visible || !current) return;
+    if (!visible || !current || contextMode) return;
     let alive = true;
     const poll = async () => {
       if (document.hidden) return;
       try {
-        const r = await khachApi<{ tin_nhan: Message[]; co_tin_cu: boolean }>(
-          "/chat/" + current + "/tin-nhan",
-          "GET",
-          undefined,
-          token,
-          guest,
-        );
+        const r = await khachApi<{
+          tin_nhan: Message[];
+          co_tin_cu: boolean;
+          duoc_dung_mau?: boolean;
+        }>("/chat/" + current + "/tin-nhan", "GET", undefined, token, guest);
         if (alive) {
+          setCanReply(!!r.duoc_dung_mau);
+          const last = r.tin_nhan.at(-1)?.id || "";
+          if (
+            latestPoll.current &&
+            latestPoll.current !== last &&
+            !nearBottom.current
+          )
+            setNewIncoming(true);
+          latestPoll.current = last;
           setMessages((prev) => {
             const ids = new Set(r.tin_nhan.map((m) => m.id));
             return [...prev.filter((m) => !ids.has(m.id)), ...r.tin_nhan].sort(
@@ -222,11 +301,12 @@ export default function TroChuyen({
       clearInterval(timer);
       document.removeEventListener("visibilitychange", poll);
     };
-  }, [visible, current, token, guest]);
+  }, [visible, current, token, guest, contextMode]);
   const markRead = useCallback(async () => {
     const last = messages.at(-1);
     if (
       !visible ||
+      contextMode ||
       document.hidden ||
       !nearBottom.current ||
       !last ||
@@ -248,7 +328,7 @@ export default function TroChuyen({
       delete readIds.current[current];
       if (active.current === current) setError((e as Error).message);
     }
-  }, [messages, visible, current, token, guest, list]);
+  }, [messages, visible, current, token, guest, list, contextMode]);
   useEffect(() => {
     if (!visible) return;
     const timer = window.setTimeout(() => {
@@ -258,6 +338,82 @@ export default function TroChuyen({
     }, 0);
     return () => clearTimeout(timer);
   }, [messages, visible, markRead]);
+  useLayoutEffect(() => {
+    const v = viewport.current,
+      r = restore.current;
+    if (v && r && r.id === current) {
+      v.scrollTop = r.top + v.scrollHeight - r.height;
+      restore.current = null;
+    }
+  }, [messages, current]);
+  useEffect(() => {
+    const key =
+      (branch || "all") + "|" + (token ? "user" : "guest") + "|" + guest;
+    if (
+      !admin &&
+      visible &&
+      !current &&
+      !busy &&
+      !autoStarting.current &&
+      autoAttempted.current !== key
+    ) {
+      autoStarting.current = true;
+      autoAttempted.current = key;
+      void start().finally(() => {
+        autoStarting.current = false;
+      });
+    }
+  }, [admin, visible, current, branch, token, guest, busy]);
+  async function jump(message: string) {
+    setError("");
+    try {
+      const r = await khachApi<{
+        tin_nhan: Message[];
+        co_tin_cu: boolean;
+        duoc_dung_mau?: boolean;
+      }>(
+        "/chat/" + current + "/tin-nhan?den=" + message,
+        "GET",
+        undefined,
+        token,
+        guest,
+      );
+      setContextMode(true);
+      nearBottom.current = false;
+      setMessages(r.tin_nhan);
+      setOlder(r.co_tin_cu);
+      setTool(null);
+      window.setTimeout(
+        () =>
+          document
+            .getElementById("chat-msg-" + message)
+            ?.scrollIntoView({ block: "center", behavior: "smooth" }),
+        0,
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+  function newest() {
+    nearBottom.current = true;
+    setNewIncoming(false);
+    if (contextMode) {
+      historyInitial.current = false;
+      setMessages([]);
+      setContextMode(false);
+    } else if (viewport.current) {
+      viewport.current.scrollTop = viewport.current.scrollHeight;
+      void markRead();
+    }
+  }
+  function hideBubble() {
+    setOpen(false);
+    setHidden(true);
+    sessionStorage.setItem(
+      "homestay_chat_hidden:" + (admin ? "admin" : "guest"),
+      "1",
+    );
+  }
   function choose(t: Thread) {
     setCurrent(t.id);
     setCurrentName(t.ten_hien_thi);
@@ -296,29 +452,48 @@ export default function TroChuyen({
   }
   async function send(e: React.FormEvent) {
     e.preventDefault();
-    if (!current || !text.trim() || busy) return;
-    const id = current,
-      content = text.trim();
+    await sendContent(text.trim());
+  }
+  async function sendContent(content: string, quick = false) {
+    const file = quick ? null : selectedFile;
+    if (!current || (!content && !file) || busy || sendLock.current) return;
+    sendLock.current = true;
+    const id = current;
     if (
       !pending.current ||
       pending.current.thread !== id ||
-      pending.current.text !== content
+      pending.current.text !== content ||
+      pending.current.file !== file
     )
-      pending.current = { thread: id, text: content, id: crypto.randomUUID() };
+      pending.current = {
+        thread: id,
+        text: content,
+        id: crypto.randomUUID(),
+        file,
+      };
     setBusy(true);
     setError("");
+    setHint("");
     try {
-      await khachApi(
-        "/chat/" + id + "/tin-nhan",
-        "POST",
-        { noi_dung: content, ma_phia_khach: pending.current.id },
-        token,
-        guest,
-      );
+      if (file)
+        await chatUpload(id, file, content, pending.current.id, token, guest);
+      else
+        await khachApi(
+          "/chat/" + id + "/tin-nhan",
+          "POST",
+          { noi_dung: content, ma_phia_khach: pending.current.id },
+          token,
+          guest,
+        );
       if (active.current !== id) return;
       pending.current = null;
-      setText("");
+      if (!quick) {
+        setText("");
+        setSelectedFile(null);
+      }
       nearBottom.current = true;
+      setContextMode(false);
+      setNewIncoming(false);
       const r = await khachApi<{ tin_nhan: Message[] }>(
         "/chat/" + id + "/tin-nhan",
         "GET",
@@ -336,14 +511,32 @@ export default function TroChuyen({
       if (active.current === id) setError((e as Error).message);
     } finally {
       setBusy(false);
+      sendLock.current = false;
     }
   }
+  function chooseFile(file?: File) {
+    if (!file) return;
+    if (
+      file.size > 20971520 ||
+      (file.type.startsWith("image/") && file.size > 10485760)
+    ) {
+      setError("Ảnh tối đa 10 MB; tệp tối đa 20 MB");
+      return;
+    }
+    setSelectedFile(file);
+    setError("");
+  }
   async function loadOlder() {
-    if (!messages.length || loadingOlder) return;
+    if (!messages.length || olderLock.current) return;
+    olderLock.current = true;
     const id = current;
     setLoadingOlder(true);
     try {
-      const r = await khachApi<{ tin_nhan: Message[]; co_tin_cu: boolean }>(
+      const r = await khachApi<{
+        tin_nhan: Message[];
+        co_tin_cu: boolean;
+        duoc_dung_mau?: boolean;
+      }>(
         "/chat/" + id + "/tin-nhan?truoc=" + messages[0].id,
         "GET",
         undefined,
@@ -352,6 +545,12 @@ export default function TroChuyen({
       );
       if (active.current === id) {
         nearBottom.current = false;
+        if (viewport.current)
+          restore.current = {
+            id,
+            height: viewport.current.scrollHeight,
+            top: viewport.current.scrollTop,
+          };
         setMessages((prev) => {
           const keys = new Set(prev.map((m) => m.id));
           return [...r.tin_nhan.filter((m) => !keys.has(m.id)), ...prev];
@@ -362,6 +561,7 @@ export default function TroChuyen({
       setError((e as Error).message);
     } finally {
       setLoadingOlder(false);
+      olderLock.current = false;
     }
   }
   const title =
@@ -369,27 +569,73 @@ export default function TroChuyen({
     currentName ||
     "Tin nhắn";
   return (
-    <div className={"chat-shell " + (inline ? "chat-inline" : "")}>
-      <button
-        className="chat-launch"
-        aria-label={
-          "Tin nhắn" + (unread ? ", " + unread + " tin chưa đọc" : "")
-        }
-        aria-expanded={visible}
-        onClick={() => (inline ? input.current?.focus() : setOpen((v) => !v))}
-      >
-        ☏ {inline ? "Tin nhắn" : open ? "Đóng chat" : "Trò chuyện"}
-        {unread > 0 && (
-          <span className="chat-total-badge">
-            {unread.toLocaleString("vi-VN")}
-          </span>
-        )}
-      </button>
+    <div
+      className={
+        "chat-shell " +
+        (inline ? "chat-inline " : "") +
+        (!admin ? "chat-simple" : "")
+      }
+    >
+      {(!hidden || inline) && (
+        <>
+          <button
+            className="chat-launch"
+            aria-label={
+              "Tin nhắn" + (unread ? ", " + unread + " tin chưa đọc" : "")
+            }
+            title="Mở tin nhắn"
+            aria-expanded={visible}
+            onClick={() =>
+              inline ? input.current?.focus() : setOpen((v) => !v)
+            }
+          >
+            <svg
+              aria-hidden="true"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+            >
+              <path d="M21 11.5a9 9 0 0 1-9 9H4l-3 2v-10a10 10 0 0 1 20-1z" />
+              <path d="M6 10h10M6 14h6" />
+            </svg>
+            {unread > 0 && (
+              <span className="chat-total-badge">
+                {unread.toLocaleString("vi-VN")}
+              </span>
+            )}
+          </button>
+          {!inline && (
+            <button
+              className="chat-hide-launch"
+              aria-label="Ẩn bong bóng chat"
+              title="Ẩn bong bóng; mở lại ở Hỗ trợ hoặc Tin nhắn"
+              onClick={hideBubble}
+            >
+              ×
+            </button>
+          )}
+        </>
+      )}
       {visible && (
-        <section className="chat-window" aria-label="Hộp thư">
+        <section
+          className="chat-window"
+          aria-label="Hộp thư"
+          onDragOver={(e) => {
+            if (current) {
+              e.preventDefault();
+            }
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            if (current && !busy) chooseFile(e.dataTransfer.files[0]);
+          }}
+        >
           <header>
             <div>
-              <h2>Tin nhắn</h2>
+              <h2>{admin ? "Tin nhắn" : "Hỗ trợ HomeStay"}</h2>
               <small>Kết nối cùng HomeStay</small>
             </div>
             {!inline && (
@@ -399,152 +645,166 @@ export default function TroChuyen({
             )}
           </header>
           <div className="chat-body">
-            <aside>
-              <div className="chat-sidebar-head">
-                <div className="chat-sidebar-title">
-                  <strong>Hội thoại</strong>
-                  <span>{total}</span>
-                </div>
-                <div className="chat-find-tabs">
-                  <button
-                    className={!peopleMode ? "active" : ""}
-                    onClick={() => {
-                      setPeopleMode(false);
-                      setSearch("");
-                    }}
-                  >
-                    Tất cả
-                  </button>
-                  {token && (
+            {admin && (
+              <aside>
+                <div className="chat-sidebar-head">
+                  <div className="chat-sidebar-title">
+                    <strong>Hội thoại</strong>
+                    <span>{total}</span>
                     <button
-                      className={peopleMode ? "active" : ""}
+                      className="chat-template-settings"
+                      aria-label="Quản lý câu trả lời soạn sẵn"
+                      title="Quản lý câu trả lời soạn sẵn"
+                      onClick={() => setManageTemplates(true)}
+                    >
+                      ⚙
+                    </button>
+                  </div>
+                  <div className="chat-find-tabs">
+                    <button
+                      className={!peopleMode ? "active" : ""}
                       onClick={() => {
-                        setPeopleMode(true);
+                        setPeopleMode(false);
                         setSearch("");
                       }}
                     >
-                      Nhắn mới
+                      Tất cả
                     </button>
-                  )}
+                    {token && (
+                      <button
+                        className={peopleMode ? "active" : ""}
+                        onClick={() => {
+                          setPeopleMode(true);
+                          setSearch("");
+                        }}
+                      >
+                        Nhắn mới
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    className="chat-search"
+                    aria-label={
+                      peopleMode ? "Tìm người để nhắn" : "Tìm cuộc trò chuyện"
+                    }
+                    maxLength={100}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder={
+                      peopleMode
+                        ? "Tên hoặc SĐT đầy đủ…"
+                        : "Tìm cuộc trò chuyện…"
+                    }
+                  />
+                  <button
+                    className="chat-support"
+                    disabled={busy}
+                    onClick={() => void start()}
+                  >
+                    + Hỗ trợ đặt phòng
+                  </button>
                 </div>
-                <input
-                  className="chat-search"
-                  aria-label={
-                    peopleMode ? "Tìm người để nhắn" : "Tìm cuộc trò chuyện"
-                  }
-                  maxLength={100}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder={
-                    peopleMode ? "Tên hoặc SĐT đầy đủ…" : "Tìm cuộc trò chuyện…"
-                  }
-                />
-                <button
-                  className="chat-support"
-                  disabled={busy}
-                  onClick={() => void start()}
-                >
-                  + Hỗ trợ đặt phòng
-                </button>
-              </div>
-              <div className="chat-thread-list">
-                {peopleMode ? (
-                  <>
-                    {search.trim().length < 2 ? (
-                      <p className="chat-empty">
-                        Nhập tên người từng liên hệ, nhóm hỗ trợ hoặc SĐT đầy
-                        đủ.
-                      </p>
-                    ) : finding ? (
-                      <p className="chat-empty">Đang tìm…</p>
-                    ) : !people.length ? (
-                      <p className="chat-empty">
-                        Không tìm thấy người phù hợp. Thử SĐT đầy đủ.
-                      </p>
-                    ) : (
-                      people.map((p) => (
+                <div className="chat-thread-list">
+                  {peopleMode ? (
+                    <>
+                      {search.trim().length < 2 ? (
+                        <p className="chat-empty">
+                          Nhập tên người từng liên hệ, nhóm hỗ trợ hoặc SĐT đầy
+                          đủ.
+                        </p>
+                      ) : finding ? (
+                        <p className="chat-empty">Đang tìm…</p>
+                      ) : !people.length ? (
+                        <p className="chat-empty">
+                          Không tìm thấy người phù hợp. Thử SĐT đầy đủ.
+                        </p>
+                      ) : (
+                        people.map((p) => (
+                          <button
+                            key={p.id}
+                            className="chat-person"
+                            disabled={busy}
+                            onClick={() => void start(p)}
+                          >
+                            <span className="chat-avatar">
+                              {initials(p.ten_hien_thi)}
+                            </span>
+                            <strong>{p.ten_hien_thi}</strong>
+                          </button>
+                        ))
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {threads.map((t) => (
                         <button
-                          key={p.id}
-                          className="chat-person"
-                          disabled={busy}
-                          onClick={() => void start(p)}
+                          key={t.id}
+                          className={
+                            "chat-thread " +
+                            (current === t.id ? "chat-chosen " : "") +
+                            (t.chua_doc ? "chat-unread" : "")
+                          }
+                          onClick={() => choose(t)}
                         >
                           <span className="chat-avatar">
-                            {initials(p.ten_hien_thi)}
+                            {initials(t.ten_hien_thi)}
                           </span>
-                          <strong>{p.ten_hien_thi}</strong>
-                        </button>
-                      ))
-                    )}
-                  </>
-                ) : (
-                  <>
-                    {threads.map((t) => (
-                      <button
-                        key={t.id}
-                        className={
-                          "chat-thread " +
-                          (current === t.id ? "chat-chosen " : "") +
-                          (t.chua_doc ? "chat-unread" : "")
-                        }
-                        onClick={() => choose(t)}
-                      >
-                        <span className="chat-avatar">
-                          {initials(t.ten_hien_thi)}
-                        </span>
-                        <span className="chat-thread-text">
-                          <span className="chat-thread-top">
-                            <strong>{t.ten_hien_thi}</strong>
-                            <time
-                              title={
-                                t.tin_cuoi_luc
-                                  ? new Date(t.tin_cuoi_luc).toLocaleString(
-                                      "vi-VN",
-                                    )
-                                  : ""
-                              }
-                            >
-                              {clock(t.tin_cuoi_luc)}
-                            </time>
-                          </span>
-                          <span className="chat-thread-bottom">
-                            <small>{t.tin_cuoi || "Bắt đầu trò chuyện"}</small>
-                            {t.chua_doc > 0 && (
-                              <b
-                                className="chat-unread-badge"
-                                aria-label={t.chua_doc + " tin chưa đọc"}
+                          <span className="chat-thread-text">
+                            <span className="chat-thread-top">
+                              <strong>{t.ten_hien_thi}</strong>
+                              <time
+                                title={
+                                  t.tin_cuoi_luc
+                                    ? new Date(t.tin_cuoi_luc).toLocaleString(
+                                        "vi-VN",
+                                      )
+                                    : ""
+                                }
                               >
-                                {t.chua_doc.toLocaleString("vi-VN")}
-                              </b>
+                                {clock(t.tin_cuoi_luc)}
+                              </time>
+                            </span>
+                            <span className="chat-thread-bottom">
+                              <small>
+                                {t.tin_cuoi || "Bắt đầu trò chuyện"}
+                              </small>
+                              {t.chua_doc > 0 && (
+                                <b
+                                  className="chat-unread-badge"
+                                  aria-label={t.chua_doc + " tin chưa đọc"}
+                                >
+                                  {t.chua_doc.toLocaleString("vi-VN")}
+                                </b>
+                              )}
+                            </span>
+                            {t.ten_homestay && (
+                              <span className="chat-branch">
+                                {t.ten_homestay}
+                              </span>
                             )}
                           </span>
-                          {t.ten_homestay && (
-                            <span className="chat-branch">
-                              {t.ten_homestay}
-                            </span>
-                          )}
-                        </span>
-                      </button>
-                    ))}
-                    {!threads.length && (
-                      <p className="chat-empty">
-                        {search
-                          ? "Không có cuộc trò chuyện phù hợp."
-                          : "Chưa có cuộc trò chuyện. Hãy gửi lời chào!"}
-                      </p>
-                    )}
-                    {threads.length < total && (
-                      <button
-                        className="chat-more"
-                        onClick={() => setPages((v) => v + 1)}
-                      >
-                        Tải thêm hội thoại ({threads.length}/{total})
-                      </button>
-                    )}
-                  </>
-                )}
-              </div>
-            </aside>
+                        </button>
+                      ))}
+                      {!threads.length && (
+                        <p className="chat-empty">
+                          {search
+                            ? "Không có cuộc trò chuyện phù hợp."
+                            : "Chưa có cuộc trò chuyện. Hãy gửi lời chào!"}
+                        </p>
+                      )}
+                      {threads.length < total && (
+                        <button
+                          className="chat-more"
+                          onClick={() => setPages((v) => v + 1)}
+                        >
+                          Tải thêm hội thoại ({threads.length}/{total})
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </aside>
+            )}
             <div className="chat-main">
               <div className="chat-conversation-head">
                 <span className="chat-avatar">{initials(title)}</span>
@@ -556,11 +816,47 @@ export default function TroChuyen({
                       : "Chọn một cuộc trò chuyện để bắt đầu"}
                   </small>
                 </div>
+                <div className="chat-tool-buttons">
+                  <button
+                    disabled={!current}
+                    aria-label="Tìm tin nhắn"
+                    title="Tìm tin nhắn"
+                    onClick={() => setTool(tool === "tim" ? null : "tim")}
+                  >
+                    ⌕
+                  </button>
+                  <button
+                    disabled={!current}
+                    aria-label="Xem ảnh đã gửi"
+                    title="Ảnh đã gửi"
+                    onClick={() => setTool(tool === "anh" ? null : "anh")}
+                  >
+                    ▧
+                  </button>
+                  <button
+                    disabled={!current}
+                    aria-label="Xem tệp đã gửi"
+                    title="Tệp đã gửi"
+                    onClick={() => setTool(tool === "tep" ? null : "tep")}
+                  >
+                    ▤
+                  </button>
+                </div>
               </div>
               {error && (
                 <p role="alert" className="chat-error">
                   {error}
                 </p>
+              )}
+              {hint && (
+                <p role="status" className="chat-hint">
+                  {hint}
+                </p>
+              )}
+              {contextMode && (
+                <button className="chat-context-back" onClick={newest}>
+                  Đang xem kết quả tìm kiếm · Về tin mới ↓
+                </button>
               )}
               <div
                 className="chat-messages"
@@ -570,23 +866,38 @@ export default function TroChuyen({
                   if (v) {
                     nearBottom.current =
                       v.scrollHeight - v.scrollTop - v.clientHeight < 36;
-                    if (nearBottom.current) void markRead();
+                    if (nearBottom.current) {
+                      setNewIncoming(false);
+                      void markRead();
+                    }
+                    if (v.scrollTop < 60 && older && !loadingOlder)
+                      void loadOlder();
                   }
                 }}
               >
-                {older && (
-                  <button
-                    className="chat-more"
-                    disabled={loadingOlder}
-                    onClick={() => void loadOlder()}
-                  >
-                    {loadingOlder ? "Đang tải…" : "Tải tin trước"}
-                  </button>
+                {loadingOlder && (
+                  <p className="chat-history-loading" role="status">
+                    Đang tải tin trước…
+                  </p>
+                )}
+                {!loadingOlder && older && (
+                  <p className="chat-history-loading">
+                    Kéo lên để xem tin trước
+                  </p>
                 )}
                 {!current && (
                   <p className="chat-empty">
-                    Chọn một cuộc trò chuyện hoặc bấm Hỗ trợ đặt phòng.
+                    {admin
+                      ? "Chọn một cuộc trò chuyện hoặc bấm Hỗ trợ đặt phòng."
+                      : busy
+                        ? "Đang kết nối…"
+                        : "Chào bạn! HomeStay sẵn sàng hỗ trợ."}
                   </p>
+                )}
+                {!admin && !current && !busy && (
+                  <button className="chat-more" onClick={() => void start()}>
+                    Bắt đầu trò chuyện
+                  </button>
                 )}
                 {current && !messages.length && (
                   <p className="chat-empty">
@@ -594,8 +905,13 @@ export default function TroChuyen({
                   </p>
                 )}
                 {messages.map((m) => (
-                  <article key={m.id} className={m.cua_toi ? "chat-mine" : ""}>
+                  <article
+                    id={"chat-msg-" + m.id}
+                    key={m.id}
+                    className={m.cua_toi ? "chat-mine" : ""}
+                  >
                     <small>{m.ten_nguoi_gui}</small>
+                    {m.tep && <TepDinhKem tep={m.tep} />}
                     <p>{m.noi_dung}</p>
                     <time title={new Date(m.ngay_gui).toLocaleString("vi-VN")}>
                       {clock(m.ngay_gui)}
@@ -603,7 +919,61 @@ export default function TroChuyen({
                   </article>
                 ))}
               </div>
+              {newIncoming && !contextMode && (
+                <button className="chat-new-message" onClick={newest}>
+                  Tin mới ↓
+                </button>
+              )}
+              {selectedFile && (
+                <div className="chat-file-preview">
+                  {preview && <img src={preview} alt="Xem trước tệp" />}
+                  <span>
+                    {selectedFile.name}
+                    <small>{sizeTep(selectedFile.size)}</small>
+                  </span>
+                  <button
+                    disabled={busy}
+                    aria-label="Bỏ tệp đang chọn"
+                    onClick={() => setSelectedFile(null)}
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
               <form onSubmit={send}>
+                <div className="chat-compose-tools">
+                  <input
+                    ref={fileInput}
+                    type="file"
+                    hidden
+                    accept="image/jpeg,image/png,image/webp,application/pdf,text/plain,text/csv,.docx,.xlsx"
+                    disabled={!current || busy}
+                    onChange={(e) => {
+                      chooseFile(e.target.files?.[0]);
+                      e.target.value = "";
+                    }}
+                  />
+                  <button
+                    type="button"
+                    disabled={!current || busy}
+                    aria-label="Gửi ảnh hoặc tệp"
+                    title="Gửi ảnh hoặc tệp"
+                    onClick={() => fileInput.current?.click()}
+                  >
+                    ＋
+                  </button>
+                  {(admin || canReply) && (
+                    <button
+                      type="button"
+                      disabled={!current || busy}
+                      aria-label="Câu trả lời soạn sẵn"
+                      title="Câu trả lời soạn sẵn"
+                      onClick={() => setTool(tool === "mau" ? null : "mau")}
+                    >
+                      ≡
+                    </button>
+                  )}
+                </div>
                 <input
                   ref={input}
                   aria-label="Nội dung tin nhắn"
@@ -613,11 +983,51 @@ export default function TroChuyen({
                   onChange={(e) => setText(e.target.value)}
                   placeholder="Nhập tin nhắn…"
                 />
-                <button disabled={busy || !current || !text.trim()}>Gửi</button>
+                <button
+                  disabled={busy || !current || (!text.trim() && !selectedFile)}
+                >
+                  {busy
+                    ? selectedFile
+                      ? "Đang gửi tệp…"
+                      : "Đang gửi…"
+                    : "Gửi"}
+                </button>
               </form>
+              {tool && current && (
+                <ChatCongCu
+                  key={current + tool}
+                  id={current}
+                  token={token}
+                  guest={guest}
+                  mode={tool}
+                  admin={admin}
+                  onClose={() => setTool(null)}
+                  onJump={(id) => void jump(id)}
+                  onReply={(content, now) => {
+                    if (now) {
+                      void sendContent(content, true);
+                      setTool(null);
+                    } else {
+                      setText(content);
+                      setHint("Kiểm tra thông tin còn thiếu trước khi gửi.");
+                      setTool(null);
+                      input.current?.focus();
+                    }
+                  }}
+                />
+              )}
             </div>
           </div>
         </section>
+      )}
+      {manageTemplates && admin && token && (
+        <QuanLyCauTraLoi
+          token={token}
+          onClose={() => {
+            setManageTemplates(false);
+            setTool(null);
+          }}
+        />
       )}
     </div>
   );

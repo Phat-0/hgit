@@ -147,6 +147,18 @@ await db.exec(
     "utf8",
   ),
 );
+await db.exec(
+  fs.readFileSync(
+    root + "/co-so-du-lieu/migrations/20261112-chat-tep-mau-thong-bao.sql",
+    "utf8",
+  ),
+);
+await db.exec(
+  fs.readFileSync(
+    root + "/co-so-du-lieu/migrations/20261112-quyen-trigger-thong-bao.sql",
+    "utf8",
+  ),
+);
 const { ChatService } = await import(
   root + "/may-chu/dist/khach-hang/chat.service.js"
 );
@@ -586,5 +598,274 @@ await assert.rejects(
 );
 console.log(
   "PASS Trang chủ: nháp tách xuất bản, bật/tắt/ẩn nội dung khỏi API public, chống ghi đè phiên khác, quyền quản trị, chặn URL/tệp giả ảnh, migration chạy lại giữ dữ liệu.",
+);
+// Tệp riêng tư và câu trả lời mẫu, Storage giả lập, SQL thật.
+const stored = new Map(),
+  removedKeys = [];
+let uploads = 0;
+chat.storage = () => ({
+  upload: async (path, buffer) => {
+    uploads++;
+    stored.set(path, buffer);
+    return { error: null };
+  },
+  createSignedUrl: async (path, _ttl, options) => ({
+    data: {
+      signedUrl:
+        "https://storage.test/private/" +
+        encodeURIComponent(path) +
+        (options ? "?download=1" : ""),
+    },
+    error: null,
+  }),
+  remove: async (paths) => {
+    for (const p of paths) {
+      removedKeys.push(p);
+      stored.delete(p);
+    }
+    return { error: null };
+  },
+});
+const fileChat = await chat.start({ chi_nhanh_id: branch });
+const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3]);
+const uploadFile = {
+  buffer: png,
+  size: png.length,
+  mimetype: "image/png",
+  originalname: "../../phong.png",
+};
+const fileNonce = randomUUID();
+await assert.rejects(
+  () =>
+    chat.upload(fileChat.id, { ma_phia_khach: randomUUID() }, uploadFile, "b"),
+  /Không có quyền/,
+);
+assert.equal(uploads, 0);
+const imageMessage = await chat.upload(
+  fileChat.id,
+  { ma_phia_khach: fileNonce },
+  uploadFile,
+  undefined,
+  fileChat.guest_token,
+);
+await chat.upload(
+  fileChat.id,
+  { ma_phia_khach: fileNonce },
+  uploadFile,
+  undefined,
+  fileChat.guest_token,
+);
+assert.equal(uploads, 1);
+const fm = (
+  await chat.messages(fileChat.id, undefined, fileChat.guest_token)
+).tin_nhan.at(-1);
+assert.ok(fm.tep.url);
+assert.equal(fm.tep.duong_dan, undefined);
+assert.equal(fm.tep.la_anh, true);
+assert.ok(!fm.tep.ten_tep.includes("/"));
+assert.equal(
+  (
+    await chat.files(
+      fileChat.id,
+      "anh",
+      "phong",
+      0,
+      undefined,
+      fileChat.guest_token,
+    )
+  ).tep.length,
+  1,
+);
+await assert.rejects(
+  () => chat.files(fileChat.id, "anh", "", 0, "b"),
+  /Không có quyền/,
+);
+const pdf = Buffer.from("%PDF-1.7 local test");
+await chat.upload(
+  fileChat.id,
+  { ma_phia_khach: randomUUID(), noi_dung: "Tài liệu tham khảo" },
+  {
+    buffer: pdf,
+    size: pdf.length,
+    mimetype: "application/pdf",
+    originalname: "huong-dan.pdf",
+  },
+  "admin",
+);
+const lib = await chat.files(
+  fileChat.id,
+  "tep",
+  "huong",
+  0,
+  undefined,
+  fileChat.guest_token,
+);
+assert.equal(lib.tep.length, 1);
+assert.match(lib.tep[0].url, /download/);
+assert.ok(
+  (
+    await chat.searchMessages(
+      fileChat.id,
+      "Tài liệu",
+      0,
+      undefined,
+      fileChat.guest_token,
+    )
+  ).tin_nhan.length,
+);
+assert.ok(
+  (
+    await chat.messages(
+      fileChat.id,
+      undefined,
+      fileChat.guest_token,
+      undefined,
+      imageMessage.id,
+    )
+  ).tin_nhan.some((m) => m.id === imageMessage.id),
+);
+await assert.rejects(
+  () =>
+    chat.messages(
+      fileChat.id,
+      undefined,
+      fileChat.guest_token,
+      undefined,
+      firstPrivate.id,
+    ),
+  /không thuộc/,
+);
+await assert.rejects(
+  () =>
+    chat.upload(
+      fileChat.id,
+      { ma_phia_khach: randomUUID() },
+      {
+        buffer: Buffer.from("<script>"),
+        size: 8,
+        mimetype: "image/png",
+        originalname: "fake.png",
+      },
+      undefined,
+      fileChat.guest_token,
+    ),
+  /Chỉ nhận/,
+);
+const realDb = conn.db;
+conn.db = async () => {
+  const c = await realDb();
+  return {
+    ...c,
+    query: async (sql, args) => {
+      if (sql.startsWith("INSERT INTO public.tep_tin_chat"))
+        throw Error("test rollback metadata");
+      return c.query(sql, args);
+    },
+  };
+};
+const badNonce = randomUUID();
+await assert.rejects(
+  () =>
+    chat.upload(
+      fileChat.id,
+      { ma_phia_khach: badNonce },
+      uploadFile,
+      undefined,
+      fileChat.guest_token,
+    ),
+  /rollback metadata/,
+);
+conn.db = realDb;
+assert.equal(
+  (
+    await db.query(
+      "SELECT count(*)::int AS n FROM public.tin_nhan WHERE ma_phia_khach=$1",
+      [badNonce],
+    )
+  ).rows[0].n,
+  0,
+);
+assert.ok(removedKeys.length);
+const { TienIchChatService } = await import(
+  root + "/may-chu/dist/quan-tri/tien-ich-chat.service.js"
+);
+const utils = new TienIchChatService({
+  kiemTraQuanTri: async (id) => {
+    if (id !== admin) throw Error("Forbidden");
+  },
+});
+utils.db = connection;
+const template = await utils.saveTemplate(admin, undefined, {
+  tieu_de: "Tên và chi nhánh",
+  nhom: "Chào hỏi",
+  noi_dung: "Chào {{ten_khach}} tại {{chi_nhanh}}",
+  homestay_id: branch,
+  hien: true,
+});
+const replies = await chat.replies(fileChat.id, "admin");
+assert.equal(replies.mau.find((m) => m.id === template.id).du_gui_ngay, false);
+await assert.rejects(
+  () => chat.replies(fileChat.id, undefined, fileChat.guest_token),
+  /Unauthorized/,
+);
+await assert.rejects(() => utils.templates(uid), /Forbidden/);
+await utils.saveTemplate(admin, template.id, {
+  tieu_de: "Đã sửa",
+  nhom: "Hỗ trợ",
+  noi_dung: "Xin chào bạn!",
+  homestay_id: null,
+  hien: true,
+});
+assert.equal(
+  (await chat.replies(fileChat.id, "admin")).mau.find(
+    (m) => m.id === template.id,
+  ).du_gui_ngay,
+  true,
+);
+await utils.deleteTemplate(admin, template.id);
+assert.ok(
+  !(await utils.templates(admin)).mau.some((m) => m.id === template.id),
+);
+const simpleInbox = await chat.list("admin", undefined, "", 0, true);
+assert.ok(
+  simpleInbox.hoi_thoai.every((t) => t.ten_hien_thi === "Hỗ trợ HomeStay"),
+);
+const beforeCount = (await utils.notifications(admin)).tong_so;
+const noticeBooking = randomUUID();
+await db.query(
+  "INSERT INTO public.dat_phong(id,ma_dat_phong,nguoi_dung_id,homestay_id,phong_id,hinh_thuc_dat,nhan_phong_luc,tra_phong_luc,so_khach,tien_phong,ten_don,trang_thai) VALUES($1,$2,$3,$4,$5,'Theo giờ',now()+interval '40 days',now()+interval '40 days 3 hours',1,200000,'Khách thông báo','Đã xác nhận')",
+  [noticeBooking, "DP-NOTICE-" + noticeBooking.slice(0, 8), uid, branch, room],
+);
+assert.equal((await utils.notifications(admin)).tong_so, beforeCount + 1);
+await db.query("UPDATE public.dat_phong SET trang_thai='Đã hủy' WHERE id=$1", [
+  noticeBooking,
+]);
+await db.query("UPDATE public.dat_phong SET trang_thai='Đã hủy' WHERE id=$1", [
+  noticeBooking,
+]);
+assert.equal((await utils.notifications(admin)).tong_so, beforeCount + 2);
+const cancelNotice = (
+  await utils.notifications(admin, "Đơn hủy")
+).thong_bao.find((n) => n.du_lieu.dat_phong_id === noticeBooking);
+assert.ok(cancelNotice);
+await utils.readNotification(admin, cancelNotice.id);
+assert.ok(
+  (await utils.notifications(admin, "Đơn hủy")).thong_bao.find(
+    (n) => n.id === cancelNotice.id,
+  ).da_doc_luc,
+);
+await assert.rejects(() => utils.notifications(uid), /Forbidden/);
+const foreignNotice = (
+  await db.query(
+    "INSERT INTO public.thong_bao(nguoi_dung_id,tieu_de,noi_dung,loai) VALUES($1,'Riêng','Nội dung','Đơn mới') RETURNING id",
+    [other],
+  )
+).rows[0].id;
+await assert.rejects(
+  () => utils.readNotification(admin, foreignNotice),
+  /Không tìm thấy/,
+);
+console.log(
+  "PASS Tiện ích: ảnh/tệp có ACL và link riêng tư, chống gửi lặp/rollback xóa tệp mới, tìm tin/ngữ cảnh, kho tệp, CRUD mẫu/quyền/biến thiếu, chế độ khách gọn, trigger đơn mới/hủy không lặp, chuông đọc đúng chủ.",
 );
 await db.close();

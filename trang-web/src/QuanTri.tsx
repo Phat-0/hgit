@@ -1,3 +1,5 @@
+import ThongBaoDon from './ThongBaoDon';
+import './thong-bao-don.css';
 import TrangChuQuanTri from './TrangChuQuanTri';
 import NhanVien from './NhanVien';
 import TroChuyen from './TroChuyen';
@@ -17,7 +19,7 @@ function stored():SavedSession|null{try{const raw=localStorage.getItem(SESSION_K
 function persist(x:SavedSession){sessionStorage.removeItem(SESSION_KEY);localStorage.removeItem(SESSION_KEY);(x.remember?localStorage:sessionStorage).setItem(SESSION_KEY,JSON.stringify(x));}
 function clearSaved(){sessionStorage.removeItem(SESSION_KEY);localStorage.removeItem(SESSION_KEY);}
 
-type Muc = 'tong-quan'|'lich'|'chi-nhanh'|'phong'|'loai-phong'|'goi-combo'|'dat-phong'|'trang-chu'|'nhan-vien'|'thong-bao'|'cai-dat'|'bao-cao'|'thong-tin'|'tin-nhan';
+type Muc = 'tong-quan'|'lich'|'chi-nhanh'|'phong'|'loai-phong'|'goi-combo'|'dat-phong'|'trang-chu'|'nhan-vien'|'cai-dat'|'bao-cao'|'thong-tin'|'tin-nhan';
 const danhMuc: {id:Muc; nhan:string; icon:string}[] = [
   {id:'tong-quan',nhan:'Tổng quan',icon:'▦'},
   {id:'lich',nhan:'Lịch',icon:'▣'},
@@ -29,7 +31,6 @@ const danhMuc: {id:Muc; nhan:string; icon:string}[] = [
   {id:'trang-chu',nhan:'Trang chủ',icon:'⌂'},
   {id:'nhan-vien',nhan:'Nhân viên',icon:'♙'},
   {id:'tin-nhan',nhan:'Tin nhắn',icon:'☏'},
-  {id:'thong-bao',nhan:'Thông báo',icon:'♧'},
   {id:'cai-dat',nhan:'Cài đặt',icon:'⚙'},
   {id:'bao-cao',nhan:'Báo cáo thống kê',icon:'▥'},
   {id:'thong-tin',nhan:'Thông tin cá nhân',icon:'♙'}
@@ -145,7 +146,7 @@ export default function QuanTri(){
             <button type="button" className="qt-search-toggle" aria-label={timMo?'Thu gọn tìm kiếm':'Mở tìm kiếm'} aria-expanded={timMo} onClick={()=>{setTimMo(!timMo);if(timMo)setTim('');}}>⌕</button>
             {timMo&&<div className="qt-search"><input autoFocus aria-label="Tìm menu" value={tim} onChange={e=>setTim(e.target.value)} placeholder="Tìm chức năng..." onKeyDown={e=>{if(e.key==='Escape'){setTimMo(false);setTim('');}if(e.key==='Enter'){const x=danhMuc.find(x=>x.nhan.toLowerCase().includes(tim.trim().toLowerCase()));if(x&&tim.trim()){setMuc(x.id);setTimMo(false);setTim('');}}}}/></div>}
           </div>}</div>
-          <div className="qt-top-actions"><button title="Thông báo" aria-label="Thông báo" onClick={()=>setMuc('thong-bao')} className="qt-icon-button">♧<i/></button><button title="Người dùng" aria-label="Người dùng" onClick={()=>setMuc('nhan-vien')} className="qt-icon-button">✉</button></div>
+          <div className="qt-top-actions"><ThongBaoDon token={token}/><button title="Người dùng" aria-label="Người dùng" onClick={()=>setMuc('nhan-vien')} className="qt-icon-button">✉</button></div>
         </div>
         <main className={"qt-content "+(muc==='tin-nhan'?'qt-content-chat':'')}>
         {thongBao&&<div className="qt-alert" role="status">{thongBao}</div>}
@@ -157,7 +158,7 @@ export default function QuanTri(){
           <div className="qt-bottom-grid"><section className="qt-recent-card"><div className="qt-recent-title"><h2><span className="qt-heading-icon orange-icon">⌂</span> Homestay mới đăng ký</h2><button onClick={()=>setMuc('chi-nhanh')}>Xem tất cả →</button></div><div className="qt-recent-empty"><span>⌂</span><p>Danh sách Homestay gần đây sẽ hiển thị khi có API tương ứng.</p></div></section><section className="qt-recent-card"><div className="qt-recent-title"><h2><span className="qt-heading-icon">▣</span> Đơn đặt phòng gần đây</h2><button onClick={()=>setMuc('dat-phong')}>Xem tất cả →</button></div><div className="qt-recent-empty"><span>▣</span><p>Đơn đặt phòng gần đây sẽ hiển thị khi có API tương ứng.</p></div></section></div>
         </>:<section className="qt-placeholder"><div className="qt-placeholder-icon">{danhMuc.find(x=>x.id===muc)?.icon}</div><h2>{danhMuc.find(x=>x.id===muc)?.nhan}</h2>{muc==='thong-tin'?<p>Tài khoản đăng nhập: <strong>{taiKhoan}</strong>. Các chức năng cập nhật hồ sơ sẽ được triển khai sau.</p>:<p>Giao diện chức năng đã được bố trí trong menu. Các thao tác quản lý dữ liệu của mục này chưa được triển khai; sẽ kết nối API bảo vệ quyền quản trị ở bước tiếp theo.</p>}<button onClick={()=>setMuc('tong-quan')}>← Trở về tổng quan</button></section>}
         </main>
-        <TroChuyen token={token} inline={muc==='tin-nhan'}/>
+        <TroChuyen token={token} inline={muc==='tin-nhan'} admin/>
       </div>
     </div>;
 }

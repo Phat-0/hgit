@@ -1,7 +1,13 @@
 {
-  "name":"kiem-thu-homestay",
-  "private":true,
-  "type":"module",
-  "scripts":{"test":"node trang-khach-chat.integration.mjs"},
-  "devDependencies":{"@electric-sql/pglite":"0.5.15"}
+  "name": "kiem-thu-homestay",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node trang-khach-chat.integration.mjs",
+    "test:ui": "node chay-chat-ui.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.15",
+    "jsdom": "^31.0.0"
+  }
 }

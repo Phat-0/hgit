@@ -1,3 +1,5 @@
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { ChatFile } from './chat-tep.js';
 import { KhachExceptionFilter } from './khach-exception.filter.js';
 import {
   BadRequestException,
@@ -9,6 +11,8 @@ import {
   Query,
   Req,
   UseFilters,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { TrangKhachService } from './trang-khach.service.js';
@@ -116,6 +120,7 @@ export class KhachHangController {
     @Req() r: Request,
     @Query('tim') q = '',
     @Query('bo_qua') offset = '0',
+    @Query('don_gian') simple = '0',
   ) {
     await this.conn.limit(r.ip || 'unknown', 'chatlist', 60);
     return this.chat.list(
@@ -123,12 +128,14 @@ export class KhachHangController {
       r.headers['x-guest-chat'] as string,
       q,
       Number(offset),
+      simple === '1',
     );
   }
   @Get('chat/:id/tin-nhan') async messages(
     @Req() r: Request,
     @Param('id') id: string,
     @Query('truoc') before?: string,
+    @Query('den') around?: string,
   ) {
     await this.conn.limit(r.ip || 'unknown', 'chatread', 100);
     return this.chat.messages(
@@ -136,6 +143,71 @@ export class KhachHangController {
       r.headers.authorization,
       r.headers['x-guest-chat'] as string,
       before,
+      around,
+    );
+  }
+  @Post('chat/:id/tep')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 20971520, files: 1, fields: 2, fieldSize: 20000 },
+    }),
+  )
+  async upload(
+    @Req() r: Request,
+    @Param('id') id: string,
+    @Body() x: Record<string, unknown>,
+    @UploadedFile() file?: ChatFile,
+  ) {
+    await this.conn.limit(r.ip || 'unknown', 'chatfile', 10);
+    return this.chat.upload(
+      id,
+      x,
+      file,
+      r.headers.authorization,
+      r.headers['x-guest-chat'] as string,
+    );
+  }
+  @Get('chat/:id/tep') async files(
+    @Req() r: Request,
+    @Param('id') id: string,
+    @Query('loai') kind = 'anh',
+    @Query('tim') q = '',
+    @Query('bo_qua') off = '0',
+  ) {
+    await this.conn.limit(r.ip || 'unknown', 'chatfiles', 60);
+    return this.chat.files(
+      id,
+      kind,
+      q,
+      Number(off),
+      r.headers.authorization,
+      r.headers['x-guest-chat'] as string,
+    );
+  }
+  @Get('chat/:id/tim') async searchChat(
+    @Req() r: Request,
+    @Param('id') id: string,
+    @Query('tim') q = '',
+    @Query('bo_qua') off = '0',
+  ) {
+    await this.conn.limit(r.ip || 'unknown', 'chatsearch', 60);
+    return this.chat.searchMessages(
+      id,
+      q,
+      Number(off),
+      r.headers.authorization,
+      r.headers['x-guest-chat'] as string,
+    );
+  }
+  @Get('chat/:id/cau-tra-loi') async replies(
+    @Req() r: Request,
+    @Param('id') id: string,
+  ) {
+    await this.conn.limit(r.ip || 'unknown', 'chatreplies', 60);
+    return this.chat.replies(
+      id,
+      r.headers.authorization,
+      r.headers['x-guest-chat'] as string,
     );
   }
   @Post('chat/:id/tin-nhan') async send(
