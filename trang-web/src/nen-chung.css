@@ -1,11 +1,11 @@
 /* Một nguồn màu nền chung cho trang khách và mọi trang quản trị. */
 :root {
-  --nen-tim-co-ban: #ba8de4;
+  --nen-tim-co-ban: #7041a5;
   --nen-tim-bong:
-    radial-gradient(ellipse at 12% 0%, #ffffff9c 0%, #ffffff24 22%, transparent 48%),
-    radial-gradient(ellipse at 88% 18%, #e8c6ff99 0%, transparent 42%),
-    radial-gradient(ellipse at 65% 92%, #793cba66 0%, transparent 48%),
-    linear-gradient(135deg, #d5a9f4 0%, #b888df 44%, #a975d5 68%, #ce9eed 100%);
+    radial-gradient(ellipse at 12% 0%, #ffffff4d 0%, #ffffff0f 22%, transparent 48%),
+    radial-gradient(ellipse at 88% 18%, #c28bf34d 0%, transparent 42%),
+    radial-gradient(ellipse at 65% 92%, #35115788 0%, transparent 48%),
+    linear-gradient(135deg, #9760c8 0%, #7944ab 44%, #64338f 68%, #8852b6 100%);
 }
 body:has(.qt-layout),
 body:has(.kh-site),
@@ -25,3 +25,5 @@ body:has(.admin-shell) {
 .qt-layout.qt-layout .qt-workspace > .qt-content {
   background: transparent !important;
 }
+.admin-shell .admin-intro,.admin-shell .admin-intro p,.admin-shell .admin-header>.brand{color:#fff}
+.admin-shell .admin-intro em{color:#edceff}

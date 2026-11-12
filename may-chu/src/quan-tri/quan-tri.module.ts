@@ -1,3 +1,8 @@
+import {
+  TrangChuController,
+  TrangChuKhachController,
+} from './trang-chu.controller.js';
+import { TrangChuService } from './trang-chu.service.js';
 import { NhanVienController } from './nhan-vien.controller.js';
 import { NhanVienService } from './nhan-vien.service.js';
 import { ComboController } from './combo.controller.js';
@@ -20,6 +25,8 @@ import { LichPhongService } from './lich-phong.service.js';
 @Module({
   imports: [XacThucModule],
   controllers: [
+    TrangChuController,
+    TrangChuKhachController,
     NhanVienController,
     ComboController,
     QuanTriController,
@@ -30,6 +37,7 @@ import { LichPhongService } from './lich-phong.service.js';
     DonLichController,
   ],
   providers: [
+    TrangChuService,
     NhanVienService,
     ComboService,
     QuanTriService,

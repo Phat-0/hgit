@@ -38,7 +38,8 @@ export class XacThucController {
   async xacMinhDienThoai(@Req() r:Request,@Body() body:unknown){await this.limiter.limit(r.ip||'unknown','verify',10,600);const b=body as {so_dien_thoai?:unknown;otp?:unknown}|null;const phone=b?.so_dien_thoai,otp=b?.otp;if(typeof phone!=='string'||!/^\+?[0-9]{9,15}$/.test(phone.trim())||typeof otp!=='string'||!/^\d{4,8}$/.test(otp))throw new BadRequestException('Số điện thoại hoặc mã OTP không hợp lệ');return this.xacThucService.xacMinhOtpDienThoai(phone.trim(),otp);}
 
   @Post('dang-nhap')
-  dangNhap(@Body() body: unknown) {
+  async dangNhap(@Req() req:Request,@Body() body: unknown) {
+    await this.limiter.limit(req.ip||'unknown','email-login',30,300);
     const { email, matKhau } = kiemTraDuLieu(body);
     return this.xacThucService.dangNhap(email, matKhau);
   }

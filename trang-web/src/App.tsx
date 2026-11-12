@@ -1,3 +1,4 @@
+import { type NoiDungTrangChu } from "./trang-chu-noi-dung";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { RangePicker } from "./RangePicker";
@@ -95,6 +96,28 @@ export default function App() {
     [authBusy, setAuthBusy] = useState(false),
     [history, setHistory] = useState<BookingHistory[] | null>(null),
     [lightbox, setLightbox] = useState<string | null>(null);
+  const [home, setHome] = useState<NoiDungTrangChu | null>(null);
+  const [homeError, setHomeError] = useState("");
+  useEffect(() => {
+    let active = true;
+    khachApi<NoiDungTrangChu>("/trang-chu")
+      .then((r) => {
+        if (active) setHome(r);
+      })
+      .catch(() => {
+        if (active)
+          setHomeError(
+            "Chưa tải được nội dung Trang chủ. Vui lòng tải lại trang.",
+          );
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+  const [authMode, setAuthMode] = useState<"phone" | "email">("phone");
+  const [authEmail, setAuthEmail] = useState(""),
+    [authPassword, setAuthPassword] = useState("");
+  useEffect(()=>{if(!login)setAuthPassword('');},[login]);
   const [ready, setReady] = useState(false);
   const serial = useRef(0),
     filterTimer = useRef<number | null>(null);
@@ -228,7 +251,7 @@ export default function App() {
     };
   }, [selected, login, history, busy]);
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || !home?.hien_phong) return;
     const current = ++serial.current;
     filterTimer.current = window.setTimeout(() => void loadRooms(current), 350);
     return () => {
@@ -236,7 +259,7 @@ export default function App() {
         window.clearTimeout(filterTimer.current);
       serial.current++;
     };
-  }, [ready, branch, kind, start, end, st, et, config]);
+  }, [ready, home?.hien_phong, branch, kind, start, end, st, et, config]);
   async function loadRooms(current: number) {
     setLoading(true);
     setError("");
@@ -307,7 +330,27 @@ export default function App() {
     setAuthBusy(true);
     setAuthError("");
     try {
-      if (!otpSent) {
+      if (authMode === "email") {
+        const response = await fetch("/api/xac-thuc/dang-nhap", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: authEmail, matKhau: authPassword }),
+        });
+        const r = await response.json();
+        if (!response.ok) throw Error(r.message || "Không đăng nhập được");
+        // Kiểm tra hồ sơ/trạng thái tài khoản trước khi giữ phiên ở trình duyệt.
+        const own = await khachApi<BookingHistory[]>(
+          "/don-cua-toi",
+          "GET",
+          undefined,
+          r.access_token,
+        );
+        setToken(r.access_token);
+        sessionStorage.setItem("homestay_guest_refresh", r.refresh_token);
+        setAuthPassword("");
+        setLogin(false);
+        if (!selected || receipt) setHistory(own);
+      } else if (!otpSent) {
         await khachApi("/gui-otp", "POST", { so_dien_thoai: phone });
         setOtpSent(true);
       } else {
@@ -361,7 +404,7 @@ export default function App() {
           H<span>◆</span>meStay
         </a>
         <nav>
-          <a href="#phong-khach">Khám phá phòng</a>
+          {home?.hien_phong && <a href="#phong-khach">Khám phá phòng</a>}
           <button onClick={() => void myBookings()}>Đơn của tôi</button>
           {token ? (
             <button
@@ -385,217 +428,279 @@ export default function App() {
           )}
         </nav>
       </header>
-      <section className="kh-hero">
-        <span className="kh-pill">MỘT KHOẢNG RIÊNG DÀNH CHO BẠN</span>
-        <h1>
-          Đổi không gian.
-          <br />
-          <em>Chạm cảm hứng.</em>
-        </h1>
-        <p>
-          Một buổi hẹn, một đêm nghỉ, một chuyến đi.
-          <br />
-          Chọn thời gian của bạn, tìm căn phòng vừa ý.
-        </p>
-        <div className="kh-hero-orb" aria-hidden="true">
-          <span>
-            STAY
-            <br />
-            <i>your way.</i>
-          </span>
-        </div>
-      </section>
-      <section className="kh-search" aria-label="Tìm phòng trống">
-        <div className="kh-kinds">
-          {(["gio", "ngay", "dem"] as const).map((v, i) => (
-            <button
-              key={v}
-              type="button"
-              className={kind === v ? "active" : ""}
-              onClick={() => applyKind(v)}
-            >
-              {["Theo giờ", "Theo ngày", "Qua đêm"][i]}
-            </button>
-          ))}
-        </div>
-        <form onSubmit={search}>
-          <label>
-            Chi nhánh
-            <select
-              value={branch}
-              onChange={(e) => {
-                setBranch(e.target.value);
-                setSearched(false);
-                setRooms([]);
-              }}
-            >
-              <option value="">Tất cả chi nhánh</option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.ten_homestay}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="kh-search-field">
-            <span>Khoảng ngày</span>
-            <RangePicker
-              start={start}
-              end={end}
-              minDate={ngayVietNam()}
-              onChange={(a, b) => {
-                setStart(a);
-                setEnd(b);
-                setRooms([]);
-                setSearched(false);
-              }}
-              compact
-            />
-          </div>
-          <div className="kh-search-field">
-            <span>
-              {kind === "gio" ? "Giờ nhận / trả" : "Khung giờ áp dụng"}
-            </span>
-            {kind === "gio" ? (
-              <div className="kh-time-pair">
-                <ChonGio
-                  step={30}
-                  value={st}
-                  label="Giờ nhận phòng"
-                  onChange={(v) => {
-                    setSt(v);
-                    setSearched(false);
-                    setRooms([]);
-                  }}
-                />
-                <ChonGio
-                  step={30}
-                  value={et}
-                  label="Giờ trả phòng"
-                  onChange={(v) => {
-                    setEt(v);
-                    setSearched(false);
-                    setRooms([]);
-                  }}
-                />
-              </div>
-            ) : (
-              <strong className="kh-clock">
-                {config[kind + "_tu"]} → {config[kind + "_den"]}
-                {config[kind + "_den"] <= config[kind + "_tu"]
-                  ? " · hôm sau"
-                  : ""}
-              </strong>
-            )}
-          </div>
-          <button className="kh-primary" disabled={loading}>
-            {loading ? "Đang tìm…" : "Tìm phòng phù hợp ↗"}
-          </button>
-        </form>
-        <small>
-          Giờ Việt Nam · Giá hiển thị cho toàn bộ khoảng đặt. Ngày cuối là ngày
-          bắt đầu khung cuối.
-        </small>
-      </section>
-      {error && (
-        <p className="kh-error" role="alert">
-          {error}
+      {homeError && (
+        <p role="alert" className="kh-error">
+          {homeError}
         </p>
       )}
-      <section id="phong-khach" className="kh-room-section">
-        <div className="kh-section-title">
+      {!home && !homeError && <p role="status">Đang tải Trang chủ…</p>}
+      {home?.hero && (
+        <section className="kh-hero kh-cms-hero">
           <div>
-            <span>KHÁM PHÁ KHÔNG GIAN</span>
-            <h2>
-              {searched
-                ? "Phòng dành cho thời gian của bạn"
-                : "Bạn muốn nghỉ lúc nào?"}
-            </h2>
+            <span className="kh-pill">MỘT KHOẢNG RIÊNG DÀNH CHO BẠN</span>
+            <h1>{home.hero.tieu_de}</h1>
+            <p>{home.hero.noi_dung}</p>
           </div>
-          <small>
-            {searched
-              ? rooms.length + " phòng phù hợp"
-              : "Chọn kiểu đặt và thời gian ở phía trên"}
-          </small>
-        </div>
-        {!loading && searched && !rooms.length && (
-          <div className="kh-empty">
-            Chưa có phòng trống phù hợp. Thử chi nhánh hoặc thời gian khác nhé.
-          </div>
-        )}
-        <div className="kh-room-grid">
-          {rooms.map((r, i) => (
-            <article
-              className="kh-room-card"
-              key={r.id}
-              style={{ animationDelay: Math.min(i, 8) * 55 + "ms" }}
+          {home.hero.anh ? (
+            <button
+              className="kh-cms-photo"
+              onClick={() => setLightbox(home.hero!.anh)}
             >
-              <button
-                className="kh-room-photo"
-                aria-label={"Xem phòng " + r.ten_phong}
-                onClick={() => void choose(r)}
-              >
-                {r.anh[0] ? (
-                  <img src={r.anh[0]} alt={r.ten_phong} loading="lazy" />
-                ) : (
-                  <span className="kh-no-photo">
-                    {r.ten_loai}
-                    <small>Không gian chờ bạn khám phá</small>
-                  </span>
-                )}
-                <span className="kh-room-chip">{r.ten_loai}</span>
-                <span className="kh-room-arrow">↗</span>
-              </button>
-              <div className="kh-room-info">
-                <small>
-                  {r.ten_homestay} · {r.tinh_thanh}
-                </small>
-                <h3>{r.ten_phong}</h3>
-                <p>
-                  {r.suc_chua} khách{" "}
-                  {r.dien_tich_m2 ? " · " + r.dien_tich_m2 + " m²" : ""}
-                </p>
-                <div>
-                  <strong>
-                    {money(r.tien_phong)}
-                    <small> / khoảng đặt</small>
-                  </strong>
-                  <button onClick={() => void choose(r)}>Chọn phòng</button>
-                </div>
-              </div>
+              <img src={home.hero.anh} alt={home.hero.tieu_de} />
+            </button>
+          ) : (
+            <div className="kh-hero-orb" aria-hidden="true">
+              <span>
+                STAY
+                <br />
+                <i>your way.</i>
+              </span>
+            </div>
+          )}
+        </section>
+      )}
+      {home?.gioi_thieu && (
+        <section className="kh-cms-intro">
+          {home.gioi_thieu.anh && (
+            <button
+              className="kh-cms-photo"
+              onClick={() => setLightbox(home.gioi_thieu!.anh)}
+            >
+              <img src={home.gioi_thieu.anh} alt={home.gioi_thieu.tieu_de} />
+            </button>
+          )}
+          <div>
+            <h2>{home.gioi_thieu.tieu_de}</h2>
+            <p>{home.gioi_thieu.noi_dung}</p>
+          </div>
+        </section>
+      )}
+      {!!home?.the.length && (
+        <section className="kh-cms-cards" aria-label="Khám phá Homestay">
+          {home.the.map((x, i) => (
+            <article key={i}>
+              {x.anh && (
+                <button
+                  className="kh-cms-photo"
+                  onClick={() => setLightbox(x.anh)}
+                >
+                  <img loading="lazy" src={x.anh} alt={x.tieu_de} />
+                </button>
+              )}
+              <h2>{x.tieu_de}</h2>
+              <p>{x.noi_dung}</p>
             </article>
           ))}
-        </div>
-        {!searched && (
-          <div className="kh-intro-grid">
-            <article>
-              <b>01</b>
-              <h3>Thời gian linh hoạt</h3>
-              <p>Theo giờ, theo ngày hoặc qua đêm theo thiết lập từng khung.</p>
-            </article>
-            <article>
-              <b>02</b>
-              <h3>Combo đúng nhu cầu</h3>
-              <p>
-                Xem gói dịch vụ và combo giờ áp dụng cho phòng trước khi đặt.
-              </p>
-            </article>
-            <article>
-              <b>03</b>
-              <h3>Đặt trước, tham gia sau</h3>
-              <p>
-                Xác minh số điện thoại để tìm lại những đơn đã đặt trước khi có
-                tài khoản.
-              </p>
-            </article>
-          </div>
-        )}
-      </section>
-      <footer className="kh-footer">
-        <strong>HomeStay</strong>
-        <span>Một không gian đẹp. Một trải nghiệm riêng.</span>
-        <a href="/quan-tri">Dành cho nhân viên</a>
-      </footer>
+        </section>
+      )}
+      {home?.hien_phong && (
+        <>
+          <section className="kh-search" aria-label="Tìm phòng trống">
+            <div className="kh-kinds">
+              {(["gio", "ngay", "dem"] as const).map((v, i) => (
+                <button
+                  key={v}
+                  type="button"
+                  className={kind === v ? "active" : ""}
+                  onClick={() => applyKind(v)}
+                >
+                  {["Theo giờ", "Theo ngày", "Qua đêm"][i]}
+                </button>
+              ))}
+            </div>
+            <form onSubmit={search}>
+              <label>
+                Chi nhánh
+                <select
+                  value={branch}
+                  onChange={(e) => {
+                    setBranch(e.target.value);
+                    setSearched(false);
+                    setRooms([]);
+                  }}
+                >
+                  <option value="">Tất cả chi nhánh</option>
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.ten_homestay}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="kh-search-field">
+                <span>Khoảng ngày</span>
+                <RangePicker
+                  start={start}
+                  end={end}
+                  minDate={ngayVietNam()}
+                  onChange={(a, b) => {
+                    setStart(a);
+                    setEnd(b);
+                    setRooms([]);
+                    setSearched(false);
+                  }}
+                  compact
+                />
+              </div>
+              <div className="kh-search-field">
+                <span>
+                  {kind === "gio" ? "Giờ nhận / trả" : "Khung giờ áp dụng"}
+                </span>
+                {kind === "gio" ? (
+                  <div className="kh-time-pair">
+                    <ChonGio
+                      step={30}
+                      value={st}
+                      label="Giờ nhận phòng"
+                      onChange={(v) => {
+                        setSt(v);
+                        setSearched(false);
+                        setRooms([]);
+                      }}
+                    />
+                    <ChonGio
+                      step={30}
+                      value={et}
+                      label="Giờ trả phòng"
+                      onChange={(v) => {
+                        setEt(v);
+                        setSearched(false);
+                        setRooms([]);
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <strong className="kh-clock">
+                    {config[kind + "_tu"]} → {config[kind + "_den"]}
+                    {config[kind + "_den"] <= config[kind + "_tu"]
+                      ? " · hôm sau"
+                      : ""}
+                  </strong>
+                )}
+              </div>
+              <button className="kh-primary" disabled={loading}>
+                {loading ? "Đang tìm…" : "Tìm phòng phù hợp ↗"}
+              </button>
+            </form>
+            <small>
+              Giờ Việt Nam · Giá hiển thị cho toàn bộ khoảng đặt. Ngày cuối là
+              ngày bắt đầu khung cuối.
+            </small>
+          </section>
+          {error && (
+            <p className="kh-error" role="alert">
+              {error}
+            </p>
+          )}
+          <section id="phong-khach" className="kh-room-section">
+            <div className="kh-section-title">
+              <div>
+                <span>KHÁM PHÁ KHÔNG GIAN</span>
+                <h2>
+                  {searched
+                    ? "Phòng dành cho thời gian của bạn"
+                    : "Bạn muốn nghỉ lúc nào?"}
+                </h2>
+              </div>
+              <small>
+                {searched
+                  ? rooms.length + " phòng phù hợp"
+                  : "Chọn kiểu đặt và thời gian ở phía trên"}
+              </small>
+            </div>
+            {!loading && searched && !rooms.length && (
+              <div className="kh-empty">
+                Chưa có phòng trống phù hợp. Thử chi nhánh hoặc thời gian khác
+                nhé.
+              </div>
+            )}
+            <div className="kh-room-grid">
+              {rooms.map((r, i) => (
+                <article
+                  className="kh-room-card"
+                  key={r.id}
+                  style={{ animationDelay: Math.min(i, 8) * 55 + "ms" }}
+                >
+                  <button
+                    className="kh-room-photo"
+                    aria-label={"Xem phòng " + r.ten_phong}
+                    onClick={() => void choose(r)}
+                  >
+                    {r.anh[0] ? (
+                      <img src={r.anh[0]} alt={r.ten_phong} loading="lazy" />
+                    ) : (
+                      <span className="kh-no-photo">
+                        {r.ten_loai}
+                        <small>Không gian chờ bạn khám phá</small>
+                      </span>
+                    )}
+                    <span className="kh-room-chip">{r.ten_loai}</span>
+                    <span className="kh-room-arrow">↗</span>
+                  </button>
+                  <div className="kh-room-info">
+                    <small>
+                      {r.ten_homestay} · {r.tinh_thanh}
+                    </small>
+                    <h3>{r.ten_phong}</h3>
+                    <p>
+                      {r.suc_chua} khách{" "}
+                      {r.dien_tich_m2 ? " · " + r.dien_tich_m2 + " m²" : ""}
+                    </p>
+                    <div>
+                      <strong>
+                        {money(r.tien_phong)}
+                        <small> / khoảng đặt</small>
+                      </strong>
+                      <button onClick={() => void choose(r)}>Chọn phòng</button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+            {!searched && (
+              <div className="kh-intro-grid">
+                <article>
+                  <b>01</b>
+                  <h3>Thời gian linh hoạt</h3>
+                  <p>
+                    Theo giờ, theo ngày hoặc qua đêm theo thiết lập từng khung.
+                  </p>
+                </article>
+                <article>
+                  <b>02</b>
+                  <h3>Combo đúng nhu cầu</h3>
+                  <p>
+                    Xem gói dịch vụ và combo giờ áp dụng cho phòng trước khi
+                    đặt.
+                  </p>
+                </article>
+                <article>
+                  <b>03</b>
+                  <h3>Đặt trước, tham gia sau</h3>
+                  <p>
+                    Xác minh số điện thoại để tìm lại những đơn đã đặt trước khi
+                    có tài khoản.
+                  </p>
+                </article>
+              </div>
+            )}
+          </section>
+        </>
+      )}
+      {home?.chan_trang && (
+        <footer className="kh-footer">
+          {home.chan_trang.anh && (
+            <img
+              src={home.chan_trang.anh}
+              alt={home.chan_trang.tieu_de}
+              width="70"
+            />
+          )}
+          <strong>{home.chan_trang.tieu_de}</strong>
+          <span>{home.chan_trang.noi_dung}</span>
+          <a href="/quan-tri">Dành cho nhân viên</a>
+        </footer>
+      )}
       <TroChuyen token={token || undefined} branch={branch} />
       {modal &&
         createPortal(
@@ -638,34 +743,89 @@ export default function App() {
               </header>
               {login ? (
                 <form className="kh-auth" onSubmit={auth}>
-                  <p>
-                    Nhận mã OTP để tham gia và xem lại các đơn đã đặt bằng số
-                    này.
-                  </p>
-                  <label>
-                    Số điện thoại
-                    <input
-                      required
-                      disabled={otpSent}
-                      autoComplete="tel"
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="0901234567"
-                    />
-                  </label>
-                  {otpSent && (
-                    <label>
-                      Mã OTP
-                      <input
-                        required
-                        inputMode="numeric"
-                        autoComplete="one-time-code"
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value)}
-                        maxLength={8}
-                      />
-                    </label>
+                  <div className="kh-book-tabs">
+                    <button
+                      type="button"
+                      className={authMode === "phone" ? "active" : ""}
+                      onClick={() => {
+                        setAuthMode("phone");
+                        setAuthError("");
+                      }}
+                    >
+                      Số điện thoại
+                    </button>
+                    <button
+                      type="button"
+                      className={authMode === "email" ? "active" : ""}
+                      onClick={() => {
+                        setAuthMode("email");
+                        setAuthError("");
+                      }}
+                    >
+                      Email / Mật khẩu
+                    </button>
+                  </div>
+                  {authMode === "email" ? (
+                    <>
+                      <p>
+                        Dùng tài khoản đã có hoặc được quản trị cấp. Không cần
+                        mã email khi đăng nhập bằng mật khẩu.
+                      </p>
+                      <label>
+                        Email
+                        <input
+                          type="email"
+                          autoComplete="username"
+                          required
+                          value={authEmail}
+                          onChange={(e) => setAuthEmail(e.target.value)}
+                        />
+                      </label>
+                      <label>
+                        Mật khẩu
+                        <input
+                          type="password"
+                          autoComplete="current-password"
+                          minLength={8}
+                          maxLength={128}
+                          required
+                          value={authPassword}
+                          onChange={(e) => setAuthPassword(e.target.value)}
+                        />
+                      </label>
+                    </>
+                  ) : (
+                    <>
+                      <p>
+                        Nhận mã OTP để tham gia và xem lại các đơn đã đặt bằng
+                        số này.
+                      </p>
+                      <label>
+                        Số điện thoại
+                        <input
+                          required
+                          disabled={otpSent}
+                          autoComplete="tel"
+                          type="tel"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          placeholder="0901234567"
+                        />
+                      </label>
+                      {otpSent && (
+                        <label>
+                          Mã OTP
+                          <input
+                            required
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            value={otp}
+                            onChange={(e) => setOtp(e.target.value)}
+                            maxLength={8}
+                          />
+                        </label>
+                      )}
+                    </>
                   )}
                   {authError && (
                     <p className="kh-error" role="alert">
@@ -675,11 +835,13 @@ export default function App() {
                   <button className="kh-primary" disabled={authBusy}>
                     {authBusy
                       ? "Đang xử lý…"
-                      : otpSent
-                        ? "Xác minh và đăng nhập"
-                        : "Gửi mã OTP"}
+                      : authMode === "email"
+                        ? "Đăng nhập"
+                        : otpSent
+                          ? "Xác minh và đăng nhập"
+                          : "Gửi mã OTP"}
                   </button>
-                  {otpSent && (
+                  {authMode === "phone" && otpSent && (
                     <button
                       type="button"
                       className="kh-link"

@@ -387,4 +387,92 @@ assert.ok(removed.includes(provisioned));
 console.log(
   "PASS Nhân viên: tạo tài khoản giả lập/gán tài khoản cũ, danh sách/chi tiết/sửa/gỡ, phân công theo chi nhánh, giữ lịch sử, nhật ký, chặn nâng quyền/quản trị, rollback và bù trừ Auth.",
 );
+await db.exec(
+  "CREATE TABLE IF NOT EXISTS public.migrations_ung_dung(phien_ban text PRIMARY KEY,ngay_chay timestamptz DEFAULT now())",
+);
+await db.exec(
+  fs.readFileSync(
+    root + "/co-so-du-lieu/migrations/20261112-quan-ly-trang-chu.sql",
+    "utf8",
+  ),
+);
+const { TrangChuService, MAC_DINH_TRANG_CHU } = await import(
+  root + "/may-chu/dist/quan-tri/trang-chu.service.js"
+);
+const cms = new TrangChuService({
+  kiemTraQuanTri: async (id) => {
+    if (id !== admin) throw Error("Forbidden");
+  },
+});
+cms.db = connection;
+await assert.rejects(() => cms.read(uid), /Forbidden/);
+const draft = structuredClone(MAC_DINH_TRANG_CHU);
+draft.hero.tieu_de = "Tên riêng đang soạn";
+draft.gioi_thieu = {
+  hien: false,
+  tieu_de: "Nội dung ẩn",
+  noi_dung: "Không được trả public",
+  anh: "",
+};
+draft.the = [
+  {
+    hien: true,
+    tieu_de: "<script>text</script>",
+    noi_dung: "Nội dung",
+    anh: "",
+  },
+  { hien: false, tieu_de: "Ẩn", noi_dung: "bí mật bản nháp", anh: "" },
+];
+let saved = await cms.save(admin, {
+  cau_hinh: draft,
+  phien_ban: 1,
+  xuat_ban: false,
+});
+assert.equal(saved.phien_ban, 2);
+assert.notEqual((await cms.read()).hero.tieu_de, draft.hero.tieu_de);
+await assert.rejects(
+  () => cms.save(admin, { cau_hinh: draft, phien_ban: 1, xuat_ban: true }),
+  /phiên khác/,
+);
+saved = await cms.save(admin, {
+  cau_hinh: draft,
+  phien_ban: 2,
+  xuat_ban: true,
+});
+let publicHome = await cms.read();
+assert.equal(publicHome.hero.tieu_de, draft.hero.tieu_de);
+assert.equal(publicHome.gioi_thieu, null);
+assert.equal(publicHome.the.length, 1);
+assert.equal(publicHome.ban_nhap, undefined);
+const bad = structuredClone(draft);
+bad.hero.anh = "javascript:alert(1)";
+await assert.rejects(
+  () => cms.save(admin, { cau_hinh: bad, phien_ban: 3, xuat_ban: true }),
+  /Chỉ dùng ảnh/,
+);
+draft.hien_phong = false;
+draft.hero.hien = false;
+await cms.save(admin, { cau_hinh: draft, phien_ban: 3, xuat_ban: true });
+publicHome = await cms.read();
+assert.equal(publicHome.hero, null);
+assert.equal(publicHome.hien_phong, false);
+await db.exec(
+  fs.readFileSync(
+    root + "/co-so-du-lieu/migrations/20261112-quan-ly-trang-chu.sql",
+    "utf8",
+  ),
+);
+assert.equal((await cms.read()).hien_phong, false);
+await assert.rejects(
+  () =>
+    cms.upload(admin, {
+      buffer: Buffer.from("<script>"),
+      size: 8,
+      mimetype: "image/png",
+    }),
+  /đúng định dạng/,
+);
+console.log(
+  "PASS Trang chủ: nháp tách xuất bản, bật/tắt/ẩn nội dung khỏi API public, chống ghi đè phiên khác, quyền quản trị, chặn URL/tệp giả ảnh, migration chạy lại giữ dữ liệu.",
+);
 await db.close();
