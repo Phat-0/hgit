@@ -38,6 +38,7 @@ export default function TroChuyen({
     () =>
       sessionStorage.getItem("homestay_chat_guest:" + (branch || "all")) || "",
   );
+  const visible = inline || open;
   const bottom = useRef<HTMLDivElement>(null);
   const activeThread = useRef(current);
   activeThread.current = current;
@@ -70,7 +71,7 @@ export default function TroChuyen({
     setThreads(r.hoi_thoai);
   }, [token]);
   useEffect(() => {
-    if (!open) return;
+    if (!visible) return;
     let alive = true;
     const poll = async () => {
       try {
@@ -98,9 +99,9 @@ export default function TroChuyen({
       alive = false;
       window.clearInterval(timer);
     };
-  }, [open, token]);
+  }, [visible, token]);
   useEffect(() => {
-    if (!open || !current) return;
+    if (!visible || !current) return;
     let alive = true;
     const poll = async () => {
       try {
@@ -128,7 +129,7 @@ export default function TroChuyen({
       alive = false;
       window.clearInterval(timer);
     };
-  }, [current, open, token, guest]);
+  }, [current, visible, token, guest]);
   useEffect(() => {
     bottom.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
   }, [messages.length]);
@@ -199,16 +200,22 @@ export default function TroChuyen({
   }
   return (
     <div className={"chat-shell " + (inline ? "chat-inline" : "")}>
-      {!inline && (
-        <button
-          className="chat-launch"
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-        >
-          ☏ {open ? "Đóng chat" : "Trò chuyện"}
-        </button>
-      )}
-      {open && (
+      <button
+        className="chat-launch"
+        onClick={() =>
+          inline
+            ? document
+                .querySelector<HTMLInputElement>(
+                  '[aria-label="Nội dung tin nhắn"]',
+                )
+                ?.focus()
+            : setOpen((v) => !v)
+        }
+        aria-expanded={visible}
+      >
+        ☏ {inline ? "Tin nhắn" : open ? "Đóng chat" : "Trò chuyện"}
+      </button>
+      {visible && (
         <section className="chat-window">
           <header>
             <div>

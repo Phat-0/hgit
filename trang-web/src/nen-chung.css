@@ -1,18 +1,20 @@
 /* Một nguồn màu nền chung cho trang khách và mọi trang quản trị. */
 :root {
-  --nen-tim-co-ban: #e3cef8;
+  --nen-tim-co-ban: #ba8de4;
   --nen-tim-bong:
-    radial-gradient(ellipse at 12% 0%, #ffffffd9 0%, #ffffff40 22%, transparent 48%),
-    radial-gradient(ellipse at 88% 18%, #f7deffb3 0%, transparent 42%),
-    radial-gradient(ellipse at 65% 92%, #c6a3ee80 0%, transparent 48%),
-    linear-gradient(135deg, #f0e3ff 0%, #dec5f5 44%, #d7bef0 68%, #ece0fb 100%);
+    radial-gradient(ellipse at 12% 0%, #ffffff9c 0%, #ffffff24 22%, transparent 48%),
+    radial-gradient(ellipse at 88% 18%, #e8c6ff99 0%, transparent 42%),
+    radial-gradient(ellipse at 65% 92%, #793cba66 0%, transparent 48%),
+    linear-gradient(135deg, #d5a9f4 0%, #b888df 44%, #a975d5 68%, #ce9eed 100%);
 }
 body:has(.qt-layout),
-body:has(.kh-site) {
+body:has(.kh-site),
+body:has(.admin-shell) {
   background: var(--nen-tim-co-ban) !important;
 }
 .qt-layout.qt-layout,
-.kh-site.kh-site {
+.kh-site.kh-site,
+.admin-shell.admin-shell {
   background: var(--nen-tim-co-ban) !important;
   background-image: var(--nen-tim-bong) !important;
   background-repeat: no-repeat !important;

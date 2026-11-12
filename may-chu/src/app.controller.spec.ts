@@ -15,8 +15,8 @@ describe('AppController', () => {
   });
 
   describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+    it('trả thông báo máy chủ đang hoạt động', () => {
+      expect(appController.getHello()).toBe('Máy chủ Homestay đang hoạt động');
     });
   });
 });

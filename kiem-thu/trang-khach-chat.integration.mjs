@@ -271,4 +271,120 @@ await assert.rejects(
 console.log(
   "PASS PostgreSQL: giữ khóa ngoại và chat cũ qua migration, giới hạn truy cập 429;  tìm phòng/giá server/không tin giá và trạng thái client/giữ phòng/gửi trùng/chống trùng/nhận đơn chỉ qua SĐT đã xác minh/hết hạn; chat guest/staff/IDOR/direct riêng tư/kết nối guest sau đăng nhập/chống gửi trùng.",
 );
+// Nhân viên: SQL thật trên PostgreSQL cục bộ; không chạm Supabase/Auth thật.
+await db.exec("ALTER TABLE auth.users ADD COLUMN email text");
+const { NhanVienService } = await import(
+  root + "/may-chu/dist/quan-tri/nhan-vien.service.js"
+);
+const employees = new NhanVienService({
+  kiemTraQuanTri: async (id) => {
+    if (id !== admin) throw Error("Forbidden");
+  },
+});
+employees.db = connection;
+let provisioned;
+const removed = [];
+employees.auth = () => ({
+  createUser: async () => {
+    provisioned = randomUUID();
+    await db.query("INSERT INTO auth.users(id,email) VALUES($1,$2)", [
+      provisioned,
+      "local@test.invalid",
+    ]);
+    return { data: { user: { id: provisioned } }, error: null };
+  },
+  deleteUser: async (id) => {
+    removed.push(id);
+    await db.query("DELETE FROM auth.users WHERE id=$1", [id]);
+    return { error: null };
+  },
+});
+const profile = {
+  ho_ten: "Nhân viên thử",
+  so_dien_thoai: "0909999999",
+  trang_thai: "Đang hoạt động",
+  vai_tro: "Chăm sóc khách hàng",
+  chi_nhanh_ids: [branch],
+};
+await assert.rejects(() => employees.list(uid), /Forbidden/);
+await assert.rejects(
+  () =>
+    employees.save(admin, undefined, {
+      ...profile,
+      vai_tro: "Quản trị hệ thống",
+    }),
+  /Vai trò/,
+);
+await assert.rejects(
+  () =>
+    employees.save(admin, undefined, {
+      ...profile,
+      chi_nhanh_ids: [randomUUID()],
+      nguoi_dung_id: uid,
+    }),
+  /Chi nhánh không tồn tại/,
+);
+await assert.rejects(() => employees.save(admin, admin, profile), /quản trị/);
+await assert.rejects(() => employees.remove(admin, admin), /Không tự/);
+await employees.save(admin, undefined, { ...profile, nguoi_dung_id: uid });
+let person = await employees.detail(admin, uid);
+assert.equal(person.phan_cong.length, 1);
+assert.equal(person.phan_cong[0].vai_tro, "Chăm sóc khách hàng");
+await employees.save(admin, uid, {
+  ...profile,
+  vai_tro: "Nhân viên vệ sinh",
+  trang_thai: "Tạm khóa",
+});
+person = await employees.detail(admin, uid);
+assert.equal(person.trang_thai, "Tạm khóa");
+assert.equal(person.phan_cong[0].vai_tro, "Nhân viên vệ sinh");
+assert.equal(
+  (
+    await db.query(
+      "SELECT count(*)::int AS n FROM public.nguoi_dung_vai_tro WHERE nguoi_dung_id=$1 AND ngay_thu_hoi IS NOT NULL",
+      [uid],
+    )
+  ).rows[0].n,
+  1,
+);
+await employees.remove(admin, uid);
+person = await employees.detail(admin, uid);
+assert.equal(person.phan_cong.length, 0);
+assert.equal(
+  (
+    await db.query("SELECT count(*)::int AS n FROM auth.users WHERE id=$1", [
+      uid,
+    ])
+  ).rows[0].n,
+  1,
+);
+assert.ok(
+  (
+    await db.query(
+      "SELECT count(*)::int AS n FROM public.nhat_ky_he_thong WHERE ban_ghi_id=$1",
+      [uid],
+    )
+  ).rows[0].n >= 3,
+);
+const newEmployee = await employees.save(admin, undefined, {
+  ...profile,
+  so_dien_thoai: "0908888888",
+  email: "local@test.invalid",
+  mat_khau: "local-test-password-123",
+});
+assert.equal(newEmployee.id, provisioned);
+await assert.rejects(
+  () =>
+    employees.save(admin, undefined, {
+      ...profile,
+      so_dien_thoai: "0908888888",
+      email: "duplicate@test.invalid",
+      mat_khau: "local-test-password-123",
+    }),
+  /đã được sử dụng/,
+);
+assert.ok(removed.includes(provisioned));
+console.log(
+  "PASS Nhân viên: tạo tài khoản giả lập/gán tài khoản cũ, danh sách/chi tiết/sửa/gỡ, phân công theo chi nhánh, giữ lịch sử, nhật ký, chặn nâng quyền/quản trị, rollback và bù trừ Auth.",
+);
 await db.close();
