@@ -159,6 +159,12 @@ await db.exec(
     "utf8",
   ),
 );
+await db.exec(
+  fs.readFileSync(
+    root + "/co-so-du-lieu/migrations/20261112-thu-tu-mau-ten-khach.sql",
+    "utf8",
+  ),
+);
 const { ChatService } = await import(
   root + "/may-chu/dist/khach-hang/chat.service.js"
 );
@@ -867,5 +873,93 @@ await assert.rejects(
 );
 console.log(
   "PASS Tiện ích: ảnh/tệp có ACL và link riêng tư, chống gửi lặp/rollback xóa tệp mới, tìm tin/ngữ cảnh, kho tệp, CRUD mẫu/quyền/biến thiếu, chế độ khách gọn, trigger đơn mới/hủy không lặp, chuông đọc đúng chủ.",
+);
+// Tên khách dùng sequence ổn định, thứ tự mẫu lưu trên server.
+const numbered1 = await chat.start({ chi_nhanh_id: branch }),
+  numbered2 = await chat.start({ chi_nhanh_id: branch });
+const numberedRows = (
+  await db.query(
+    "SELECT id,ma_khach_chat FROM public.cuoc_tro_chuyen WHERE id=ANY($1::uuid[])",
+    [[numbered1.id, numbered2.id]],
+  )
+).rows;
+const no1 = BigInt(
+    numberedRows.find((r) => r.id === numbered1.id).ma_khach_chat,
+  ),
+  no2 = BigInt(numberedRows.find((r) => r.id === numbered2.id).ma_khach_chat);
+assert.ok(no2 > no1);
+assert.equal(
+  (await chat.start({ chi_nhanh_id: branch }, undefined, numbered1.guest_token))
+    .id,
+  numbered1.id,
+);
+const adminList = await chat.list("admin");
+assert.match(
+  adminList.hoi_thoai.find((t) => t.id === numbered1.id).ten_hien_thi,
+  /^Khách #\d{6,}$/,
+);
+await chat.send(
+  numbered1.id,
+  { noi_dung: "Khách đánh số", ma_phia_khach: randomUUID() },
+  undefined,
+  numbered1.guest_token,
+);
+assert.match(
+  (await chat.messages(numbered1.id, "admin")).tin_nhan[0].ten_nguoi_gui,
+  /^Khách #\d{6,}$/,
+);
+assert.equal(
+  (await chat.messages(numbered1.id, undefined, numbered1.guest_token))
+    .tin_nhan[0].ten_nguoi_gui,
+  "Bạn",
+);
+const rankBody = {
+  tieu_de: "Thứ tự A",
+  nhom: "Test",
+  noi_dung: "A",
+  homestay_id: null,
+  hien: true,
+};
+const rankA = await utils.saveTemplate(admin, undefined, rankBody),
+  rankB = await utils.saveTemplate(admin, undefined, {
+    ...rankBody,
+    tieu_de: "Thứ tự B",
+  });
+await utils.reorder(admin, { ids: [rankB.id, rankA.id] });
+const ranked = (await utils.templates(admin)).mau;
+assert.ok(
+  ranked.findIndex((m) => m.id === rankB.id) <
+    ranked.findIndex((m) => m.id === rankA.id),
+);
+const oldOrder = ranked.find((m) => m.id === rankB.id).thu_tu;
+await utils.saveTemplate(admin, rankB.id, { ...rankBody, tieu_de: "B đã sửa" });
+assert.equal(
+  (await utils.templates(admin)).mau.find((m) => m.id === rankB.id).thu_tu,
+  oldOrder,
+);
+await assert.rejects(
+  () => utils.reorder(uid, { ids: [rankA.id, rankB.id] }),
+  /Forbidden/,
+);
+await assert.rejects(
+  () => utils.reorder(admin, { ids: [rankA.id, rankA.id] }),
+  /không hợp lệ/,
+);
+await assert.rejects(
+  () => utils.reorder(admin, { ids: [randomUUID()] }),
+  /đã thay đổi/,
+);
+await db.exec(
+  fs.readFileSync(
+    root + "/co-so-du-lieu/migrations/20261112-thu-tu-mau-ten-khach.sql",
+    "utf8",
+  ),
+);
+assert.equal(
+  (await utils.templates(admin)).mau.find((m) => m.id === rankB.id).thu_tu,
+  oldOrder,
+);
+console.log(
+  "PASS Chat lần 2: tên khách có số tăng/giữ nguyên trong phiên, tên phía khách không lộ nhãn, thứ tự mẫu qua chỉnh sửa và migration lặp, quyền/ID trùng/ID không tồn tại.",
 );
 await db.close();

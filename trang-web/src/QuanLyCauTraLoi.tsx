@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 type Mau = {
   id: string;
@@ -18,9 +18,11 @@ const blank = {
 export default function QuanLyCauTraLoi({
   token,
   onClose,
+  initialId,
 }: {
   token: string;
   onClose: () => void;
+  initialId?: string;
 }) {
   const [rows, setRows] = useState<Mau[]>([]),
     [branches, setBranches] = useState<{ id: string; ten_homestay: string }[]>(
@@ -31,6 +33,24 @@ export default function QuanLyCauTraLoi({
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [search, setSearch] = useState("");
+  const initialApplied = useRef(false);
+  const draftOf = (m: Mau) => ({
+    tieu_de: m.tieu_de,
+    nhom: m.nhom,
+    noi_dung: m.noi_dung,
+    homestay_id: m.homestay_id || "",
+    hien: m.hien,
+  });
+  useEffect(() => {
+    if (initialId && !initialApplied.current && rows.length) {
+      const m = rows.find((v) => v.id === initialId);
+      if (m) {
+        setEdit(m.id);
+        setForm(draftOf(m));
+      }
+      initialApplied.current = true;
+    }
+  }, [initialId, rows]);
   async function api(path = "", method = "GET", body?: unknown) {
     const r = await fetch("/api/quan-tri/cau-tra-loi-mau" + path, {
       method,
@@ -58,7 +78,10 @@ export default function QuanLyCauTraLoi({
     setError("");
     try {
       await api(edit ? "/" + edit : "", edit ? "PUT" : "POST", {
-        ...form,
+        tieu_de: form.tieu_de,
+        nhom: form.nhom,
+        noi_dung: form.noi_dung,
+        hien: form.hien,
         homestay_id: form.homestay_id || null,
       });
       setForm({ ...blank });
@@ -140,7 +163,7 @@ export default function QuanLyCauTraLoi({
                       disabled={busy}
                       onClick={() => {
                         setEdit(m.id);
-                        setForm({ ...m, homestay_id: m.homestay_id || "" });
+                        setForm(draftOf(m));
                       }}
                     >
                       Sửa

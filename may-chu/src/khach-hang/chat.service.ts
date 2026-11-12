@@ -230,7 +230,7 @@ export class ChatService {
       ), items AS (
         SELECT e.id,e.loai,e.trang_thai,e.ngay_cap_nhat,e.ten_homestay,
         CASE WHEN e.loai='truc_tiep' THEN COALESCE((SELECT n2.ho_ten FROM public.thanh_vien_tro_chuyen m JOIN public.nguoi_dung n2 ON n2.id=m.nguoi_dung_id WHERE m.cuoc_tro_chuyen_id=e.id AND m.nguoi_dung_id<>$1 LIMIT 1),'Người liên hệ')
-        WHEN e.staff AND e.khach_hang_id IS DISTINCT FROM $1 THEN COALESCE(e.ho_ten,'Khách mới') ELSE 'Hỗ trợ HomeStay' END AS ten_hien_thi,
+        WHEN e.staff AND e.khach_hang_id IS DISTINCT FROM $1 THEN COALESCE(e.ho_ten,'Khách #'||lpad(e.ma_khach_chat::text,greatest(6,length(e.ma_khach_chat::text)),'0')) ELSE 'Hỗ trợ HomeStay' END AS ten_hien_thi,
         last.noi_dung AS tin_cuoi,last.ngay_gui AS tin_cuoi_luc,
         (SELECT count(*)::int FROM public.tin_nhan m WHERE m.cuoc_tro_chuyen_id=e.id AND
           CASE WHEN $1::uuid IS NOT NULL THEN m.nguoi_gui_id IS DISTINCT FROM $1 AND NOT(e.khach_hang_id IS NOT DISTINCT FROM $1 AND m.loai_nguoi_gui='Khách vãng lai') ELSE m.loai_nguoi_gui<>'Khách vãng lai' END
@@ -341,7 +341,7 @@ export class ChatService {
               : thread.loai === 'ho_tro' && !staff
                 ? 'Hỗ trợ HomeStay'
                 : m.ten_nguoi_gui === 'Khách vãng lai'
-                  ? 'Khách'
+                  ? 'Khách #' + String(thread.ma_khach_chat).padStart(6, '0')
                   : m.ten_nguoi_gui,
           };
         }),
@@ -537,7 +537,7 @@ export class ChatService {
           'Chỉ nhân viên hỗ trợ dùng câu trả lời mẫu',
         );
       const r = await c.query(
-        'SELECT * FROM public.cau_tra_loi_mau WHERE hien AND (homestay_id IS NULL OR homestay_id=$1) ORDER BY nhom,tieu_de,id',
+        'SELECT * FROM public.cau_tra_loi_mau WHERE hien AND (homestay_id IS NULL OR homestay_id=$1) ORDER BY thu_tu,id',
         [t.homestay_id],
       );
       const context = await c.query(

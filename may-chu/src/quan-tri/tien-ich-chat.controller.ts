@@ -24,6 +24,9 @@ export class TienIchChatController {
   @Post('cau-tra-loi-mau') create(@Req() r: R, @Body() b: unknown) {
     return this.service.saveTemplate(r.nguoiDung.id, undefined, b);
   }
+  @Put('cau-tra-loi-mau/thu-tu') reorder(@Req() r: R, @Body() b: unknown) {
+    return this.service.reorder(r.nguoiDung.id, b);
+  }
   @Put('cau-tra-loi-mau/:id') update(
     @Req() r: R,
     @Param('id') id: string,

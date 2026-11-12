@@ -30,7 +30,7 @@ export class TienIchChatService {
       return {
         mau: (
           await c.query(
-            'SELECT m.*,h.ten_homestay FROM public.cau_tra_loi_mau m LEFT JOIN public.homestay h ON h.id=m.homestay_id ORDER BY nhom,tieu_de,id',
+            'SELECT m.*,h.ten_homestay FROM public.cau_tra_loi_mau m LEFT JOIN public.homestay h ON h.id=m.homestay_id ORDER BY thu_tu,id',
           )
         ).rows,
         chi_nhanh: (
@@ -52,7 +52,14 @@ export class TienIchChatService {
     if (
       Object.keys(b).some(
         (k) =>
-          !['tieu_de', 'nhom', 'noi_dung', 'homestay_id', 'hien'].includes(k),
+          ![
+            'tieu_de',
+            'nhom',
+            'noi_dung',
+            'homestay_id',
+            'hien',
+            'thu_tu',
+          ].includes(k),
       )
     )
       throw new BadRequestException('Trường không được phép');
@@ -67,11 +74,19 @@ export class TienIchChatService {
         );
     if (typeof b.hien !== 'boolean')
       throw new BadRequestException('Trạng thái không hợp lệ');
+    if (
+      b.thu_tu !== undefined &&
+      (!Number.isInteger(b.thu_tu) ||
+        Number(b.thu_tu) < 0 ||
+        Number(b.thu_tu) > 1000000)
+    )
+      throw new BadRequestException('Thứ tự không hợp lệ');
     const branch = b.homestay_id ? String(b.homestay_id) : null;
     if (branch) this.id(branch);
     const c = await this.db();
     try {
       await c.query('BEGIN');
+      await c.query('SELECT pg_advisory_xact_lock(20261112,5)');
       if (
         branch &&
         !(await c.query('SELECT 1 FROM public.homestay WHERE id=$1', [branch]))
@@ -84,14 +99,15 @@ export class TienIchChatService {
         String(b.noi_dung).trim(),
         branch,
         b.hien,
+        b.thu_tu ?? null,
       ];
       const r = id
         ? await c.query(
-            'UPDATE public.cau_tra_loi_mau SET tieu_de=$1,nhom=$2,noi_dung=$3,homestay_id=$4,hien=$5,ngay_cap_nhat=now() WHERE id=$6 RETURNING *',
+            'UPDATE public.cau_tra_loi_mau SET tieu_de=$1,nhom=$2,noi_dung=$3,homestay_id=$4,hien=$5,thu_tu=coalesce($6::int,thu_tu),ngay_cap_nhat=now() WHERE id=$7 RETURNING *',
             [...p, id],
           )
         : await c.query(
-            'INSERT INTO public.cau_tra_loi_mau(tieu_de,nhom,noi_dung,homestay_id,hien) VALUES($1,$2,$3,$4,$5) RETURNING *',
+            'INSERT INTO public.cau_tra_loi_mau(tieu_de,nhom,noi_dung,homestay_id,hien,thu_tu) VALUES($1,$2,$3,$4,$5,coalesce($6::int,(SELECT coalesce(max(thu_tu)+1,0) FROM public.cau_tra_loi_mau))) RETURNING *',
             p,
           );
       if (!r.rowCount)
@@ -109,12 +125,55 @@ export class TienIchChatService {
       await c.end();
     }
   }
+  async reorder(uid: string, body: unknown) {
+    await this.admin.kiemTraQuanTri(uid);
+    const ids = (body as { ids?: unknown } | null)?.ids;
+    if (
+      !Array.isArray(ids) ||
+      !ids.length ||
+      ids.length > 500 ||
+      new Set(ids).size !== ids.length ||
+      ids.some((v) => typeof v !== 'string' || !UUID.test(v))
+    )
+      throw new BadRequestException('Danh sách thứ tự không hợp lệ');
+    const c = await this.db();
+    try {
+      await c.query('BEGIN');
+      await c.query('SELECT pg_advisory_xact_lock(20261112,5)');
+      const rows = (
+        await c.query(
+          'SELECT id FROM public.cau_tra_loi_mau ORDER BY thu_tu,id FOR UPDATE',
+        )
+      ).rows;
+      const chosen = new Set(ids);
+      if (ids.some((id) => !rows.some((r) => r.id === id)))
+        throw new NotFoundException('Mẫu đã thay đổi, hãy tải lại');
+      let i = 0;
+      const merged = rows.map((r) => (chosen.has(r.id) ? ids[i++] : r.id));
+      await c.query(
+        'UPDATE public.cau_tra_loi_mau m SET thu_tu=x.n::integer-1 FROM unnest($1::uuid[]) WITH ORDINALITY AS x(id,n) WHERE m.id=x.id',
+        [merged],
+      );
+      await c.query(
+        "INSERT INTO public.nhat_ky_he_thong(nguoi_thuc_hien_id,hanh_dong,ten_bang) VALUES($1,'Sắp xếp câu trả lời mẫu','cau_tra_loi_mau')",
+        [uid],
+      );
+      await c.query('COMMIT');
+      return { ok: true };
+    } catch (e) {
+      await c.query('ROLLBACK');
+      throw e;
+    } finally {
+      await c.end();
+    }
+  }
   async deleteTemplate(uid: string, id: string) {
     await this.admin.kiemTraQuanTri(uid);
     this.id(id);
     const c = await this.db();
     try {
       await c.query('BEGIN');
+      await c.query('SELECT pg_advisory_xact_lock(20261112,5)');
       const r = await c.query(
         'DELETE FROM public.cau_tra_loi_mau WHERE id=$1 RETURNING id',
         [id],

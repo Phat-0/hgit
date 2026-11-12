@@ -10,6 +10,7 @@ Object.assign(globalThis, {
   HTMLElement: dom.window.HTMLElement,
   Node: dom.window.Node,
   sessionStorage: dom.window.sessionStorage,
+  localStorage: dom.window.localStorage,
   FormData: dom.window.FormData,
   File: dom.window.File,
   IS_REACT_ACT_ENVIRONMENT: true,
@@ -51,7 +52,27 @@ let rows: any[] = [
   sent: string[] = [],
   uploads = 0,
   noticesRead = false;
-let templates: any[] = [];
+let templates: any[] = [
+  {
+    id: "r1",
+    tieu_de: "Chào hỏi",
+    nhom: "Chào",
+    noi_dung: "Xin chào bạn!",
+    homestay_id: null,
+    hien: true,
+  },
+  {
+    id: "r3",
+    tieu_de: "Cần tên",
+    nhom: "Chào",
+    noi_dung: "Chào {{ten_khach}}",
+    homestay_id: null,
+    hien: true,
+  },
+];
+let updatedTemplate: any,
+  deletedTemplate = "";
+let reordered: string[] = [];
 globalThis.fetch = async (url: any, o: any = {}) => {
   const p = String(url),
     u = new URL(p, "https://home.test");
@@ -97,10 +118,13 @@ globalThis.fetch = async (url: any, o: any = {}) => {
       ngay_tao: now,
     };
   else if (p.includes("/quan-tri/cau-tra-loi-mau")) {
-    if (o.method === "POST") {
+    if (p.endsWith("/thu-tu")) {
+      reordered = JSON.parse(o.body).ids;
+      d = { ok: true };
+    } else if (o.method === "POST") {
       templates.push({ id: "r2", ...JSON.parse(o.body) });
       d = templates.at(-1);
-    } else d = { mau: templates, chi_nhanh: [] };
+    } else if(o.method==='PUT'){updatedTemplate=JSON.parse(o.body);templates=templates.map(m=>p.endsWith('/'+m.id)?{...m,...updatedTemplate}:m);d={ok:true};}else if(o.method==='DELETE'){deletedTemplate=p.split('/').at(-1)!;templates=templates.filter(m=>m.id!==deletedTemplate);d={ok:true};}else d={mau:templates,chi_nhanh:[]};
   } else if (p.endsWith("/cau-tra-loi"))
     d = {
       mau: [
@@ -269,7 +293,9 @@ assert.equal(oldCalls, 1);
 assert.match(viewport.textContent!, /Tin cũ hơn/);
 assert.equal(viewport.scrollTop, 100);
 assert.equal(byText("Tải tin trước"), undefined);
-const fi = document.querySelector("input[type=file]") as HTMLInputElement;
+const fi = document.querySelector(
+  'input[type=file][accept*="application/pdf"]',
+) as HTMLInputElement;
 Object.defineProperty(fi, "files", {
   configurable: true,
   value: [
@@ -311,8 +337,45 @@ assert.match(
 );
 await click(document.querySelector(".chat-context-back"));
 await wait();
-await click(document.querySelector('[aria-label="Ẩn bong bóng chat"]'));
+const launcher = document.querySelector(".chat-launch") as HTMLButtonElement;
+const pointer = async (type: string, x: number, y: number) =>
+  act(async () => {
+    const e = new dom.window.MouseEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      clientX: x,
+      clientY: y,
+    });
+    Object.defineProperty(e, "pointerId", { value: 1 });
+    launcher.dispatchEvent(e);
+  });
+await pointer("pointerdown", 960, 700);
+await pointer("pointermove", 200, 210);
+await pointer("pointerup", 200, 210);
+await click(launcher);
+assert.ok(document.querySelector(".chat-window"));
+const savedPosition = JSON.parse(
+  localStorage.getItem("homestay_chat_position:guest")!,
+);
+assert.ok(savedPosition.x < 300);
+await act(async () =>
+  launcher.dispatchEvent(
+    new dom.window.KeyboardEvent("keydown", {
+      bubbles: true,
+      key: "ArrowRight",
+    }),
+  ),
+);
+assert.equal(
+  JSON.parse(localStorage.getItem("homestay_chat_position:guest")!).x,
+  savedPosition.x + 10,
+);
+await click(document.querySelector('[aria-label="Thu gọn bong bóng chat"]'));
 assert.equal(document.querySelector(".chat-launch"), null);
+assert.ok(document.querySelector('[aria-label="Mở lại bong bóng chat"]'));
+await click(document.querySelector('[aria-label="Mở lại bong bóng chat"]'));
+assert.ok(document.querySelector(".chat-launch"));
 assert.equal(document.querySelector(".chat-window"), null);
 await act(async () =>
   window.dispatchEvent(new dom.window.Event("homestay:mo-chat")),
@@ -334,6 +397,19 @@ await click(document.querySelector(".chat-thread"));
 await wait();
 await click(document.querySelector('[aria-label="Câu trả lời soạn sẵn"]'));
 await wait(300);
+assert.ok(document.querySelector(".chat-reply-grid"));
+await click(document.querySelector('[aria-label="Sắp xếp mẫu"]'));
+await act(async () =>
+  document.querySelector(".chat-reply")!.dispatchEvent(
+    new dom.window.KeyboardEvent("keydown", {
+      bubbles: true,
+      key: "ArrowDown",
+    }),
+  ),
+);
+await wait(300);
+assert.deepEqual(reordered, ["r3", "r1"]);
+await click(document.querySelector('[aria-label="Sắp xếp mẫu"]'));
 await click(document.querySelector(".chat-reply"));
 await wait();
 assert.ok(sent.includes("Xin chào bạn!"));
@@ -351,15 +427,43 @@ assert.equal(
 assert.ok(document.querySelector(".chat-hint"));
 await click(document.querySelector('[aria-label="Câu trả lời soạn sẵn"]'));
 await wait(300);
-await click(byText("⚙ Quản lý câu trả lời"));
+await click(document.querySelector('[aria-label="Thêm câu trả lời"]'));
 assert.ok(document.querySelector(".chat-template-dialog"));
 const form = document.querySelector(".chat-template-grid form")!;
 await edit(form.querySelectorAll("input")[0], "Mẫu test");
 await edit(form.querySelector("textarea")!, "Nội dung test");
 await submit(form);
 await wait();
-assert.equal(templates[0].tieu_de, "Mẫu test");
+assert.equal(templates.at(-1).tieu_de, "Mẫu test");
 await click(document.querySelector('[aria-label="Đóng quản lý câu trả lời"]'));
+await wait(300);
+await click(document.querySelector('[aria-label="Chọn mẫu để sửa"]'));
+await click(document.querySelector(".chat-reply"));
+await wait();
+assert.equal(
+  (
+    document.querySelector(
+      ".chat-template-grid textarea",
+    ) as HTMLTextAreaElement
+  ).value,
+  "Xin chào bạn!",
+);
+await edit(
+  document.querySelector(".chat-template-grid textarea")!,
+  "Mẫu đã sửa từ ô",
+);
+await submit(document.querySelector(".chat-template-grid form"));
+await wait();
+assert.equal(updatedTemplate.noi_dung, "Mẫu đã sửa từ ô");
+assert.equal(updatedTemplate.id, undefined);
+await click(document.querySelector('[aria-label="Đóng quản lý câu trả lời"]'));
+await wait(300);
+await click(document.querySelector('[aria-label="Chọn mẫu để xóa"]'));
+await click(document.querySelectorAll(".chat-reply")[1]);
+await wait();
+assert.equal(deletedTemplate, "r3");
+assert.equal(document.querySelectorAll(".chat-reply").length, 1);
+
 await click(document.querySelector('[aria-label="Đóng công cụ chat"]'));
 await click(document.querySelector(".qt-booking-bell>button"));
 assert.match(

@@ -1,3 +1,4 @@
+import { useChatPosition } from "./useChatPosition";
 import QuanLyCauTraLoi from "./QuanLyCauTraLoi";
 import ChatCongCu from "./ChatCongCu";
 import { TepDinhKem, chatUpload, sizeTep, type TepChat } from "./chat-tep";
@@ -81,6 +82,8 @@ export default function TroChuyen({
     [unread, setUnread] = useState(0),
     [older, setOlder] = useState(false),
     [loadingOlder, setLoadingOlder] = useState(false);
+  const floating = useChatPosition(admin);
+  const imageInput = useRef<HTMLInputElement>(null);
   const [manageTemplates, setManageTemplates] = useState(false);
   const [hidden, setHidden] = useState(
       () =>
@@ -576,18 +579,21 @@ export default function TroChuyen({
         (!admin ? "chat-simple" : "")
       }
     >
-      {(!hidden || inline) && (
+      {!hidden && (
         <>
           <button
             className="chat-launch"
+            style={floating.launcherStyle}
+            {...floating.handlers}
             aria-label={
               "Tin nhắn" + (unread ? ", " + unread + " tin chưa đọc" : "")
             }
-            title="Mở tin nhắn"
+            title="Mở tin nhắn · Kéo để đổi vị trí · Phím mũi tên để di chuyển"
             aria-expanded={visible}
-            onClick={() =>
-              inline ? input.current?.focus() : setOpen((v) => !v)
-            }
+            onClick={() => {
+              if (floating.consumeDrag()) return;
+              inline ? input.current?.focus() : setOpen((v) => !v);
+            }}
           >
             <svg
               aria-hidden="true"
@@ -607,21 +613,40 @@ export default function TroChuyen({
               </span>
             )}
           </button>
-          {!inline && (
+          {
             <button
               className="chat-hide-launch"
-              aria-label="Ẩn bong bóng chat"
-              title="Ẩn bong bóng; mở lại ở Hỗ trợ hoặc Tin nhắn"
+              style={floating.hideStyle}
+              aria-label="Thu gọn bong bóng chat"
+              title="Thu gọn vào mép màn hình"
               onClick={hideBubble}
             >
-              ×
+              {floating.dockRight ? "›" : "‹"}
             </button>
-          )}
+          }
         </>
+      )}
+      {hidden && (
+        <button
+          className="chat-dock-handle"
+          style={floating.dockStyle}
+          aria-label="Mở lại bong bóng chat"
+          title="Mở lại bong bóng chat"
+          onClick={() => {
+            setHidden(false);
+            sessionStorage.removeItem(
+              "homestay_chat_hidden:" + (admin ? "admin" : "guest"),
+            );
+          }}
+        >
+          {floating.dockRight ? "‹" : "›"}
+          {unread > 0 && <span>{unread.toLocaleString("vi-VN")}</span>}
+        </button>
       )}
       {visible && (
         <section
           className="chat-window"
+          style={inline ? undefined : floating.windowStyle}
           aria-label="Hộp thư"
           onDragOver={(e) => {
             if (current) {
@@ -943,10 +968,10 @@ export default function TroChuyen({
               <form onSubmit={send}>
                 <div className="chat-compose-tools">
                   <input
-                    ref={fileInput}
                     type="file"
+                    ref={imageInput}
                     hidden
-                    accept="image/jpeg,image/png,image/webp,application/pdf,text/plain,text/csv,.docx,.xlsx"
+                    accept="image/jpeg,image/png,image/webp"
                     disabled={!current || busy}
                     onChange={(e) => {
                       chooseFile(e.target.files?.[0]);
@@ -956,11 +981,53 @@ export default function TroChuyen({
                   <button
                     type="button"
                     disabled={!current || busy}
-                    aria-label="Gửi ảnh hoặc tệp"
-                    title="Gửi ảnh hoặc tệp"
+                    aria-label="Chọn ảnh"
+                    title="Chọn ảnh"
+                    onClick={() => imageInput.current?.click()}
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="19"
+                      height="19"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      aria-hidden="true"
+                    >
+                      <rect x="3" y="3" width="18" height="18" rx="3" />
+                      <circle cx="8" cy="8" r="2" />
+                      <path d="m3 17 5-5 4 4 4-6 5 7" />
+                    </svg>
+                  </button>
+                  <input
+                    ref={fileInput}
+                    type="file"
+                    hidden
+                    accept="application/pdf,text/plain,text/csv,.docx,.xlsx"
+                    disabled={!current || busy}
+                    onChange={(e) => {
+                      chooseFile(e.target.files?.[0]);
+                      e.target.value = "";
+                    }}
+                  />
+                  <button
+                    type="button"
+                    disabled={!current || busy}
+                    aria-label="Chọn tệp"
+                    title="Chọn tệp"
                     onClick={() => fileInput.current?.click()}
                   >
-                    ＋
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="19"
+                      height="19"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      aria-hidden="true"
+                    >
+                      <path d="m8 12 6-6a3 3 0 0 1 4 4l-8 8a5 5 0 0 1-7-7l9-9" />
+                    </svg>
                   </button>
                   {(admin || canReply) && (
                     <button
@@ -970,7 +1037,20 @@ export default function TroChuyen({
                       title="Câu trả lời soạn sẵn"
                       onClick={() => setTool(tool === "mau" ? null : "mau")}
                     >
-                      ≡
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="19"
+                        height="19"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.7"
+                        aria-hidden="true"
+                      >
+                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                        <rect x="14" y="14" width="7" height="7" rx="1" />
+                      </svg>
                     </button>
                   )}
                 </div>
