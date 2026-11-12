@@ -24,7 +24,8 @@
     "db:dong-bo-combo": "node --use-system-ca scripts/dong-bo-combo.mjs",
     "db:anh-combo": "node --use-system-ca scripts/anh-combo.mjs",
     "db:trang-khach-chat": "node --use-system-ca scripts/trang-khach-chat.mjs",
-    "db:trang-chu": "node --use-system-ca scripts/trang-chu.mjs"
+    "db:trang-chu": "node --use-system-ca scripts/trang-chu.mjs",
+    "db:chat-hop-thu": "node --use-system-ca scripts/chat-hop-thu.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",

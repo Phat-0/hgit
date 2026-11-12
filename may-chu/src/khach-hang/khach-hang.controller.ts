@@ -92,9 +92,38 @@ export class KhachHangController {
       r.headers['x-guest-chat'] as string,
     );
   }
-  @Get('chat') async list(@Req() r: Request) {
+  @Get('chat/nguoi-dung') async people(
+    @Req() r: Request,
+    @Query('tim') q = '',
+  ) {
+    await this.conn.limit(r.ip || 'unknown', 'chatpeople', 20);
+    return this.chat.people(q, r.headers.authorization);
+  }
+  @Post('chat/:id/da-doc') async read(
+    @Req() r: Request,
+    @Param('id') id: string,
+    @Body() body: { tin_nhan_id?: string },
+  ) {
+    await this.conn.limit(r.ip || 'unknown', 'chatseen', 100);
+    return this.chat.read(
+      id,
+      String(body?.tin_nhan_id || ''),
+      r.headers.authorization,
+      r.headers['x-guest-chat'] as string,
+    );
+  }
+  @Get('chat') async list(
+    @Req() r: Request,
+    @Query('tim') q = '',
+    @Query('bo_qua') offset = '0',
+  ) {
     await this.conn.limit(r.ip || 'unknown', 'chatlist', 60);
-    return this.chat.list(r.headers.authorization);
+    return this.chat.list(
+      r.headers.authorization,
+      r.headers['x-guest-chat'] as string,
+      q,
+      Number(offset),
+    );
   }
   @Get('chat/:id/tin-nhan') async messages(
     @Req() r: Request,

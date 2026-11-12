@@ -138,6 +138,15 @@ conn.staff = (c, id, branch) =>
 const { TrangKhachService } = await import(
   root + "/may-chu/dist/khach-hang/trang-khach.service.js"
 );
+await db.exec(
+  "CREATE TABLE IF NOT EXISTS public.migrations_ung_dung(phien_ban text PRIMARY KEY,ngay_chay timestamptz DEFAULT now())",
+);
+await db.exec(
+  fs.readFileSync(
+    root + "/co-so-du-lieu/migrations/20261112-chat-tim-kiem-va-chua-doc.sql",
+    "utf8",
+  ),
+);
 const { ChatService } = await import(
   root + "/may-chu/dist/khach-hang/chat.service.js"
 );
@@ -240,12 +249,115 @@ assert.equal((await chat.messages(direct.id, "b")).tin_nhan.length, 1);
 await assert.rejects(() => chat.messages(direct.id, "admin"), /Không có quyền/);
 const reverse = await chat.start({ nguoi_nhan_id: uid }, "b");
 assert.equal(reverse.id, direct.id);
+// Hộp thư: số chưa đọc theo người, không đánh dấu khi chỉ GET, không lùi mốc đọc.
+const guestInbox = await chat.list(undefined, guest.guest_token);
+assert.equal(guestInbox.tong_chua_doc, 1);
+assert.equal(guestInbox.hoi_thoai[0].ten_hien_thi, "Hỗ trợ HomeStay");
+const gm = (await chat.messages(guest.id, undefined, guest.guest_token))
+  .tin_nhan;
+assert.equal(gm[0].ten_nguoi_gui, "Bạn");
+assert.equal(gm[1].ten_nguoi_gui, "Hỗ trợ HomeStay");
+assert.equal(gm[1].loai_nguoi_gui, undefined);
+await chat.read(guest.id, gm.at(-1).id, undefined, guest.guest_token);
+assert.equal((await chat.list(undefined, guest.guest_token)).tong_chua_doc, 0);
+const firstPrivate = (await chat.messages(direct.id, "b")).tin_nhan[0];
+assert.equal((await chat.list("b")).tong_chua_doc, 1);
+await chat.messages(direct.id, "b");
+assert.equal((await chat.list("b")).tong_chua_doc, 1);
+await assert.rejects(
+  () => chat.read(direct.id, firstPrivate.id, "admin"),
+  /Không có quyền/,
+);
+await assert.rejects(() => chat.read(direct.id, gm[0].id, "b"), /không thuộc/);
+await chat.read(direct.id, firstPrivate.id, "b");
+assert.equal((await chat.list("b")).tong_chua_doc, 0);
+await chat.send(
+  direct.id,
+  { noi_dung: "Tin mới sau mốc đọc", ma_phia_khach: randomUUID() },
+  "a",
+);
+await chat.read(direct.id, firstPrivate.id, "b");
+assert.equal((await chat.list("b")).tong_chua_doc, 1);
+await chat.send(
+  direct.id,
+  { noi_dung: "B phản hồi", ma_phia_khach: randomUUID() },
+  "b",
+);
+assert.equal((await chat.list("b")).tong_chua_doc, 1);
+assert.equal((await chat.list("a")).tong_chua_doc, 1);
+await db.query(
+  "UPDATE public.nguoi_dung SET ho_ten=CASE WHEN id=$1 THEN 'Nguyễn An' WHEN id=$2 THEN 'Trần Bình' ELSE 'Lê Phúc' END WHERE id=ANY($3::uuid[])",
+  [uid, other, [uid, other, admin]],
+);
+assert.ok(
+  (await chat.people("tran binh", "a")).nguoi_dung.some((p) => p.id === other),
+);
+assert.ok(
+  (await chat.people("le phuc", "a")).nguoi_dung.some((p) => p.id === admin),
+);
+const outsider = randomUUID();
+await db.query("INSERT INTO auth.users(id) VALUES($1)", [outsider]);
+await db.query(
+  "INSERT INTO public.nguoi_dung(id,ho_ten,so_dien_thoai) VALUES($1,'Người riêng tư','0907777777')",
+  [outsider],
+);
+assert.equal((await chat.people("Nguoi rieng tu", "a")).nguoi_dung.length, 0);
+const exact = (await chat.people("0907777777", "a")).nguoi_dung;
+assert.equal(exact[0].id, outsider);
+assert.equal(exact[0].so_dien_thoai, undefined);
+assert.equal(exact[0].email, undefined);
+assert.equal(
+  (await chat.list("a", undefined, "Trần Bình")).hoi_thoai[0].id,
+  direct.id,
+);
+assert.ok((await chat.list("a")).hoi_thoai[0].tin_cuoi_luc);
+await db.query(
+  "INSERT INTO public.cuoc_tro_chuyen(homestay_id) SELECT $1 FROM generate_series(1,45)",
+  [branch],
+);
+const page1 = await chat.list("admin");
+const page2 = await chat.list("admin", undefined, "", 40);
+assert.equal(page1.hoi_thoai.length, 40);
+assert.ok(page2.hoi_thoai.length > 0);
+assert.equal(
+  new Set([...page1.hoi_thoai, ...page2.hoi_thoai].map((t) => t.id)).size,
+  page1.tong_so,
+);
+await db.query(
+  "INSERT INTO public.tin_nhan(cuoc_tro_chuyen_id,nguoi_gui_id,loai_nguoi_gui,noi_dung) SELECT $1,$2,'Khách hàng','Lịch sử '||i FROM generate_series(1,61) AS i",
+  [direct.id, uid],
+);
+const recent = await chat.messages(direct.id, "b");
+assert.equal(recent.tin_nhan.length, 60);
+assert.equal(recent.co_tin_cu, true);
+const olderPage = await chat.messages(
+  direct.id,
+  "b",
+  undefined,
+  recent.tin_nhan[0].id,
+);
+assert.ok(olderPage.tin_nhan.length > 0);
+assert.ok(
+  !olderPage.tin_nhan.some((m) => recent.tin_nhan.some((n) => n.id === m.id)),
+);
+assert.equal(
+  (await chat.list("a", undefined, "tran binh")).hoi_thoai[0].id,
+  direct.id,
+);
+console.log(
+  "PASS Hộp thư: đếm chưa đọc/không tính tin tự gửi, GET không đánh dấu đọc, mốc không lùi/IDOR/cross-thread, nhãn khách, tìm tên không dấu/SĐT không lộ danh bạ, giờ tin cuối, tải đủ >40 hội thoại và >60 tin.",
+);
 const linked = await chat.start(
   { chi_nhanh_id: branch },
   "a",
   guest.guest_token,
 );
 assert.equal(linked.id, guest.id);
+assert.equal((await chat.messages(guest.id, "a")).tin_nhan[0].cua_toi, true);
+assert.equal(
+  (await chat.list("a")).hoi_thoai.find((t) => t.id === guest.id).chua_doc,
+  0,
+);
 await assert.rejects(
   () => chat.start({ chi_nhanh_id: branch }, "b", guest.guest_token),
   /tài khoản khác/,
