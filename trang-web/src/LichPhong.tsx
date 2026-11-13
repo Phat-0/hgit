@@ -1,3 +1,5 @@
+import ThietLapTrangThai,{hienThiMacDinh,tenTrangThai,type ThietLapLich} from './ThietLapTrangThai';
+import './don-chi-tiet-thao-tac.css';
 import FormDonDatPhong, { type SeedDon } from "./FormDonDatPhong";
 import "./lich-phong-dong-bo.css";
 import NhapTien from "./NhapTien";
@@ -27,7 +29,7 @@ type Room = {
   gia_moi_gio: number | string;
   gia_moi_ngay: number | string;
   gia_phu_thu_gio: number | string;
-  trang_thai_van_hanh?: string;
+  trang_thai_van_hanh?: string;trang_thai_hien_thi?:string;
   so_gio_toi_thieu: number;
 };
 type Span = {
@@ -42,7 +44,7 @@ type Span = {
   ghi_chu?: string;
   so_dien_thoai?: string;
   gia_ghi_nhan?: number | string;
-  trang_thai?: string;
+  trang_thai?: string;trang_thai_phong?:string;trang_thai_thanh_toan?:string;
   hinh_thuc_dat?: string;
   loai_gia?: string;
   gia?: number;
@@ -51,6 +53,7 @@ type Span = {
   ten_khach?: string;
   ma_dat_phong?: string;
 };
+function NoiDungLich({item,lock}:{item:Span;lock:boolean}){const clock=(s:string)=>new Date(s).toLocaleTimeString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',hour12:false});return <span className="lp-span-copy"><strong>{lock?'Khóa · '+tenTrangThai(item.trang_thai_phong||'Bị khóa'):'Đơn'} · {item.ten_don||item.ten_khach||item.ly_do||item.ma_dat_phong||'Lịch phòng'}</strong><small>{clock(item.bat_dau)} → {clock(item.ket_thuc)} · {tenTrangThai(item.trang_thai_thanh_toan||'Chưa thanh toán')}</small></span>}
 type Calendar = { phong: Room[]; khoa: Span[]; dat_phong: Span[]; gia: Span[] };
 const HOUR = 3600000,
   DAY = 86400000,
@@ -181,93 +184,11 @@ export default function LichPhong({ token }: { token: string }) {
     const timeout = window.setTimeout(() => setNotice(""), 3200);
     return () => window.clearTimeout(timeout);
   }, [notice]);
-  const [colors, setColors] = useState<Record<string, string>>({});
-  const [customStatuses, setCustomStatuses] = useState<string[]>([]);
-  const [displayVersion, setDisplayVersion] = useState(0),
-    [displayDirty, setDisplayDirty] = useState(false),
-    [displaySaving, setDisplaySaving] = useState(false);
-  const [newColor, setNewColor] = useState("#b89ae8");
-  const [entryChoice, setEntryChoice] = useState(false),
-    [bookingSeed, setBookingSeed] = useState<SeedDon | null>(null);
-  useEffect(() => {
-    let active = true;
-    void call<{
-      mau: Record<string, string>;
-      trang_thai: string[];
-      phien_ban: number;
-    }>(token, "/hien-thi")
-      .then((x) => {
-        if (active) {
-          setColors(x.mau);
-          setCustomStatuses(x.trang_thai);
-          setDisplayVersion(x.phien_ban);
-          setDisplayDirty(false);
-        }
-      })
-      .catch((e) => {
-        if (active) setError(e.message);
-      });
-    return () => {
-      active = false;
-    };
-  }, [token]);
-  function importAppearance() {
-    try {
-      const statuses = JSON.parse(
-        localStorage.getItem("lich_phong_trang_thai") || "[]",
-      );
-      const old = JSON.parse(localStorage.getItem("lich_phong_mau") || "{}");
-      if (
-        !Array.isArray(statuses) ||
-        statuses.some(
-          (x) => typeof x !== "string" || !x.trim() || x.length > 80,
-        ) ||
-        typeof old !== "object" ||
-        Array.isArray(old) ||
-        !old
-      )
-        throw Error("Thiết lập cũ không hợp lệ");
-      setCustomStatuses(
-        [...new Set<string>([...customStatuses, ...statuses])].slice(0, 50),
-      );
-      setColors({
-        ...colors,
-        ...(Object.fromEntries(
-          Object.entries(old).filter(
-            ([k, v]) =>
-              k.length <= 80 &&
-              typeof v === "string" &&
-              /^#[0-9a-f]{6}$/i.test(v),
-          ),
-        ) as Record<string, string>),
-      });
-      setDisplayDirty(true);
-      setNotice(
-        "Đã nạp thiết lập cũ. Bấm Lưu thiết lập hiển thị để dùng chung.",
-      );
-    } catch {
-      setError("Không đọc được thiết lập cũ trên máy này");
-    }
-  }
-  async function saveDisplay() {
-    setDisplaySaving(true);
-    try {
-      const x = await call<{ phien_ban: number }>(token, "/hien-thi", "PATCH", {
-        mau: colors,
-        trang_thai: customStatuses,
-        phien_ban: displayVersion,
-      });
-      setDisplayVersion(x.phien_ban);
-      setDisplayDirty(false);
-      setNotice("Đã lưu thiết lập hiển thị dùng chung cho các thiết bị");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Không lưu được thiết lập");
-    } finally {
-      setDisplaySaving(false);
-    }
-  }
-  const [showColors, setShowColors] = useState(false),
-    [showSettings, setShowSettings] = useState(false),
+  const [display,setDisplay]=useState<ThietLapLich>(hienThiMacDinh);
+  const [createMode,setCreateMode]=useState<'khoa'|'don'>('khoa');
+  const [lockRoomState,setLockRoomState]=useState('Bị khóa'),[lockPayment,setLockPayment]=useState('Chưa thanh toán');
+  useEffect(()=>{let live=true;void call<ThietLapLich>(token,'/hien-thi').then(x=>{if(live)setDisplay({...hienThiMacDinh,...x})}).catch(e=>{if(live)setError(e.message)});return()=>{live=false}},[token]);
+  const [showSettings, setShowSettings] = useState(false),
     [expandedRoom, setExpandedRoom] = useState<string | null>(null);
   const [priceRoom, setPriceRoom] = useState<Room | null>(null);
   const [priceRulesVisible, setPriceRulesVisible] = useState(false),
@@ -358,42 +279,14 @@ export default function LichPhong({ token }: { token: string }) {
         !settingsTriggerRef.current?.contains(target)
       ) {
         setShowSettings(false);
-        setShowColors(false);
+
       }
     };
     document.addEventListener("pointerdown", dismiss);
     return () => document.removeEventListener("pointerdown", dismiss);
   }, [showSettings]);
-  const [newStatus, setNewStatus] = useState("");
-  const nightTo = hourConfig.dem_den || "08:00";
-  function saveStatuses(next: string[]) {
-    setCustomStatuses(next);
-    setDisplayDirty(true);
-  }
-  const palette: Record<string, string> = {
-    Trống: "#ffffff",
-    "Đang sử dụng": "#78c4df",
-    "Cần dọn": "#f6c86a",
-    "Đang dọn": "#f5b37a",
-    "Chờ kiểm tra": "#b6c7f5",
-    "Bảo trì": "#ea8f9e",
-    "Bị khóa": "#d0a1dc",
-    "Khóa ngày": "#f5cb65",
-    "Khóa giờ": "#f6a75d",
-    "Khóa qua đêm": "#c5a2f1",
-    "Khóa cố định": "#ea8f9e",
-    "Chờ thanh toán": "#b8d7fc",
-    "Chờ xác nhận": "#ffe49b",
-    "Đã xác nhận": "#9bd9b4",
-    "Đã nhận phòng": "#78c4df",
-  };
-  function tone(k: string) {
-    return colors[k] || palette[k] || "#d6c5f4";
-  }
-  function setTone(k: string, v: string) {
-    setColors((prev) => ({ ...prev, [k]: v }));
-    setDisplayDirty(true);
-  }
+  const customStatuses=display.trang_thai_phong;
+  function tone(k:string,payment=false){return (payment?display.mau_thanh_toan:display.mau_phong)[k]||(payment?hienThiMacDinh.mau_thanh_toan[k]:hienThiMacDinh.mau_phong[k])||'#d6c5f4';}
   const [allBranches, setAllBranches] = useState<[string, string][]>([]);
   useEffect(() => {
     void fetch("/api/quan-tri/phong/tuy-chon", {
@@ -496,7 +389,7 @@ export default function LichPhong({ token }: { token: string }) {
       setError("Không được khóa ngày trong quá khứ");
       return;
     }
-    setEntryChoice(true);
+    setCreateMode('khoa');setLockRoomState('Bị khóa');setLockPayment('Chưa thanh toán');
     setEditingBlock(null);
     setLockEditMode(true);
     setBlockNote("");
@@ -512,7 +405,7 @@ export default function LichPhong({ token }: { token: string }) {
     );
     setBlockEnd(date);
     setKind(mode === "ngay" ? "ngay" : "gio");
-    setReason(customStatuses[0] || "Khóa lịch");
+    setReason("Khóa lịch");
     setFrom(start);
     setTo(
       local(new Date(new Date(iso(date, start)).getTime() + HOUR)).slice(
@@ -596,7 +489,7 @@ export default function LichPhong({ token }: { token: string }) {
           ghi_chu: blockNote,
           ten_khach: guestName.trim(),
           so_dien_thoai: guestPhone.trim(),
-          gia_ghi_nhan: Number(blockPrice || 0),
+          gia_ghi_nhan: Number(blockPrice || 0),trang_thai_phong:lockRoomState,trang_thai_thanh_toan:lockPayment,
         },
       );
       setNotice(editingBlock ? "Đã cập nhật khóa" : "Đã khóa lịch");
@@ -609,7 +502,7 @@ export default function LichPhong({ token }: { token: string }) {
     }
   }
   function editLock(item: Span) {
-    setEntryChoice(false);
+    setLockRoomState(item.trang_thai_phong||'Bị khóa');setLockPayment(item.trang_thai_thanh_toan||'Chưa thanh toán');
     const room = data.phong.find((r) => r.id === item.phong_id);
     if (!room) return;
     const a = local(new Date(item.bat_dau)),
@@ -929,46 +822,7 @@ export default function LichPhong({ token }: { token: string }) {
     },
     [],
   );
-  function dailyCells(room: Room) {
-    const result: { date: string; count: number; item?: Span; key: string }[] =
-      [];
-    for (let i = 0; i < days.length;) {
-      const d = days[i],
-        a = new Date(iso(d, "00:00")).getTime();
-      const book = data.dat_phong.find(
-        (x) => x.phong_id === room.id && overlap(x, a, a + DAY),
-      );
-      const lock = data.khoa.find(
-        (x) => x.phong_id === room.id && overlap(x, a, a + DAY),
-      );
-      const item = book || lock;
-      let count = 1;
-      if (item) {
-        while (i + count < days.length) {
-          const next = new Date(iso(days[i + count], "00:00")).getTime();
-          if (!overlap(item, next, next + DAY)) break;
-          count++;
-        }
-      }
-      const key =
-        book?.trang_thai ||
-        (lock?.ly_do &&
-        [...Object.keys(palette), ...customStatuses].includes(lock.ly_do)
-          ? lock.ly_do
-          : lock?.co_dinh
-            ? "Khóa cố định"
-            : lock?.loai_khoa === "ngay"
-              ? "Khóa ngày"
-              : lock?.loai_khoa === "qua-dem"
-                ? "Khóa qua đêm"
-                : lock
-                  ? "Khóa giờ"
-                  : room.trang_thai_van_hanh || "Trống");
-      result.push({ date: d, count, item, key });
-      i += count;
-    }
-    return result;
-  }
+  function dailyCells(room:Room){const all=[...data.dat_phong,...data.khoa].filter(x=>x.phong_id===room.id);const at=(date:string)=>{const a=Date.parse(iso(date,'00:00'));return all.filter(x=>overlap(x,a,a+DAY)).sort((x,y)=>Date.parse(x.bat_dau)-Date.parse(y.bat_dau))};const result:{date:string;count:number;item?:Span;items:Span[];key:string}[]=[];for(let i=0;i<days.length;){const items=at(days[i]);let count=1;if(items.length===1)while(i+count<days.length&&at(days[i+count]).length===1&&at(days[i+count])[0].id===items[0].id)count++;result.push({date:days[i],count,item:items[0],items,key:items[0]?.trang_thai_thanh_toan||'Chưa thanh toán'});i+=count;}return result;}
   function segments(room: Room) {
     const start = new Date(iso(day, "00:00")).getTime(),
       end = start + days.length * DAY;
@@ -977,17 +831,7 @@ export default function LichPhong({ token }: { token: string }) {
         .filter((x) => x.phong_id === room.id)
         .map((x) => ({
           ...x,
-          group:
-            x.ly_do &&
-            [...Object.keys(palette), ...customStatuses].includes(x.ly_do)
-              ? x.ly_do
-              : x.co_dinh
-                ? "Khóa cố định"
-                : x.loai_khoa === "ngay"
-                  ? "Khóa ngày"
-                  : x.loai_khoa === "qua-dem"
-                    ? "Khóa qua đêm"
-                    : "Khóa giờ",
+          group:x.trang_thai_thanh_toan||'Chưa thanh toán',
           label:
             (x.ten_khach || x.ly_do || "Khóa lịch") +
             (x.gia_ghi_nhan != null && Number(x.gia_ghi_nhan) > 0
@@ -999,7 +843,7 @@ export default function LichPhong({ token }: { token: string }) {
         .filter((x) => x.phong_id === room.id)
         .map((x) => ({
           ...x,
-          group: x.trang_thai || "Đã xác nhận",
+          group: x.trang_thai_thanh_toan || "Chưa thanh toán",
           label: x.ten_don || x.ten_khach || x.ma_dat_phong || "Đặt phòng",
         })),
     ];
@@ -1070,47 +914,7 @@ export default function LichPhong({ token }: { token: string }) {
                 <button type="button" onClick={() => setShowHours((v) => !v)}>
                   ◷ Điều chỉnh giờ
                 </button>
-                <button type="button" onClick={() => setShowColors((v) => !v)}>
-                  {showColors ? "Đóng" : "＋ Thêm mới"}
-                </button>
-                <button
-                  type="button"
-                  className={deleteMode ? "lp-danger-active" : ""}
-                  onClick={() => setDeleteMode((v) => !v)}
-                >
-                  {deleteMode ? "Xong" : "Xóa"}
-                </button>
-              </div>
-            </div>
-            {showColors && (
-              <div className="lp-new-status">
-                <input
-                  placeholder="Tên trạng thái mới"
-                  value={newStatus}
-                  onChange={(e) => setNewStatus(e.target.value)}
-                />
-                <input
-                  type="color"
-                  aria-label="Màu trạng thái mới"
-                  value={newColor}
-                  onChange={(e) => setNewColor(e.target.value)}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    const n = newStatus.trim();
-                    if (n && !palette[n] && !customStatuses.includes(n)) {
-                      saveStatuses([...customStatuses, n]);
-                      setTone(n, newColor);
-                      setNewStatus("");
-                      setShowColors(false);
-                    }
-                  }}
-                >
-                  Lưu trạng thái
-                </button>
-              </div>
-            )}
+              </div></div>
             {showHours && (
               <div className="lp-hours-settings">
                 {[
@@ -1152,40 +956,7 @@ export default function LichPhong({ token }: { token: string }) {
                 </small>
               </div>
             )}
-            <div className="lp-status-summary">
-              {[...Object.keys(palette), ...customStatuses].map((k) => (
-                <span key={k} className="lp-status-chip">
-                  <input
-                    type="color"
-                    aria-label={"Chỉnh màu " + k}
-                    value={tone(k)}
-                    onChange={(e) => setTone(k, e.target.value)}
-                  />
-                  <span>{k}</span>
-                  {deleteMode && customStatuses.includes(k) && (
-                    <button
-                      type="button"
-                      aria-label={"Xóa trạng thái " + k}
-                      onClick={() => {
-                        saveStatuses(customStatuses.filter((x) => x !== k));
-                      }}
-                    >
-                      ×
-                    </button>
-                  )}
-                </span>
-              ))}
-            </div>
-            <button type="button" onClick={importAppearance}>
-              Nhập thiết lập cũ trên máy
-            </button>
-            <button
-              type="button"
-              disabled={!displayVersion || !displayDirty || displaySaving}
-              onClick={() => void saveDisplay()}
-            >
-              {displaySaving ? "Đang lưu…" : "Lưu thiết lập hiển thị"}
-            </button>
+            <ThietLapTrangThai token={token} value={display} onSaved={setDisplay}/>
           </div>
         )}
       </div>
@@ -1284,7 +1055,7 @@ export default function LichPhong({ token }: { token: string }) {
                     >
                       {room.ten_phong || room.ma_phong}{" "}
                       <span>{expandedRoom === room.id ? "⌃" : "⌄"}</span>
-                    </button>
+                    </button><small className="lp-room-state" style={{background:tone(room.trang_thai_hien_thi||room.trang_thai_van_hanh||"Trống"),color:contrastText(tone(room.trang_thai_hien_thi||room.trang_thai_van_hanh||"Trống"))}}>{tenTrangThai(room.trang_thai_hien_thi||room.trang_thai_van_hanh||"Trống")}</small>
                   </th>
                   {mode === "ngay" ? (
                     dailyCells(room).map((cell) => (
@@ -1293,55 +1064,7 @@ export default function LichPhong({ token }: { token: string }) {
                         colSpan={cell.count}
                         className="lp-day-slot"
                       >
-                        <button
-                          type="button"
-                          className="lp-day-click"
-                          onClick={() => {
-                            const lock = data.khoa.find(
-                              (k) => k.id === cell.item?.id,
-                            );
-                            if (lock) editLock(lock);
-                            else if (cell.item) setBookingDetail(cell.item.id);
-                            else select(room, cell.date);
-                          }}
-                          title={
-                            cell.item
-                              ? (cell.item.ten_khach ||
-                                  cell.item.ly_do ||
-                                  "Đã đặt") +
-                                " · " +
-                                local(new Date(cell.item.bat_dau)) +
-                                " → " +
-                                local(new Date(cell.item.ket_thuc))
-                              : "Phòng trống"
-                          }
-                        >
-                          {cell.item && (
-                            <span
-                              className="lp-booking-pill"
-                              style={{
-                                backgroundColor: tone(cell.key),
-                                color: contrastText(tone(cell.key)),
-                              }}
-                            >
-                              {cell.item.ten_don ||
-                                cell.item.ten_khach ||
-                                cell.item.ly_do ||
-                                cell.item.ma_dat_phong ||
-                                "Đã đặt"}
-                              {cell.item.gia_ghi_nhan != null &&
-                                Number(cell.item.gia_ghi_nhan) > 0 && (
-                                  <small>
-                                    {" "}
-                                    · {money(cell.item.gia_ghi_nhan)}
-                                  </small>
-                                )}
-                              {cell.item.ghi_chu && (
-                                <span title={cell.item.ghi_chu}> 📝</span>
-                              )}
-                            </span>
-                          )}
-                        </button>
+                        <div className="lp-day-stack">{cell.items.length?cell.items.map(item=><button type="button" className="lp-day-click" key={item.id} title={new Date(item.bat_dau).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})+' → '+new Date(item.ket_thuc).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})} onClick={()=>{const lock=data.khoa.find(k=>k.id===item.id);if(lock)editLock(lock);else setBookingDetail(item.id)}}><span className="lp-booking-pill" style={{background:tone(item.trang_thai_thanh_toan||'Chưa thanh toán',true),color:contrastText(tone(item.trang_thai_thanh_toan||'Chưa thanh toán',true))}}><NoiDungLich item={item} lock={data.khoa.some(k=>k.id===item.id)}/></span></button>):<button className="lp-day-click" title="Tạo đơn hoặc khóa lịch" onClick={()=>select(room,cell.date)}/>}</div>
                       </td>
                     ))
                   ) : (
@@ -1373,7 +1096,8 @@ export default function LichPhong({ token }: { token: string }) {
                             style={{
                               left: x.left + "%",
                               width: x.width + "%",
-                              background: tone(x.group),
+                              background: tone(x.group,true),
+                              color:contrastText(tone(x.group,true)),
                             }}
                             title={
                               x.label +
@@ -1388,7 +1112,7 @@ export default function LichPhong({ token }: { token: string }) {
                               else setBookingDetail(x.id);
                             }}
                           >
-                            {x.label}
+                            <NoiDungLich item={[...data.khoa,...data.dat_phong].find(i=>i.id===x.id)!} lock={data.khoa.some(i=>i.id===x.id)}/>
                           </button>
                         ))}
                       </div>
@@ -1740,46 +1464,7 @@ export default function LichPhong({ token }: { token: string }) {
           </div>
         </div>
       )}
-      {bookingSeed && (
-        <FormDonDatPhong
-          token={token}
-          seed={bookingSeed}
-          onClose={() => setBookingSeed(null)}
-          onSaved={load}
-        />
-      )}
-      {selected && entryChoice && (
-        <div className="lp-overlay">
-          <section
-            className="lp-entry-choice"
-            role="dialog"
-            aria-label="Chọn thao tác lịch"
-          >
-            <h2>
-              {selected.room.ten_phong} · {selected.date}
-            </h2>
-            <p>Tạo đơn đặt phòng hoặc chặn thời gian sử dụng phòng.</p>
-            <button
-              onClick={() => {
-                setBookingSeed({
-                  phong_id: selected.room.id,
-                  date: selected.date,
-                  kind: mode === "ngay" ? "ngay" : "gio",
-                  time: mode === "chi-tiet" ? from : undefined,
-                });
-                setSelected(null);
-              }}
-            >
-              Tạo đơn đặt phòng
-            </button>
-            <button onClick={() => setEntryChoice(false)}>
-              Tạo lịch khóa riêng
-            </button>
-            <button onClick={() => setSelected(null)}>Thoát</button>
-          </section>
-        </div>
-      )}
-      {selected && !entryChoice && (
+      {selected && (
         <div
           className="lp-overlay"
           onMouseDown={(e) => {
@@ -1806,7 +1491,8 @@ export default function LichPhong({ token }: { token: string }) {
                 ×
               </button>
             </div>
-            {editingBlock && !lockEditMode ? (
+            {!editingBlock&&<div className="lp-create-switch"><button className={createMode==='don'?'active':''} onClick={()=>setCreateMode('don')}>Tạo đơn đặt phòng</button><button className={createMode==='khoa'?'active':''} onClick={()=>setCreateMode('khoa')}>Khóa lịch</button></div>}
+            {!editingBlock&&createMode==='don'?<FormDonDatPhong embedded token={token} seed={{phong_id:selected.room.id,date:selected.date,kind:mode==='ngay'?'ngay':'gio',time:mode==='chi-tiet'?from:undefined}} onClose={()=>setSelected(null)} onSaved={load}/>: (            editingBlock && !lockEditMode ? (
               <div className="lp-lock-details">
                 <div>
                   <span>Phòng</span>
@@ -1837,8 +1523,8 @@ export default function LichPhong({ token }: { token: string }) {
                   </strong>
                 </div>
                 <div>
-                  <span>Trạng thái</span>
-                  <strong>{reason}</strong>
+                  <span>Phòng / Thanh toán</span>
+                  <strong>{tenTrangThai(lockRoomState)} · {tenTrangThai(lockPayment)}</strong>
                 </div>
                 <div>
                   <span>Tên khách</span>
@@ -1935,16 +1621,16 @@ export default function LichPhong({ token }: { token: string }) {
                       setKind(k);
                       if (k === "qua-dem") {
                         setFrom(hourConfig.dem_tu);
-                        setTo(nightTo);
-                        setReason(customStatuses[0] || "Khóa lịch");
+                        setTo(hourConfig.dem_den||'08:00');
+                        setReason("Khóa lịch");
                       } else if (k === "gio") {
                         setFrom(hourConfig.gio_tu);
                         setTo(hourConfig.gio_den);
-                        setReason(customStatuses[0] || "Khóa lịch");
+                        setReason("Khóa lịch");
                       } else {
                         setFrom(hourConfig.ngay_tu);
                         setTo(hourConfig.ngay_den);
-                        setReason(customStatuses[0] || "Khóa lịch");
+                        setReason("Khóa lịch");
                       }
                     }}
                   >
@@ -2046,27 +1732,7 @@ export default function LichPhong({ token }: { token: string }) {
                   <span>Giá ghi nhận (đ)</span>
                   <NhapTien value={blockPrice} onValueChange={setBlockPrice} />
                 </div>
-                <label>
-                  Trạng thái
-                  <select
-                    required
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                  >
-                    <option value="">Chọn trạng thái</option>
-                    {[
-                      ...new Set([
-                        "Khóa lịch",
-                        ...customStatuses,
-                        ...(editingBlock && reason ? [reason] : []),
-                      ]),
-                    ].map((x) => (
-                      <option key={x} value={x}>
-                        {x}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <label>Trạng thái phòng<select value={lockRoomState} onChange={e=>setLockRoomState(e.target.value)}>{display.trang_thai_phong.map(n=><option key={n} value={n}>{tenTrangThai(n)}</option>)}</select></label><label>Thanh toán trên lịch<select value={lockPayment} onChange={e=>setLockPayment(e.target.value)}>{display.trang_thai_thanh_toan.map(n=><option key={n} value={n}>{tenTrangThai(n)}</option>)}</select></label><label>Lý do khóa<input maxLength={500} required value={reason} onChange={e=>setReason(e.target.value)}/></label>
                 <label>
                   Ghi chú
                   <textarea
@@ -2078,7 +1744,7 @@ export default function LichPhong({ token }: { token: string }) {
                 </label>
                 {kind === "ngay" && (
                   <p className="lp-hint">
-                    Khóa ngày là khóa cố định, chỉ mở bằng thao tác thủ công.
+                    Khóa đúng khoảng thời gian đã chọn; có thể chỉnh sửa hoặc xóa.
                   </p>
                 )}
                 {error && <p className="cn-error">{error}</p>}
@@ -2112,7 +1778,7 @@ export default function LichPhong({ token }: { token: string }) {
                   </button>
                 </div>
               </form>
-            )}
+            ))}
           </div>
         </div>
       )}

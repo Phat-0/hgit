@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, ParseIntPipe, Post, Put, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import type { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SupabaseAuthGuard } from '../xac-thuc/supabase-auth.guard.js';
@@ -16,6 +16,7 @@ export class PhongController {
  uploadImage(@Req() req:AuthRequest,@Param('id') id:string,@UploadedFile() file:{buffer:Buffer;size:number;mimetype:string;originalname:string}){return this.service.uploadImage(req.nguoiDung.id,id,file);}
  @Put(':id/anh/:imageId/dai-dien') cover(@Req() req:AuthRequest,@Param('id') id:string,@Param('imageId') imageId:string){return this.service.setCover(req.nguoiDung.id,id,imageId);}
  @Delete(':id/anh/:imageId') deleteImage(@Req() req:AuthRequest,@Param('id') id:string,@Param('imageId') imageId:string){return this.service.deleteImage(req.nguoiDung.id,id,imageId);}
+ @Patch(':id/trang-thai') setState(@Req() req:AuthRequest,@Param('id') id:string,@Body() body:unknown){return this.service.setState(req.nguoiDung.id,id,body);}
  @Get(':id') detail(@Req() req:AuthRequest,@Param('id') id:string){return this.service.detail(req.nguoiDung.id,id);}
  @Post() create(@Req() req:AuthRequest,@Body() body:unknown){return this.service.create(req.nguoiDung.id,body);}
  @Put(':id') update(@Req() req:AuthRequest,@Param('id') id:string,@Body() body:unknown){return this.service.update(req.nguoiDung.id,id,body);}

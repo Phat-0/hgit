@@ -21,12 +21,14 @@ export async function duLieuGiaoDien(page){
  else if(path.endsWith('/tong-quan-moi'))data={...report,tong_homestay:2,tong_phong:10,tong_dat_phong:20,tong_nguoi_dung:30,tong_danh_gia:6,danh_gia_tuan:2,chenh_lech_hom_qua:'200000',danh_gia_moi:[review]};
  else if(path.endsWith('/bao-cao'))data=report;
  else if(path.endsWith('/danh-gia'))data=[review];
- else if(path.endsWith('/hien-thi'))data={mau:{},trang_thai:['Khóa sửa chữa'],phien_ban:1};
+ else if(path.endsWith('/hien-thi'))data={mau:{},trang_thai:[],mau_phong:{'Trống':'#ffffff','Đang sử dụng':'#78c4df','Đang dọn':'#eac577','Bảo trì':'#e994a2','Bị khóa':'#c0a3e0'},mau_thanh_toan:{'Chưa thanh toán':'#f8d394','Cọc':'#b6a3ef','Đủ':'#91d4b2'},trang_thai_phong:['Trống','Đang sử dụng','Cần dọn','Đang dọn','Chờ kiểm tra','Bảo trì','Bị khóa'],trang_thai_thanh_toan:['Chưa thanh toán','Cọc','Đủ'],phien_ban:1};
  else if(path.endsWith('/cau-hinh-gio'))data=hours;
- else if(path.endsWith('/lich-phong'))data={phong:rooms,khoa:[],gia:[],dat_phong:[]};
+ else if(path.endsWith('/lich-phong'))data={phong:rooms,khoa:[{id:'66666666-6666-4666-8666-666666666666',phong_id:room,bat_dau:today+'T08:00:00+07:00',ket_thuc:today+'T10:00:00+07:00',loai_khoa:'gio',ly_do:'Sửa điều hòa',trang_thai_phong:'Bảo trì',trang_thai_thanh_toan:'Cọc'}],gia:[],dat_phong:[{...booking,bat_dau:booking.nhan_phong_luc,ket_thuc:booking.tra_phong_luc}]};
  else if(path.endsWith('/don-dat-phong/tuy-chon'))data={rooms,combos,cau_hinh_gio:hours};
  else if(path.endsWith('/don-dat-phong/thong-ke'))data={'Tất cả':20,'Đã xác nhận':18,'Đã hủy':2};
  else if(path.endsWith('/don-dat-phong/'+order))data=booking;
+ else if(path.endsWith('/hoi-thoai'))data={id:'77777777-7777-4777-8777-777777777777',ten_hien_thi:'Khách kiểm thử',cho_lien_ket:true};
+ else if(path.endsWith('/don-dat-phong/'+order+'/anh'))data=[];
  else if(path.endsWith('/don-dat-phong'))data=[booking];
  else if(path.endsWith('/phong/tuy-chon'))data={chi_nhanh:branches,loai_phong:[{id:category,homestay_id:branch,ten_loai:'Phòng cao cấp'}]};
  else if(path.endsWith('/loai-phong'))data=[{id:category,homestay_id:branch,ten_homestay:branches[0].ten_homestay,ten_loai:'Phòng cao cấp',suc_chua:2,so_phong:5,mo_ta:'Có ban công',dien_tich_m2:'25'}];
@@ -37,7 +39,8 @@ export async function duLieuGiaoDien(page){
  else if(path.endsWith('/trang-chu'))data=path.includes('/quan-tri/')?{ban_nhap:home,da_xuat_ban:home,phien_ban:1}:home;
  else if(path.endsWith('/cau-hinh'))data={chi_nhanh:branches,khung_gio:hours};
  else if(path.includes('/thong-bao-don'))data={thong_bao:[],chua_doc:0,tong_so:0};
- else if(path.endsWith('/chat'))data={toi:category,hoi_thoai:[],tong_so:0,tong_chua_doc:0};
+ else if(path.endsWith('/chat'))data={toi:category,hoi_thoai:[{id:'77777777-7777-4777-8777-777777777777',ten_hien_thi:'Khách kiểm thử',loai:'ho_tro',tin_cuoi:null,tin_cuoi_luc:null,chua_doc:0}],tong_so:1,tong_chua_doc:0};
+ else if(path.endsWith('/tin-nhan'))data={toi:category,tin_nhan:[],co_tin_cu:false};
  else data={du_lieu:[],tong_so:0,chi_nhanh:branches};
  if(method!=='GET'&&!path.endsWith('/lam-moi'))data={ok:true,id:order,...data};
  await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});

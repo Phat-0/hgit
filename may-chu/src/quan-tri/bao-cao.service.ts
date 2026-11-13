@@ -48,7 +48,7 @@ export class BaoCaoService {
       const payment = await c.query(THEO_NHOM('trang_thai_thanh_toan'), args);
       const roomReport = await c.query(
         DON_BAO_CAO +
-          ` SELECT ten_homestay||' · '||ten_phong AS ten,count(*)::int AS so_don,count(*) FILTER(WHERE trang_thai='Đã hủy')::int AS so_huy,coalesce(sum(tong_tien) FILTER(WHERE trang_thai IN ('Đã xác nhận','Đã nhận phòng','Đã trả phòng')),0) AS doanh_thu FROM don GROUP BY homestay_id,phong_id,ten_homestay,ten_phong ORDER BY doanh_thu DESC,ten`,
+          ` SELECT p.id AS phong_id,h.ten_homestay||' · '||p.ten_phong AS ten,count(d.id)::int AS so_don,count(d.id) FILTER(WHERE d.trang_thai='Đã hủy')::int AS so_huy,count(d.id) FILTER(WHERE d.trang_thai IN ('Đã xác nhận','Đã nhận phòng','Đã trả phòng'))::int AS so_luot_hop_le,round(count(d.id)::numeric/($2::date-$1::date+1),2) AS tan_suat_ngay,coalesce(sum(d.tong_tien) FILTER(WHERE d.trang_thai IN ('Đã xác nhận','Đã nhận phòng','Đã trả phòng')),0) AS doanh_thu FROM public.phong p JOIN public.homestay h ON h.id=p.homestay_id LEFT JOIN don d ON d.phong_id=p.id WHERE ($3::uuid IS NULL OR p.homestay_id=$3) GROUP BY p.id,h.ten_homestay,p.ten_phong ORDER BY doanh_thu DESC,ten`,
         args,
       );
       const totals = await c.query(

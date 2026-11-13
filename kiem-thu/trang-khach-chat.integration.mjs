@@ -11,7 +11,7 @@ const root = fileURLToPath(new URL("../", import.meta.url)).replace(
   ),
   db = new PGlite({ extensions: { btree_gist, pgcrypto } });
 await db.exec(
-  "CREATE SCHEMA auth;CREATE TABLE auth.users(id uuid PRIMARY KEY);CREATE ROLE anon;CREATE ROLE authenticated;CREATE SCHEMA storage;CREATE TABLE storage.buckets(id text PRIMARY KEY,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);",
+  "CREATE SCHEMA auth;CREATE TABLE auth.users(id uuid PRIMARY KEY,phone text,phone_confirmed_at timestamptz);CREATE ROLE anon;CREATE ROLE authenticated;CREATE SCHEMA storage;CREATE TABLE storage.buckets(id text PRIMARY KEY,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);",
 );
 for (const f of [
   "homestay.sql",
@@ -166,6 +166,7 @@ await db.exec(
   ),
 );
 await db.exec(fs.readFileSync(root+'/co-so-du-lieu/migrations/20261113092348_tong_quan_danh_gia_quyen_lich.sql','utf8'));
+await db.exec(fs.readFileSync(root+'/co-so-du-lieu/migrations/20261113111315_tach_trang_thai_phong_thanh_toan_anh_don.sql','utf8'));
 const { ChatService } = await import(
   root + "/may-chu/dist/khach-hang/chat.service.js"
 );
@@ -1023,5 +1024,63 @@ await db.exec('SET ROLE authenticated');
 await assert.rejects(()=>db.query("UPDATE public.cau_hinh_hien_thi_lich SET mau='{}' WHERE id=1"),/permission denied/);
 await db.exec('RESET ROLE');
 console.log('PASS Tổng quan/Báo cáo: múi giờ/ngày trống/loại đơn hủy; quyền trang tạo/gán/thu hồi, backend từ chối truy cập; thiết lập đồng bộ và chống ghi đè; lịch sử đổi phòng/ngày và RLS cấu hình.');
+
+// Trạng thái phòng thời gian thực, tách màu thanh toán và thao tác đơn.
+const {LichPhongService}=await import(root+'/may-chu/dist/quan-tri/lich-phong.service.js');
+const operations=new LichPhongService(authorization);operations.db=connection;
+const stateRoom=randomUUID();
+await db.query("INSERT INTO public.phong(id,homestay_id,loai_phong_id,ma_phong,ten_phong,gia_moi_gio,so_gio_toi_thieu) VALUES($1,$2,$3,'TT-01','Phòng trạng thái',200000,2)",[stateRoom,branch,type]);
+const stateBooking=(await db.query(`INSERT INTO public.dat_phong(ma_dat_phong,ten_don,homestay_id,phong_id,hinh_thuc_dat,nhan_phong_luc,tra_phong_luc,so_khach,trang_thai,tien_phong,so_dien_thoai_dat) VALUES('TT01','Khách trạng thái',$1,$2,'Theo giờ',now()-interval '1 hour',now()+interval '1 hour',1,'Đã xác nhận',200000,'0901234567') RETURNING id`,[branch,stateRoom])).rows[0].id;
+assert.equal((await roomService.list(admin,'TT-01')).du_lieu[0].trang_thai_hien_thi,'Đang sử dụng');
+await operations.updateBooking(admin,stateBooking,{hanh_dong:'nhan_phong'});
+await assert.rejects(()=>operations.updateBooking(admin,stateBooking,{hanh_dong:'nhan_phong'}),/Trạng thái đã thay đổi/);
+await operations.updateBooking(admin,stateBooking,{hanh_dong:'tra_phong'});
+assert.equal((await roomService.list(admin,'TT-01')).du_lieu[0].trang_thai_hien_thi,'Đang dọn');
+await roomService.setState(admin,stateRoom,{trang_thai:'Trống'});
+assert.equal((await roomService.list(admin,'TT-01')).du_lieu[0].trang_thai_hien_thi,'Trống');
+await roomService.setState(admin,stateRoom,{trang_thai:'Bảo trì'});
+assert.equal((await roomService.list(admin,'TT-01')).du_lieu[0].trang_thai_hien_thi,'Bảo trì');
+await roomService.setState(admin,stateRoom,{trang_thai:'Trống'});
+await db.query("UPDATE public.dat_phong SET trang_thai='Đã xác nhận',nhan_phong_luc=now()+interval '1 day',tra_phong_luc=now()+interval '1 day 2 hours',da_nhan_phong_luc=NULL,da_tra_phong_luc=NULL WHERE id=$1",[stateBooking]);
+assert.equal((await roomService.list(admin,'TT-01')).du_lieu[0].trang_thai_hien_thi,'Trống');
+await operations.updateBooking(admin,stateBooking,{hanh_dong:'khong_nhan'});
+assert.equal((await operations.bookingList(admin,'Chưa nhận phòng','TT01'))[0].trang_thai,'Không nhận phòng');
+const correctionBody={ten_khach:'Khách trạng thái',phong_id:stateRoom,hinh_thuc_dat:'Theo giờ',nhan_phong_luc:(await db.query('SELECT nhan_phong_luc FROM public.dat_phong WHERE id=$1',[stateBooking])).rows[0].nhan_phong_luc.toISOString(),tra_phong_luc:(await db.query('SELECT tra_phong_luc FROM public.dat_phong WHERE id=$1',[stateBooking])).rows[0].tra_phong_luc.toISOString(),so_khach:1,tien_phong:200000,so_dien_thoai:'0901234567',ghi_chu:'',trang_thai_sua:'Đã xác nhận'};
+await assert.rejects(()=>editing.edit(admin,stateBooking,correctionBody),/cần lý do/);
+await editing.edit(admin,stateBooking,{...correctionBody,ly_do_sua_trang_thai:'Bấm nhầm không nhận phòng'});
+assert.equal((await editing.detail(admin,stateBooking)).trang_thai,'Đã xác nhận');
+const fullPaid=await operations.createBooking(admin,{ten_khach:'Khách thanh toán',phong_id:stateRoom,hinh_thuc_dat:'Theo giờ',nhan_phong_luc:'2035-01-01T08:00:00+07:00',tra_phong_luc:'2035-01-01T10:00:00+07:00',so_khach:1,tien_phong:200000,so_dien_thoai:'0901234567',trang_thai_thanh_toan:'Đủ',tien_da_thanh_toan:200000});
+assert.equal(Number((await editing.detail(admin,fullPaid.id)).tien_da_thanh_toan),200000);
+const display2=await appearance.read(admin);
+await appearance.save(admin,{...display2,trang_thai_phong:[...display2.trang_thai_phong,'Sửa nội thất'],trang_thai_thanh_toan:[...display2.trang_thai_thanh_toan,'Chờ đối soát'],mau_phong:{'Sửa nội thất':'#112233'},mau_thanh_toan:{'Chờ đối soát':'#445566'}});
+const separate=await appearance.read(admin);assert.equal(separate.mau_phong['Sửa nội thất'],'#112233');assert.equal(separate.mau_thanh_toan['Chờ đối soát'],'#445566');
+const lock=await operations.block(admin,{phong_id:stateRoom,loai_khoa:'gio',bat_dau:'2035-01-02T08:00:00+07:00',ket_thuc:'2035-01-02T10:00:00+07:00',ly_do:'Sửa nội thất phòng',trang_thai_phong:'Sửa nội thất',trang_thai_thanh_toan:'Chờ đối soát'});
+assert.equal(lock.trang_thai_phong,'Sửa nội thất');assert.equal(lock.trang_thai_thanh_toan,'Chờ đối soát');
+await assert.rejects(()=>operations.block(admin,{phong_id:stateRoom,loai_khoa:'gio',bat_dau:'2035-01-03T08:00:00+07:00',ket_thuc:'2035-01-03T10:00:00+07:00',ly_do:'x',trang_thai_phong:'Trạng thái không tồn tại'}),/Thiết lập/);
+// Ảnh theo đơn: kho riêng, giới hạn byte/MIME, IDOR và chống dùng ảnh đơn khác.
+const {TepVaChatDonService}=await import(root+'/may-chu/dist/quan-tri/tep-va-chat-don.service.js');
+const orderFiles=new TepVaChatDonService(authorization);orderFiles.db=connection;
+const uploadedOrderFiles=[],removedOrderFiles=[];
+orderFiles.storage=()=>({upload:async(key)=>{uploadedOrderFiles.push(key);return {error:null}},createSignedUrl:async(key)=>({data:{signedUrl:'https://private.test/'+key},error:null}),remove:async(keys)=>{removedOrderFiles.push(...keys);return {error:null}}});
+const photoBytes=Buffer.from([137,80,78,71,13,10,26,10]);
+const photo=await orderFiles.upload(admin,stateBooking,{buffer:photoBytes,size:photoBytes.length,mimetype:'image/png',originalname:'anh-phong.png'});
+assert.equal((await orderFiles.images(admin,stateBooking)).length,1);
+await assert.rejects(()=>orderFiles.images(uid,stateBooking),/chưa được cấp quyền/);
+await assert.rejects(()=>orderFiles.remove(admin,editId,photo.id),/không thuộc đơn/);
+await assert.rejects(()=>orderFiles.upload(admin,stateBooking,{buffer:Buffer.from('fake'),size:4,mimetype:'image/png',originalname:'fake.png'}),/tối đa|định dạng/);
+await orderFiles.remove(admin,stateBooking,photo.id);assert.equal((await orderFiles.images(admin,stateBooking)).length,0);assert.equal(removedOrderFiles.length,1);
+// Tạo hội thoại chờ cho đơn; chỉ số điện thoại đã xác minh mới được nhận.
+await db.query("UPDATE auth.users SET phone='84901234567',phone_confirmed_at=now() WHERE id=$1",[uid]);
+const pending=await orderFiles.conversation(admin,stateBooking);
+assert.equal((await orderFiles.conversation(admin,stateBooking)).id,pending.id);
+const unverifiedId=randomUUID();await db.query('INSERT INTO auth.users(id) VALUES($1)',[unverifiedId]);await db.query("INSERT INTO public.nguoi_dung(id,ho_ten) VALUES($1,'Chưa xác minh')",[unverifiedId]);users.unverifiedOrder={id:unverifiedId,phone:'+84901234567',phone_verified:false};
+assert.equal((await chat.list('unverifiedOrder')).hoi_thoai.some(x=>x.id===pending.id),false);
+assert.equal((await chat.list('a')).hoi_thoai.some(x=>x.id===pending.id),true);
+assert.equal((await orderFiles.conversation(admin,stateBooking)).id,pending.id);
+await editing.edit(admin,stateBooking,{...correctionBody,so_dien_thoai:'0901234599',trang_thai_sua:'Đã xác nhận'});
+const rotated=await orderFiles.conversation(admin,stateBooking);assert.notEqual(rotated.id,pending.id);
+await assert.rejects(()=>chat.messages(rotated.id,'a'),/quyền xem/);
+assert.ok((await db.query('SELECT id FROM public.cuoc_tro_chuyen WHERE id=$1',[pending.id])).rows.length);
+console.log('PASS Trạng thái/phòng: sử dụng theo giờ, sau trả vệ sinh, đánh dấu sạch/bảo trì, đơn tương lai, no-show và sửa có lý do; thanh toán đã tạo mới; hai danh mục màu; ảnh riêng theo đơn/IDOR; hội thoại idempotent/OTP và không chuyển lịch sử cũ khi đổi số.');
 
 await db.close();

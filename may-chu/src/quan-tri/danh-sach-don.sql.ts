@@ -6,10 +6,12 @@ export const BO_LOC_DON:Record<string,string>={
  'Đã trả phòng':"trang_thai='Đã trả phòng'",
  'Đã hủy':"trang_thai='Đã hủy'",
  'Chờ xác nhận':"(trang_thai='Chờ xác nhận' OR (can_xac_nhan_lai AND trang_thai='Đã xác nhận')) AND NOT khong_nhan_phong",
- 'Chưa nhận phòng':'khong_nhan_phong',
+ 'Chưa nhận phòng':"(khong_nhan_phong OR trang_thai='Không nhận phòng')",
  'Chờ thanh toán':"trang_thai='Chờ thanh toán'",
  'Thanh toán':"trang_thai_thanh_toan IN ('Cọc','Chưa thanh toán') AND trang_thai NOT IN ('Đã hủy','Hết hạn')",
- 'Chưa thanh toán':"trang_thai_thanh_toan IN ('Cọc','Chưa thanh toán') AND trang_thai NOT IN ('Đã hủy','Hết hạn')",
+ 'Chưa thanh toán':"trang_thai_thanh_toan='Chưa thanh toán' AND trang_thai NOT IN ('Đã hủy','Hết hạn')",
+ 'Cọc':"trang_thai_thanh_toan='Cọc'",
+ 'Đủ':"trang_thai_thanh_toan='Đủ'",
  'Đã thanh toán':"trang_thai_thanh_toan='Đủ'",
 };
 export const DON_CO_SO=`WITH danh_sach AS (

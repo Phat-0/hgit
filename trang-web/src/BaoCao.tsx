@@ -1,3 +1,5 @@
+import {RangePicker} from './RangePicker';
+import BieuDoDoanhThu from './BieuDoDoanhThu';
 import { useEffect, useState } from "react";
 import {
   quanTriApi,
@@ -94,22 +96,7 @@ export default function BaoCao({
   return (
     <section className="bc-page">
       <div className="bc-toolbar">
-        <label>
-          Từ ngày
-          <input
-            type="date"
-            value={start}
-            onChange={(e) => setStart(e.target.value)}
-          />
-        </label>
-        <label>
-          Đến ngày
-          <input
-            type="date"
-            value={end}
-            onChange={(e) => setEnd(e.target.value)}
-          />
-        </label>
+        <RangePicker compact start={start} end={end} onChange={(a,b)=>{setStart(a);setEnd(b)}}/>
         <select
           aria-label="Chi nhánh báo cáo"
           value={branch}
@@ -209,6 +196,7 @@ export default function BaoCao({
             giao dịch đã xác nhận, theo ngày giao dịch. Nhãn “Đã thanh toán” của
             đơn không tự sinh giao dịch thu tiền.
           </p>
+          <div className="bc-revenue-charts"><section className="bc-card"><BieuDoDoanhThu label="Doanh thu theo ngày" data={data.theo_ngay.map(d=>({key:d.ngay,label:d.ngay.slice(8)+'/'+d.ngay.slice(5,7),money:Number(d.doanh_thu),count:d.so_don}))}/></section><section className="bc-card"><BieuDoDoanhThu label="Doanh thu từng phòng" data={data.theo_phong.map(r=>({key:r.phong_id||r.ten,label:r.ten,money:Number(r.doanh_thu),count:r.so_don}))}/></section><section className="bc-card"><BieuDoDoanhThu label="Doanh thu theo chi nhánh" data={data.theo_chi_nhanh.map(r=>({key:r.ten,label:r.ten,money:Number(r.doanh_thu),count:r.so_don}))}/></section><section className="bc-card"><BieuDoDoanhThu label="Doanh thu theo kiểu đặt" data={data.theo_kieu.map(r=>({key:r.ten,label:r.ten,money:Number(r.doanh_thu),count:r.so_don}))}/></section></div><section className="bc-card"><h2>Tần suất và doanh thu từng phòng</h2><p>Tần suất là số đơn được tạo trong kỳ / số ngày của kỳ; không phải tỷ lệ lấp đầy giờ lưu trú.</p><div className="bc-table"><table><thead><tr><th>Phòng / chi nhánh</th><th>Số đơn</th><th>Lượt hợp lệ</th><th>Hủy</th><th>Đơn/ngày</th><th>Doanh thu</th></tr></thead><tbody>{data.theo_phong.map(r=><tr key={r.phong_id||r.ten}><td>{r.ten}</td><td>{r.so_don}</td><td>{r.so_luot_hop_le||0}</td><td>{r.so_huy}</td><td>{r.tan_suat_ngay||'0'}</td><td>{vnd(r.doanh_thu)}</td></tr>)}</tbody></table></div></section>
           <div className="tq-main">
             {[
               ["Theo kiểu đặt", data.theo_kieu],

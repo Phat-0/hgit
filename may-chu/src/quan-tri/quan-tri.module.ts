@@ -1,3 +1,4 @@
+import {TepVaChatDonService} from './tep-va-chat-don.service.js';
 import {HienThiLichService} from './hien-thi-lich.service.js';
 import {BaoCaoController} from './bao-cao.controller.js';
 import {BaoCaoService} from './bao-cao.service.js';
@@ -44,7 +45,7 @@ import { LichPhongService } from './lich-phong.service.js';
     LichPhongController,
     DonLichController,
   ],
-  providers: [HienThiLichService,BaoCaoService,VaiTroService,
+  providers: [TepVaChatDonService,HienThiLichService,BaoCaoService,VaiTroService,
     TienIchChatService,
     TrangChuService,
     NhanVienService,

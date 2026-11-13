@@ -221,6 +221,11 @@ export class ChatService {
       throw new BadRequestException('Bộ lọc hội thoại không hợp lệ');
     const c = await this.conn.db();
     try {
+      if(user?.phone&&user.phone_verified){
+       const raw=user.phone.replace(/[ .()+-]/g,''),number=raw.startsWith('0')?'+84'+raw.slice(1):'+'+raw;
+       await c.query(`WITH claimed AS(UPDATE public.cuoc_tro_chuyen t SET khach_hang_id=$1 WHERE t.khach_hang_id IS NULL AND t.so_dien_thoai_lien_ket=$2 AND EXISTS(SELECT 1 FROM public.hoi_thoai_don_dat_phong h JOIN public.dat_phong d ON d.id=h.dat_phong_id WHERE h.cuoc_tro_chuyen_id=t.id AND (d.nguoi_dung_id IS NULL OR d.nguoi_dung_id=$1) AND CASE WHEN regexp_replace(d.so_dien_thoai_dat,'[ .()+-]','','g')~'^0[0-9]{9}$' THEN '+84'||substr(regexp_replace(d.so_dien_thoai_dat,'[ .()+-]','','g'),2) WHEN regexp_replace(d.so_dien_thoai_dat,'[ .()+-]','','g')~'^84[0-9]{9}$' THEN '+'||regexp_replace(d.so_dien_thoai_dat,'[ .()+-]','','g') ELSE d.so_dien_thoai_dat END=$2) RETURNING id) INSERT INTO public.thanh_vien_tro_chuyen(cuoc_tro_chuyen_id,nguoi_dung_id) SELECT id,$1 FROM claimed ON CONFLICT DO NOTHING`,[user.id,number]);
+      }
+
       const r = await c.query(
         `WITH eligible AS (
         SELECT t.*,h.ten_homestay,n.ho_ten,

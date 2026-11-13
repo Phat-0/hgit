@@ -1,3 +1,5 @@
+import AnhDonDatPhong from './AnhDonDatPhong';
+import BieuTuongDon from './BieuTuongDon';
 import { useCallback, useEffect, useState, useRef } from "react";
 import ChiTietDonLich from "./ChiTietDonLich";
 import FormDonDatPhong from "./FormDonDatPhong";
@@ -26,10 +28,14 @@ const statuses = [
 export default function DonDatPhong({
   token,
   initialId,
+  onOpenChat,
 }: {
   token: string;
   initialId?: string;
+  onOpenChat?:(thread:{id:string;ten_hien_thi:string})=>void;
 }) {
+  const [photos,setPhotos]=useState('');
+  async function chat(id:string){setError('');try{const t=await quanTriApi<{id:string;ten_hien_thi:string}>(token,'lich-phong/don-dat-phong/'+id+'/hoi-thoai','POST');if(onOpenChat)onOpenChat(t);else window.dispatchEvent(new CustomEvent('homestay:mo-chat',{detail:t}))}catch(e){setError((e as Error).message)}}
   const request = useRef(0);
   const [rows, setRows] = useState<Booking[]>([]),
     [counts, setCounts] = useState<Record<string, number>>({}),
@@ -67,18 +73,6 @@ export default function DonDatPhong({
   useEffect(() => {
     void load();
   }, [load]);
-  async function action(type: string, body: unknown = {}) {
-    try {
-      await quanTriApi(token, "lich-phong/don-dat-phong/" + id, "PATCH", {
-        hanh_dong: type,
-        ...(body as object),
-      });
-      await load();
-      setId("");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Không cập nhật được đơn");
-    }
-  }
   return (
     <section className="dp-page">
       <div className="dp-toolbar">
@@ -159,11 +153,11 @@ export default function DonDatPhong({
                 }
                 tabIndex={0}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") setId(d.id);
+                  if (e.key === "Enter"&&e.target===e.currentTarget) setId(d.id);
                 }}
               >
                 <td>
-                  <button className="dp-code" onClick={() => setId(d.id)}>
+                  <button className="dp-code" title={d.ma_dat_phong} onClick={() => setId(d.id)}>
                     {maDonGon(d.ma_dat_phong)}
                   </button>
                 </td>
@@ -199,15 +193,7 @@ export default function DonDatPhong({
                 <td>{d.combo || "—"}</td>
                 <td>{vnd(d.tien_dich_vu)}</td>
                 <td>{d.ghi_chu || "—"}</td>
-                <td>
-                  <button
-                    title="Xem chi tiết đơn"
-                    aria-label="Xem chi tiết đơn"
-                    onClick={() => setId(d.id)}
-                  >
-                    ⋯
-                  </button>
-                </td>
+                <td className="dp-inline-actions" onClick={e=>e.stopPropagation()}><button type="button" title="Mở cuộc trò chuyện của đơn" aria-label="Chat theo đơn" onClick={()=>void chat(d.id)}><BieuTuongDon kind="chat"/></button><button type="button" title="Ảnh của đơn" aria-label="Ảnh của đơn" onClick={()=>setPhotos(d.id)}><BieuTuongDon kind="image"/></button></td>
               </tr>
             ))}
             {!rows.length && (
@@ -226,61 +212,14 @@ export default function DonDatPhong({
           onSaved={load}
         />
       )}
+      {photos&&<AnhDonDatPhong id={photos} token={token} onClose={()=>setPhotos('')}/>}
       {id && (
         <ChiTietDonLich
           id={id}
           token={token}
           onClose={() => setId("")}
           onChanged={load}
-          extraActions={
-            <div className="don-lich-actions">
-              <button
-                disabled={
-                  rows.find((r) => r.id === id)?.trang_thai !== "Chờ xác nhận"
-                }
-                onClick={() => void action("xac_nhan")}
-              >
-                Xác nhận
-              </button>
-              <button
-                disabled={
-                  rows.find((r) => r.id === id)?.trang_thai !== "Đã xác nhận"
-                }
-                onClick={() => void action("nhan_phong")}
-              >
-                Nhận phòng
-              </button>
-              <button
-                disabled={
-                  rows.find((r) => r.id === id)?.trang_thai !== "Đã nhận phòng"
-                }
-                onClick={() => void action("tra_phong")}
-              >
-                Trả phòng
-              </button>
-              <label>
-                Thanh toán
-                <select
-                  aria-label="Cập nhật thanh toán"
-                  value={
-                    rows.find((r) => r.id === id)?.trang_thai_thanh_toan ||
-                    "Chưa thanh toán"
-                  }
-                  onChange={(e) =>
-                    void action("thanh_toan", {
-                      trang_thai_thanh_toan: e.target.value,
-                    })
-                  }
-                >
-                  {["Chưa thanh toán", "Cọc", "Đủ"].map((s) => (
-                    <option key={s} value={s}>
-                      {nhanThanhToan(s).text}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          }
+
         />
       )}
     </section>

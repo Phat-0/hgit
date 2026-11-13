@@ -2,3 +2,4 @@
 .cn-dialog .cn-form .cn-booking-options{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
 .cn-dialog .cn-form .cn-booking-options label{display:inline-flex;align-items:center;gap:6px;margin:0}
 .cn-dialog .cn-form .cn-booking-options input[type="checkbox"]{width:16px;height:16px;min-height:0;margin:0;flex:none}
+.phong-status-select{max-width:170px!important;min-width:130px;font-size:12px!important;line-height:1.5;padding:8px!important;border:1px solid #d9c8e7!important;border-radius:9px!important;background:#faf7fd!important;color:#614775!important;margin:0!important}

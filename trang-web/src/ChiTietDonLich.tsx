@@ -1,3 +1,5 @@
+import BieuTuongDon from './BieuTuongDon';
+import './don-chi-tiet-thao-tac.css';
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import FormDonDatPhong, { type DonSua } from "./FormDonDatPhong";
@@ -81,10 +83,11 @@ export default function ChiTietDonLich({
       setBusy(false);
     }
   }
+  async function status(action:string,label:string){if(!window.confirm('Xác nhận '+label.toLowerCase()+' cho đơn này?'))return;setBusy(true);setError('');try{await quanTriApi(token,'lich-phong/don-dat-phong/'+id,'PATCH',{hanh_dong:action});await load();await onChanged()}catch(e){setError((e as Error).message)}finally{setBusy(false)}}
   const editable =
     !readOnly &&
     don &&
-    ["Chờ thanh toán", "Chờ xác nhận", "Đã xác nhận"].includes(don.trang_thai);
+    ["Chờ thanh toán", "Chờ xác nhận", "Đã xác nhận","Đã nhận phòng","Đã trả phòng","Không nhận phòng"].includes(don.trang_thai);
   return createPortal(
     <div
       className="don-lich-backdrop"
@@ -99,10 +102,10 @@ export default function ChiTietDonLich({
         aria-label="Chi tiết đơn đặt phòng"
       >
         <header>
-          <div>
+          <div className="don-heading-line">
             <small>ĐƠN ĐẶT PHÒNG</small>
             <h2>{don?.ten_khach || "Chi tiết đơn"}</h2>
-            <span>{don?.ma_dat_phong}</span>
+            <span title={don?.ma_dat_phong}>{don?.ma_dat_phong}</span>{don&&<span>{don.so_dien_thoai||'Chưa có SĐT'} · {don.ten_phong}</span>}
           </div>
           <button aria-label="Đóng chi tiết" onClick={onClose}>
             ×
@@ -122,8 +125,7 @@ export default function ChiTietDonLich({
                 ["Chi nhánh", don.ten_homestay],
                 ["Phòng", don.ten_phong],
                 ["Kiểu đặt", don.hinh_thuc_dat],
-                ["Nhận phòng", lucVN(don.nhan_phong_luc)],
-                ["Trả phòng", lucVN(don.tra_phong_luc)],
+                ["Nhận → Trả", lucVN(don.nhan_phong_luc)+" → "+lucVN(don.tra_phong_luc)],
                 ["Số khách", String(don.so_khach)],
                 ["Trạng thái đơn", don.trang_thai],
                 ["Thanh toán", don.trang_thai_thanh_toan],
@@ -167,6 +169,7 @@ export default function ChiTietDonLich({
                 ))}
               </section>
             )}
+            {!readOnly&&<div className="don-lifecycle">{[{action:'xac_nhan',label:'Xác nhận',from:['Chờ xác nhận'],tone:'confirm'},{action:'nhan_phong',label:'Nhận phòng',from:['Đã xác nhận'],tone:'checkin'},{action:'tra_phong',label:'Trả phòng',from:['Đã nhận phòng'],tone:'checkout'},{action:'khong_nhan',label:'Không nhận phòng',from:['Đã xác nhận','Chờ xác nhận'],tone:'absent'}].map(b=>{const enabled=!busy&&b.from.includes(don.trang_thai);return <button key={b.action} disabled={!enabled} className={enabled?'don-action-'+b.tone:'don-action-off'} title={enabled?b.label:'Muốn sửa thao tác đã chọn, bấm biểu tượng Chỉnh sửa'} onClick={()=>void status(b.action,b.label)}>{b.label}</button>})}</div>}
             {!readOnly && extraActions}
             {confirm ? (
               <div className="don-lich-confirm" role="alert">
@@ -185,25 +188,7 @@ export default function ChiTietDonLich({
                 </div>
               </div>
             ) : (
-              <div className="don-lich-actions">
-                <button onClick={onClose}>Đóng</button>
-                {!readOnly && (
-                  <>
-                    <button
-                      disabled={!editable}
-                      onClick={() => setEditing(true)}
-                    >
-                      Chỉnh sửa
-                    </button>
-                    <button
-                      disabled={!editable}
-                      onClick={() => setConfirm(true)}
-                    >
-                      Xóa khỏi lịch
-                    </button>
-                  </>
-                )}
-              </div>
+              <div className="don-icon-actions">{!readOnly&&<><button aria-label="Chỉnh sửa đơn" title="Chỉnh sửa đơn và sửa thao tác nhầm" disabled={busy||!editable} onClick={()=>setEditing(true)}><BieuTuongDon kind="edit"/></button><button aria-label="Xóa đơn khỏi lịch" title="Xóa đơn khỏi lịch" disabled={busy||!['Chờ thanh toán','Chờ xác nhận','Đã xác nhận'].includes(don.trang_thai)} onClick={()=>setConfirm(true)}><BieuTuongDon kind="delete"/></button></>}</div>
             )}
           </>
         ) : (

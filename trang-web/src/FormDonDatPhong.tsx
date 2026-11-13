@@ -21,6 +21,7 @@ export type DonSua = {
   ghi_chu: string | null;
   ten_phong: string;
   combo_id?: string | null;
+  trang_thai?:string;trang_thai_thanh_toan?:string;tien_da_thanh_toan?:string;tien_dich_vu?:string;tien_giam?:string;
 };
 export type SeedDon = {
   phong_id?: string;
@@ -59,12 +60,14 @@ export default function FormDonDatPhong({
   seed,
   onClose,
   onSaved,
+  embedded=false,
 }: {
   token: string;
   don?: DonSua;
   seed?: SeedDon;
   onClose: () => void;
   onSaved: () => Promise<void>;
+  embedded?:boolean;
 }) {
   const [rooms, setRooms] = useState<Room[]>([]),
     [combos, setCombos] = useState<Combo[]>([]),
@@ -90,7 +93,11 @@ export default function FormDonDatPhong({
     [note, setNote] = useState(don?.ghi_chu || ""),
     [price, setPrice] = useState(don?.tien_phong || "0"),
     [priceManual, setPriceManual] = useState(!!don),
-    [payment, setPayment] = useState("Chưa thanh toán");
+    [payment, setPayment] = useState(don?.trang_thai_thanh_toan||"Chưa thanh toán");
+  const [paymentTouched,setPaymentTouched]=useState(!don);
+  const [paid,setPaid]=useState(String(don?.tien_da_thanh_toan||'0')),[newState,setNewState]=useState(don?.trang_thai||'Đã xác nhận'),[stateReason,setStateReason]=useState('');
+  const fullAmount=Number(price||0)+Number(don?.tien_dich_vu||0)-Number(don?.tien_giam||0);
+  useEffect(()=>{if(!paymentTouched)return;if(payment==='Đủ')setPaid(String(fullAmount));else if(payment==='Chưa thanh toán')setPaid('0')},[payment,fullAmount,paymentTouched]);
   const [start, setStart] = useState(seed?.date || ngayVN()),
     [end, setEnd] = useState(seed?.date || ngayVN()),
     [from, setFrom] = useState(seed?.time || "08:00"),
@@ -255,6 +262,8 @@ export default function FormDonDatPhong({
         so_khach: Number(guests),
         tien_phong: Number(price),
         ghi_chu: note,
+        ...(!don||paymentTouched?{trang_thai_thanh_toan:payment,tien_da_thanh_toan:Number(paid)}:{}),
+        ...(don?{trang_thai_sua:newState,ly_do_sua_trang_thai:stateReason}:{}),
       };
       await quanTriApi(
         token,
@@ -272,15 +281,8 @@ export default function FormDonDatPhong({
       setBusy(false);
     }
   }
-  return createPortal(
-    <div
-      className="fd-backdrop"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget && !busy) onClose();
-      }}
-    >
-      <section
-        className="fd-dialog"
+  const dialog=(      <section
+        className={"fd-dialog"+(embedded?" fd-embedded":"")}
         role="dialog"
         aria-modal="true"
         aria-labelledby="fd-title"
@@ -486,19 +488,9 @@ export default function FormDonDatPhong({
                 }}
               />
             </label>
-            {!don && (
-              <label>
-                Thanh toán
-                <select
-                  value={payment}
-                  onChange={(e) => setPayment(e.target.value)}
-                >
-                  <option>Chưa thanh toán</option>
-                  <option value="Cọc">Đã cọc</option>
-                  <option value="Đủ">Đã thanh toán</option>
-                </select>
-              </label>
-            )}
+            <label>Thanh toán<select value={payment} onChange={e=>{setPayment(e.target.value);setPaymentTouched(true)}}><option>Chưa thanh toán</option><option value="Cọc">Đã cọc</option><option value="Đủ">Đã thanh toán</option></select></label>
+            <label>Số tiền đã thanh toán<NhapTien required readOnly={payment!=='Cọc'} value={paid} onValueChange={v=>{setPaid(v);setPaymentTouched(true)}}/></label>
+            {don&&<><label>Trạng thái đơn<select value={newState} onChange={e=>setNewState(e.target.value)}>{['Chờ xác nhận','Đã xác nhận','Đã nhận phòng','Đã trả phòng','Không nhận phòng',...(don.trang_thai==='Chờ thanh toán'?['Chờ thanh toán']:[])].map(v=><option key={v}>{v}</option>)}</select></label>{newState!==don.trang_thai&&<label>Lý do sửa thao tác<input required maxLength={500} value={stateReason} onChange={e=>setStateReason(e.target.value)} placeholder="Ghi rõ thao tác bấm nhầm…"/></label>}</>}
             <div className="fd-full fd-price">
               {kind === "gio" && room && (
                 <span>
@@ -549,8 +541,6 @@ export default function FormDonDatPhong({
             </button>
           </footer>
         </form>
-      </section>
-    </div>,
-    document.body,
-  );
+      </section>);
+  return embedded?dialog:createPortal(<div className="fd-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!busy)onClose()}}>{dialog}</div>,document.body);
 }

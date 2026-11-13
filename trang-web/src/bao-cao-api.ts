@@ -67,7 +67,7 @@ export type Report = {
     nguoi_dung_moi: number;
   };
   danh_gia_theo_sao: { sao: number; so_luong: number }[];
-  theo_phong: Group[];
+  theo_phong: (Group & {phong_id?:string;so_luot_hop_le?:number;tan_suat_ngay?:string})[];
   theo_thanh_toan: Group[];
   theo_ngay: Daily[];
   theo_kieu: Group[];

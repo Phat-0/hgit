@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -642,13 +643,7 @@ export default function GoiGiaCombo({ token }: { token: string }) {
       )}
       <div className="cm-gallery">
         <div className="cm-cards" ref={grid} aria-busy={loading}>
-          {Array.from({ length: columns }, (_, column) => (
-            <div className="cm-column" key={column}>
-              {filtered
-                .filter((_, index) => index % columns === column)
-                .map((c) => (
-                  <div className="cm-card-stack" key={c.id}>
-                    <button
+          {filtered.map((c,index)=><Fragment key={c.id}>                    <button
                       data-combo={c.id}
                       key={c.id}
                       className={
@@ -687,27 +682,7 @@ export default function GoiGiaCombo({ token }: { token: string }) {
                           </small>
                         </div>
                       </div>
-                    </button>
-                    {selected === c.id && (
-                      <div className="cm-inline-detail">
-                        <header>
-                          <strong>
-                            {c.ten_combo} · {money(c.gia_combo)}
-                          </strong>
-                          <button
-                            aria-label="Thu gọn chi tiết combo"
-                            onClick={() => setSelected(null)}
-                          >
-                            ×
-                          </button>
-                        </header>
-                        {detail(c)}
-                      </div>
-                    )}
-                  </div>
-                ))}
-            </div>
-          ))}
+                    </button>{(index%columns===columns-1||index===filtered.length-1)&&active&&Math.floor(filtered.findIndex(x=>x.id===selected)/columns)===Math.floor(index/columns)&&<div className="cm-inline-detail cm-detail-row"><header><strong>{active.ten_combo} · {money(active.gia_combo)}</strong><button aria-label="Thu gọn chi tiết combo" onClick={()=>setSelected(null)}>×</button></header>{detail(active)}</div>}</Fragment>)}
           {!filtered.length && !error && (
             <div className="cm-empty">
               {loading

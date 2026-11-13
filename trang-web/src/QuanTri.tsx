@@ -577,6 +577,7 @@ export default function QuanTri() {
               key={navRevision}
               token={token}
               initialId={linked.don_id}
+              onOpenChat={thread=>{go('tin-nhan');window.dispatchEvent(new CustomEvent('homestay:mo-chat',{detail:thread}))}}
             />
           ) : muc === "loai-phong" ? (
             <LoaiPhongPage token={token} />

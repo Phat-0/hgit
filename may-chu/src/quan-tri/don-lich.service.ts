@@ -1,3 +1,4 @@
+import {soTienDaGhiNhan} from './thanh-toan-don.js';
 import {COMBO_THEO_PHONG} from './combo.input.js';
 import {BadRequestException,ConflictException,Injectable,NotFoundException} from '@nestjs/common';
 import {Client} from 'pg';
@@ -26,7 +27,7 @@ export class DonLichService{
  async edit(uid:string,id:string,body:unknown){
   await this.admin.kiemTraTrang(uid,'lich|dat-phong');this.id(id);
   if(!body||typeof body!=='object'||Array.isArray(body))throw new BadRequestException('Dữ liệu đơn không hợp lệ');
-  const x=body as Record<string,unknown>,allowed=['ten_khach','ten_don','phong_id','hinh_thuc_dat','nhan_phong_luc','tra_phong_luc','so_khach','tien_phong','so_dien_thoai','ghi_chu','combo_id'];
+  const x=body as Record<string,unknown>,allowed=['ten_khach','ten_don','phong_id','hinh_thuc_dat','nhan_phong_luc','tra_phong_luc','so_khach','tien_phong','so_dien_thoai','ghi_chu','combo_id','trang_thai_sua','ly_do_sua_trang_thai','trang_thai_thanh_toan','tien_da_thanh_toan'];
   if(Object.keys(x).some(k=>!allowed.includes(k)))throw new BadRequestException('Trường dữ liệu không được phép');
   const guestName=x.ten_khach??x.ten_don;
   const name=typeof guestName==='string'?guestName.trim():'',room=String(x.phong_id||''),kind=String(x.hinh_thuc_dat||'') as HinhThucDat;
@@ -42,7 +43,11 @@ export class DonLichService{
    await c.query('BEGIN');
    const old=await c.query('SELECT * FROM public.dat_phong WHERE id=$1 FOR UPDATE',[id]);
    if(!old.rowCount)throw new NotFoundException('Không tìm thấy đơn');const d=old.rows[0];
-   if(!['Chờ thanh toán','Chờ xác nhận','Đã xác nhận'].includes(d.trang_thai))throw new ConflictException('Chỉ chỉnh sửa đơn chưa nhận phòng và chưa hủy');
+   if(!['Chờ thanh toán','Chờ xác nhận','Đã xác nhận','Đã nhận phòng','Đã trả phòng','Không nhận phòng'].includes(d.trang_thai))throw new ConflictException('Không sửa đơn đã hủy hoặc hết hạn');
+   const target=x.trang_thai_sua===undefined?d.trang_thai:String(x.trang_thai_sua),correction=target!==d.trang_thai;
+   const reason=String(x.ly_do_sua_trang_thai||'').trim();
+   if(!['Chờ thanh toán','Chờ xác nhận','Đã xác nhận','Đã nhận phòng','Đã trả phòng','Không nhận phòng'].includes(target)||correction&&(!reason||reason.length>500))throw new BadRequestException('Đổi lại trạng thái cần lý do từ 1 đến 500 ký tự');
+   if(target==='Chờ thanh toán'&&!d.het_han_giu_cho)throw new BadRequestException('Không thể đổi về Chờ thanh toán khi đơn không có hạn giữ chỗ');
    const changedSchedule=room!==d.phong_id||kind!==d.hinh_thuc_dat||start.getTime()!==new Date(d.nhan_phong_luc).getTime()||end.getTime()!==new Date(d.tra_phong_luc).getTime();
    if(changedSchedule&&start.getTime()<Date.now()-60000)throw new BadRequestException('Không chuyển đơn sang giờ nhận phòng đã qua');
    const rooms=await c.query('SELECT p.*,l.suc_chua,h.trang_thai AS trang_thai_chi_nhanh FROM public.phong p JOIN public.loai_phong l ON l.id=p.loai_phong_id JOIN public.homestay h ON h.id=p.homestay_id WHERE p.id=$1 FOR UPDATE OF p',[room]);
@@ -58,8 +63,12 @@ export class DonLichService{
    }
    const comboId=x.combo_id===undefined?d.combo_id:x.combo_id;
    if(comboId&&(changedSchedule||comboId!==d.combo_id)){this.id(String(comboId));const combo=await c.query(COMBO_THEO_PHONG+" AND co.trang_thai='Đang bán' AND (co.bat_dau IS NULL OR co.bat_dau<=$4) AND (co.ket_thuc IS NULL OR co.ket_thuc>=$5) AND (co.so_gio_bao_gom IS NULL OR $6='Theo giờ') FOR SHARE OF co",[comboId,p.homestay_id,room,start.toISOString(),end.toISOString(),kind]);if(!combo.rowCount)throw new BadRequestException('Combo của đơn không áp dụng cho phòng hoặc thời gian mới');}
+   const payment=x.trang_thai_thanh_toan===undefined?d.trang_thai_thanh_toan:String(x.trang_thai_thanh_toan);
+   const received=x.tien_da_thanh_toan===undefined&&x.trang_thai_thanh_toan===undefined?Number(d.tien_da_thanh_toan):soTienDaGhiNhan(payment,x.tien_da_thanh_toan,amount+Number(d.tien_dich_vu)-Number(d.tien_giam));
+   if(x.trang_thai_thanh_toan===undefined&&x.tien_da_thanh_toan===undefined&&payment==='Đủ'&&received!==amount+Number(d.tien_dich_vu)-Number(d.tien_giam))throw new ConflictException('Tổng tiền thay đổi; hãy kiểm tra và cập nhật lại trạng thái thanh toán trong form sửa');
    const paid=await c.query("SELECT COALESCE(sum(so_tien),0) AS tong FROM public.thanh_toan WHERE dat_phong_id=$1 AND trang_thai='Đã xác nhận'",[id]);
-   if(amount+Number(d.tien_dich_vu)-Number(d.tien_giam)<Math.max(Number(d.tien_da_thanh_toan),Number(paid.rows[0]?.tong||0)))throw new ConflictException('Tổng tiền mới thấp hơn tiền đã thu; cần xử lý thanh toán trước');
+   if(amount+Number(d.tien_dich_vu)-Number(d.tien_giam)<Math.max(received,Number(paid.rows[0]?.tong||0)))throw new ConflictException('Tổng tiền mới thấp hơn tiền đã thu; cần xử lý thanh toán trước');
+   if(received<Number(paid.rows[0]?.tong||0))throw new ConflictException('Không thể giảm tiền đã ghi nhận dưới giao dịch thực thu; xử lý hoàn tiền trước');
    const oldRoom=await c.query('SELECT ten_phong FROM public.phong WHERE id=$1',[d.phong_id]);
    const snapshot={...d.cau_hinh_gia_chot,tien_phong_chot:amount,nguoi_sua_id:uid,gia_moi_gio:p.gia_moi_gio,gia_moi_ngay:p.gia_moi_ngay,gia_moi_dem:p.gia_moi_dem,so_gio_toi_thieu:p.so_gio_toi_thieu,gia_phu_thu_gio:p.gia_phu_thu_gio,khung_gio:savedHours};
    await c.query(`UPDATE public.dat_phong SET ten_don=$2,phong_id=$3,homestay_id=$4,hinh_thuc_dat=$5,
@@ -67,7 +76,8 @@ export class DonLichService{
     nguoi_dung_id=CASE WHEN so_dien_thoai_dat IS DISTINCT FROM $10 THEN NULL ELSE nguoi_dung_id END,
     ghi_chu=$11,cau_hinh_gia_chot=$12::jsonb,goi_gia_id=NULL,combo_id=$13,ngay_cap_nhat=now() WHERE id=$1`,
     [id,name,room,p.homestay_id,kind,start.toISOString(),end.toISOString(),guests,amount,phone,note,JSON.stringify(snapshot),comboId||null]);
-   await c.query('INSERT INTO public.nhat_ky_don_dat_phong(dat_phong_id,nguoi_thuc_hien_id,hanh_dong,du_lieu_cu,du_lieu_moi) VALUES($1,$2,$3,$4::jsonb,$5::jsonb)',[id,uid,'sua_tu_lich',JSON.stringify({ten_khach:d.ten_don,ten_phong:oldRoom.rows[0]?.ten_phong,phong_id:d.phong_id,nhan_phong_luc:d.nhan_phong_luc,tra_phong_luc:d.tra_phong_luc,tien_phong:d.tien_phong}),JSON.stringify({...x,ten_phong:p.ten_phong})]);
+   await c.query(`UPDATE public.dat_phong SET trang_thai=$2,trang_thai_thanh_toan=$3,tien_da_thanh_toan=$4,da_nhan_phong_luc=CASE WHEN $5 THEN CASE WHEN $2 IN ('Đã nhận phòng','Đã trả phòng') THEN COALESCE(da_nhan_phong_luc,now()) ELSE NULL END ELSE da_nhan_phong_luc END,da_tra_phong_luc=CASE WHEN $5 THEN CASE WHEN $2='Đã trả phòng' THEN COALESCE(da_tra_phong_luc,now()) ELSE NULL END ELSE da_tra_phong_luc END WHERE id=$1`,[id,target,payment,received,correction]);
+   await c.query('INSERT INTO public.nhat_ky_don_dat_phong(dat_phong_id,nguoi_thuc_hien_id,hanh_dong,du_lieu_cu,du_lieu_moi) VALUES($1,$2,$3,$4::jsonb,$5::jsonb)',[id,uid,'sua_tu_lich',JSON.stringify({ten_khach:d.ten_don,ten_phong:oldRoom.rows[0]?.ten_phong,phong_id:d.phong_id,nhan_phong_luc:d.nhan_phong_luc,tra_phong_luc:d.tra_phong_luc,tien_phong:d.tien_phong,trang_thai:d.trang_thai,trang_thai_thanh_toan:d.trang_thai_thanh_toan,tien_da_thanh_toan:d.tien_da_thanh_toan}),JSON.stringify({...x,ten_phong:p.ten_phong})]);
    await c.query('COMMIT');return {ok:true};
   }catch(e){await c.query('ROLLBACK');this.failure(e);}finally{await c.end();}
  }

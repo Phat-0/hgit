@@ -107,11 +107,13 @@ export default function TroChuyen({
     autoAttempted = useRef(""),
     latestPoll = useRef("");
   useEffect(() => {
-    const fn = () => {
+    const fn = (event:Event) => {
       setHidden(false);
       sessionStorage.removeItem(
         "homestay_chat_hidden:" + (admin ? "admin" : "guest"),
       );
+      const detail=(event as CustomEvent<{id?:string;ten_hien_thi?:string}>).detail;
+      if(detail?.id){setCurrent(detail.id);setCurrentName(detail.ten_hien_thi||'Tin nhắn của đơn');setPeopleMode(false);}
       setOpen(true);
     };
     window.addEventListener("homestay:mo-chat", fn);
