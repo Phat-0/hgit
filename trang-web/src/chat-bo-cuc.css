@@ -1,0 +1,55 @@
+/* Cách ly hộp thư khỏi quy tắc input/aside của các biểu mẫu quản trị. */
+.chat-shell input[hidden] { display: none !important; }
+.chat-shell .chat-body > aside {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid #e4d5ee;
+  border-radius: 0;
+  color: #493457;
+  min-width: 0;
+}
+.chat-shell .chat-main > form {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  min-width: 0;
+  flex: 0 0 auto;
+}
+.chat-shell .chat-compose-tools { display: flex; flex-wrap: nowrap; gap: 4px; }
+.chat-shell .chat-main > form input:not([type=file]) {
+  width: 100%; min-width: 0; min-height: 44px; margin: 0;
+}
+.chat-shell .chat-main > form > button {
+  min-width: 56px; min-height: 44px; margin: 0; padding: 8px 12px;
+  line-height: 1.5; white-space: nowrap; background: #7135a3; color: #fff;
+}
+.chat-shell .chat-main > form .chat-compose-tools button {
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: 0 0 32px; width: 32px; height: 40px; padding: 0; margin: 0;
+}
+.chat-inline > .chat-launch,
+.chat-inline > .chat-hide-launch,
+.chat-inline > .chat-dock-handle { display: none !important; }
+.chat-shell .chat-conversation-head { flex-shrink: 0; }
+.chat-shell .chat-thread-top strong { min-width: 0; }
+.chat-shell .chat-thread-top time { color: #6c5877; }
+.chat-shell .chat-branch,
+.chat-shell .chat-conversation-head small,
+.chat-shell .chat-empty { color: #70577f; }
+@media (max-width: 900px) {
+  .chat-shell.chat-inline .chat-body { grid-template-columns: 230px minmax(0,1fr); }
+}
+@media (max-width: 600px) {
+  .chat-shell.chat-inline .chat-body { grid-template-columns: 135px minmax(0,1fr); }
+  .chat-shell .chat-main > form { grid-template-columns: minmax(0,1fr) auto; gap: 6px; padding: 8px; }
+  .chat-shell .chat-compose-tools { grid-column: 1/-1; }
+  .chat-shell .chat-main > form input:not([type=file]) { grid-column: 1; }
+  .chat-shell .chat-main > form > button { grid-column: 2; }
+  .chat-shell .chat-conversation-head { flex-wrap: wrap; }
+  .chat-shell .chat-conversation-head > div { flex: 1; }
+}

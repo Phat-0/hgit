@@ -12,6 +12,7 @@ import {
 } from "react";
 import { khachApi } from "./khach-api";
 import "./tro-chuyen.css";
+import "./chat-bo-cuc.css";
 type Thread = {
   id: string;
   loai: string;
@@ -579,7 +580,7 @@ export default function TroChuyen({
         (!admin ? "chat-simple" : "")
       }
     >
-      {!hidden && (
+      {!inline && !hidden && (
         <>
           <button
             className="chat-launch"
@@ -626,7 +627,7 @@ export default function TroChuyen({
           }
         </>
       )}
-      {hidden && (
+      {!inline && hidden && (
         <button
           className="chat-dock-handle"
           style={floating.dockStyle}
@@ -1064,6 +1065,7 @@ export default function TroChuyen({
                   placeholder="Nhập tin nhắn…"
                 />
                 <button
+                  type="submit"
                   disabled={busy || !current || (!text.trim() && !selectedFile)}
                 >
                   {busy

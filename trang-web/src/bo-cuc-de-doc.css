@@ -1,0 +1,23 @@
+/* Thanh bên di động phải rời luồng flex, tránh ép nội dung vào 110px. */
+@media (max-width: 900px) {
+  .qt-layout { gap: 0 !important; }
+  .qt-layout .qt-sidebar { position: fixed !important; top: 0 !important; bottom: 0 !important; left: 0 !important; height: 100dvh !important; z-index: 100 !important; }
+  .qt-layout .qt-workspace { flex: 1 1 100% !important; width: 100% !important; min-width: 0 !important; margin: 0 !important; }
+  .qt-layout .qt-topbar.qt-topbar { width: 100% !important; min-width: 0 !important; }
+  .qt-layout .qt-page-title { overflow-wrap: anywhere; flex-shrink: 1; }
+  .qt-layout .qt-header-search-row { gap: 10px !important; }
+}
+.qt-layout button, .qt-layout label { line-height: 1.5; }
+.qt-layout :is(input,select,textarea) { min-width: 0; }
+.qt-layout :is(th,td) { overflow-wrap: anywhere; }
+/* Không tạo lớp xếp chồng riêng giữ hộp thoại bên dưới header. */
+.qt-layout .qt-workspace,
+.qt-layout .qt-content { z-index: auto !important; }
+.qt-layout :is(.cn-backdrop,.cn-view-layer,.dp-modal,.nv-backdrop),
+.cm-shade { z-index: 11000 !important; }
+.qt-layout :is(.dp-dialog-head,.cn-dialog-header,.nv-dialog > header) {
+  color: #352046;
+}
+.qt-layout :is(.dp-dialog-head,.cn-dialog-header,.nv-dialog > header) button {
+  color: #572b78; background: #efe4f7;
+}

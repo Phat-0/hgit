@@ -393,8 +393,19 @@ await act(async () =>
   ),
 );
 await wait();
+assert.ok(document.querySelector(".chat-body > aside"), "Hộp thư quản trị giữ sidebar");
+assert.equal(document.querySelector(".chat-launch"), null, "Không để bong bóng đè nút gửi trong hộp thư");
+assert.equal(document.querySelector(".chat-dock-handle"), null);
 await click(document.querySelector(".chat-thread"));
 await wait();
+for (const label of ["Chọn ảnh", "Chọn tệp"]) {
+  const button = document.querySelector(`[aria-label="${label}"]`)!;
+  assert.equal(button.textContent?.trim(), "");
+  assert.equal(button.getAttribute("title"), label);
+}
+assert.equal(document.querySelectorAll('.chat-compose-tools input[type="file"][hidden]').length, 2);
+assert.ok(document.querySelector('.chat-main form input:not([type="file"])'));
+assert.ok(document.querySelector('.chat-main form button[type="submit"]'));
 await click(document.querySelector('[aria-label="Câu trả lời soạn sẵn"]'));
 await wait(300);
 assert.ok(document.querySelector(".chat-reply-grid"));
