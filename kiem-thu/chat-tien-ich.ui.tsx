@@ -542,7 +542,16 @@ await click(document.querySelector('.qt-stats>[role=button]'));assert.equal(goCa
 await act(async()=>root.unmount());root=createRoot(document.getElementById('root')!);
 await act(async()=>root.render(<BaoCao token="admin" onGo={go}/>));await wait();
 assert.equal(document.querySelectorAll('.stc-sheet tbody tr').length,2);
-assert.match(document.querySelector('.stc-totals')!.textContent!,/1.250.000/);
+assert.equal(document.querySelectorAll('.stc-sheet th').length,8);assert.equal(document.querySelector('.stc-row-actions'),null);assert.ok(document.querySelector('.stc-add-row'));assert.equal([...document.querySelectorAll('button')].some(e=>e.textContent==='Thay đổi'),false);
+await edit(document.querySelector('[aria-label="Tiền tồn đầu tháng"]') as HTMLInputElement,'1500');assert.ok([...document.querySelectorAll('button')].some(e=>e.textContent==='Thay đổi'));await edit(document.querySelector('[aria-label="Tiền tồn đầu tháng"]') as HTMLInputElement,'1000');assert.equal([...document.querySelectorAll('button')].some(e=>e.textContent==='Thay đổi'),false);
+
+const {csvThuChi,xlsxThuChi}=await import('../trang-web/src/xuat-so-thu-chi.ts');
+assert.match(csvThuChi([['=cmd',-50000]]),/"'=cmd","-50000"/);
+const exportBuffer=xlsxThuChi([{name:'Sổ thu chi',rows:[['Tên','Tiền'],['=không thực thi',-50000]]}]);
+const fsExport=await import('node:fs');fsExport.writeFileSync('/tmp/hgit-kiem-thu-xuat.xlsx',new Uint8Array(exportBuffer));
+assert.equal(new DataView(exportBuffer).getUint32(0,true),0x04034b50);
+
+assert.match(document.querySelector('.stc-kind-tabs')!.textContent!,/1.250.000/);
 const cashCells=document.querySelectorAll('.stc-sheet tbody tr');
 await act(async()=>cashCells[0].querySelectorAll('td')[2].dispatchEvent(new dom.window.MouseEvent('pointerdown',{bubbles:true,buttons:1})));
 await act(async()=>cashCells[1].querySelectorAll('td')[2].dispatchEvent(new dom.window.MouseEvent('pointerover',{bubbles:true,buttons:1})));
@@ -551,7 +560,7 @@ await act(async()=>window.dispatchEvent(new dom.window.MouseEvent('pointerup',{b
 const firstKind=document.querySelector('.stc-sheet [aria-label="Thu hoặc chi"]') as HTMLSelectElement;
 await act(async()=>{firstKind.value='Chi';firstKind.dispatchEvent(new dom.window.Event('change',{bubbles:true}))});
 assert.equal((document.querySelector('.stc-sheet [aria-label="Số tiền thu chi"]') as HTMLInputElement).value,'-300.000');
-assert.match(document.querySelector('.stc-totals')!.textContent!,/1.250.000/);
+assert.match(document.querySelector('.stc-kind-tabs')!.textContent!,/1.250.000/);
 await click(document.querySelector('.stc-charts input[type=checkbox]'));
 assert.match(document.querySelector('.stc-chart-grid figcaption')!.textContent!,/%/);
 const {tongVung}=await import('../trang-web/src/so-thu-chi.ts');

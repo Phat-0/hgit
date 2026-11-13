@@ -10,6 +10,7 @@ export type DongThuChi = {
   mau: string;
   phien_ban: number;
   so_chung_tu?: number;
+  chung_tu?:{id:string;ten_tep:string}[];
 };
 export type OChon = { row: number; col: number };
 export function tongVung(rows: DongThuChi[], a: OChon | null, b: OChon | null) {

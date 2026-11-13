@@ -1108,6 +1108,7 @@ ledger.storage=()=>({upload:async()=>({error:null}),createSignedUrl:async(key)=>
 const documentBytes=Buffer.from('%PDF-1.7 test');
 const voucher=await ledger.upload(admin,cashIn.id,{buffer:documentBytes,size:documentBytes.length,mimetype:'application/pdf',originalname:'hoa-don.pdf'});
 assert.equal((await ledger.files(admin,cashIn.id)).length,1);
+assert.equal((await ledger.list(admin,'2026-11-01','2026-11-30')).dong.find(r=>r.id===cashIn.id).chung_tu[0].ten_tep,'hoa-don.pdf');
 await assert.rejects(()=>ledger.removeFile(admin,cashOut.id,voucher.id),/không thuộc dòng/);
 await assert.rejects(()=>ledger.remove(admin,cashIn.id,cashIn.phien_ban),/xóa chứng từ/);
 await ledger.removeFile(admin,cashIn.id,voucher.id);
@@ -1116,4 +1117,8 @@ await assert.rejects(()=>ledger.remove(admin,cashOut.id,cashOut.phien_ban),/thay
 assert.ok(Number((await db.query('SELECT count(*) AS n FROM public.nhat_ky_thu_chi')).rows[0].n)>=7);
 await db.exec('SET ROLE authenticated');await assert.rejects(()=>db.query('SELECT * FROM public.so_thu_chi'),/permission denied/);await db.exec('RESET ROLE');
 console.log('PASS Sổ thu chi: chuẩn hóa dấu thu/chi, tiền tồn từng tháng, tổng trước kỳ, chống ghi đè, kiểm tra chi nhánh/phòng, quyền chứng từ/IDOR, nhật ký và RLS.');
+const sampleSql=fs.readFileSync(root+'/co-so-du-lieu/du-lieu-mau/so-thu-chi-20261113.sql','utf8');
+await db.exec(sampleSql);const firstSamples=Number((await db.query("SELECT count(*) AS n FROM public.so_thu_chi WHERE ghi_chu LIKE '%mau-so-thu-chi-20261113-v1%'")).rows[0].n);assert.equal(firstSamples,2*Math.min(5,Number((await db.query('SELECT count(*) AS n FROM public.phong')).rows[0].n))+4);
+await db.exec(sampleSql);assert.equal(Number((await db.query("SELECT count(*) AS n FROM public.so_thu_chi WHERE ghi_chu LIKE '%mau-so-thu-chi-20261113-v1%'")).rows[0].n),firstSamples);
+console.log('PASS Dữ liệu mẫu: 14 khoản phòng và khoản chung có nhãn rõ ràng, chạy lại không nhân đôi.');
 await db.close();

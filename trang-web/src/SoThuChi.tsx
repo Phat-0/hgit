@@ -1,4 +1,10 @@
 import {
+  bangXuatThuChi,
+  csvThuChi,
+  xlsxThuChi,
+  taiTep,
+} from "./xuat-so-thu-chi";
+import {
   useCallback,
   useEffect,
   useRef,
@@ -164,6 +170,10 @@ export default function SoThuChi({
     running += Number(r.so_tien);
     balances.set(r.id, running);
   }
+  const [activeId, setActiveId] = useState("");
+  const active =
+    rows.find((r) => r.id === activeId) ||
+    (activeId === "moi" ? draft.moi : undefined);
   function patch(row: DongThuChi, x: Partial<DongThuChi>) {
     setDraft((d) => ({ ...d, [row.id]: { ...row, ...x } }));
   }
@@ -196,6 +206,7 @@ export default function SoThuChi({
   }
   function newRow() {
     if (draft.moi) return;
+    setActiveId("moi");
     setDraft((d) => ({
       ...d,
       moi: {
@@ -213,6 +224,98 @@ export default function SoThuChi({
     }));
   }
   if (draft.moi) balances.set("moi", running + Number(draft.moi.so_tien));
+  function undo(row: DongThuChi) {
+    setDraft((d) => {
+      const n = { ...d };
+      delete n[row.id];
+      return n;
+    });
+  }
+  async function removeRow(row: DongThuChi) {
+    if (row.id === "moi") {
+      undo(row);
+      setActiveId("");
+      return;
+    }
+    if (!window.confirm("Xóa khoản " + row.ten + "?")) return;
+    setBusy(true);
+    try {
+      await quanTriApi(
+        token,
+        "thu-chi/" + row.id + "?phien_ban=" + row.phien_ban,
+        "DELETE",
+      );
+      undo(row);
+      setActiveId("");
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  function exportFile(format: string) {
+    if (!data) return;
+    const selectedRows = format === "csv-loc" ? visible : data.dong;
+    const savedBalances = new Map<string, number>();
+    let balance = Number(data.tien_ton.so_tien) + Number(data.truoc_ky || 0);
+    for (const r of data.dong) {
+      balance += Number(r.so_tien);
+      savedBalances.set(r.id, balance);
+    }
+    const table = bangXuatThuChi(
+      selectedRows,
+      data.chi_nhanh,
+      data.phong,
+      format === "csv-loc" ? balances : savedBalances,
+    );
+    const name = "so-thu-chi-" + start + "-" + end;
+    if (format.startsWith("csv"))
+      taiTep(name + ".csv", csvThuChi(table), "text/csv;charset=utf-8");
+    else {
+      const daily = new Map<string, { thu: number; chi: number }>();
+      for (const r of data.dong) {
+        const d = daily.get(r.ngay) || { thu: 0, chi: 0 };
+        if (Number(r.so_tien) > 0) d.thu += Number(r.so_tien);
+        else d.chi += Number(r.so_tien);
+        daily.set(r.ngay, d);
+      }
+      taiTep(
+        name + ".xlsx",
+        xlsxThuChi([
+          { name: "So thu chi", rows: table },
+          {
+            name: "Tong thang",
+            rows: [
+              ["Tháng", "Tiền tồn", "Thu", "Chi âm", "Số dư"],
+              [
+                month,
+                Number(data.tien_ton.so_tien),
+                Number(data.tong_thang.thu),
+                Number(data.tong_thang.chi),
+                Number(data.tien_ton.so_tien) +
+                  Number(data.tong_thang.thu) +
+                  Number(data.tong_thang.chi),
+              ],
+            ],
+          },
+          {
+            name: "Thu chi ngay",
+            rows: [
+              ["Ngày", "Thu", "Chi âm", "Chênh lệch"],
+              ...[...daily].map(([day, d]) => [
+                day,
+                d.thu,
+                d.chi,
+                d.thu + d.chi,
+              ]),
+            ],
+          },
+        ]),
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+    }
+  }
   const rowElements = (row: DongThuChi, index: number) => {
     const text = chuTrenMau(row.mau),
       getCell = (col: number, content: ReactNode) => (
@@ -295,6 +398,12 @@ export default function SoThuChi({
       <tr
         key={row.id}
         data-row-id={row.id}
+        onFocusCapture={() => setActiveId(row.id)}
+        onPointerDown={() => setActiveId(row.id)}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setActiveId(row.id);
+        }}
         aria-label={"Dòng " + (row.ten || "mới")}
       >
         {getCell(
@@ -414,82 +523,48 @@ export default function SoThuChi({
           7,
           <span className="stc-balance">{vnd(balances.get(row.id) || 0)}</span>,
         )}
-        <td className="stc-row-actions">
-          <input
-            type="color"
-            title="Màu hàng, nhấn Lưu để áp dụng"
-            aria-label="Màu hàng"
-            value={row.mau}
-            onChange={(e) => patch(row, { mau: e.target.value })}
-          />
-          <button
-            title="Lưu dòng"
-            aria-label="Lưu dòng"
-            disabled={busy || !draft[row.id]}
-            onClick={() => void save(row)}
-          >
-            ✓
-          </button>
-          <button
-            title="Bỏ thay đổi dòng"
-            disabled={busy || !draft[row.id]}
-            onClick={() =>
-              setDraft((d) => {
-                const n = { ...d };
-                delete n[row.id];
-                return n;
-              })
-            }
-          >
-            ↶
-          </button>
-          <button
-            title="Xóa dòng"
-            aria-label="Xóa dòng"
-            disabled={busy}
-            onClick={async () => {
-              if (row.id === "moi") {
-                setDraft((d) => {
-                  const n = { ...d };
-                  delete n.moi;
-                  return n;
-                });
-                return;
-              }
-              if (!window.confirm("Xóa khoản " + row.ten + "?")) return;
-              setBusy(true);
-              try {
-                await quanTriApi(
-                  token,
-                  "thu-chi/" + row.id + "?phien_ban=" + row.phien_ban,
-                  "DELETE",
-                );
-                setDraft((d) => {
-                  const n = { ...d };
-                  delete n[row.id];
-                  return n;
-                });
-                await load();
-              } catch (e) {
-                setError((e as Error).message);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            ×
-          </button>
-        </td>
       </tr>
     );
   };
   return (
     <section className="stc-page">
       <section className="stc-block">
-        <header>
-          <h2>Sổ thu chi</h2>
-          <div className="stc-tools">
+        <header className="stc-compact-header">
+          <div className="stc-title-row">
+            <h2>Sổ thu chi</h2>
+            <div>
+              <button
+                disabled={busy}
+                title="Làm mới"
+                aria-label="Làm mới sổ"
+                onClick={() => {
+                  if (hasDraft && !window.confirm("Bỏ thay đổi chưa lưu?"))
+                    return;
+                  setDraft({});
+                  setActiveId("");
+                  void load();
+                }}
+              >
+                ↻
+              </button>
+              <select
+                aria-label="Xuất sổ thu chi"
+                value=""
+                disabled={!data}
+                onChange={(e) => exportFile(e.target.value)}
+              >
+                <option value="" disabled>
+                  ↗ Xuất file
+                </option>
+                <option value="xlsx">Excel · tất cả trong kỳ</option>
+                <option value="csv">CSV · tất cả trong kỳ</option>
+                <option value="csv-loc">CSV · dòng đang lọc</option>
+              </select>
+            </div>
+          </div>
+          <div className="stc-compact-toolbar">
             <input
+              className="stc-search"
               aria-label="Tìm thu chi"
               placeholder="Tìm tên, ghi chú, chi nhánh, phòng"
               value={query}
@@ -506,7 +581,7 @@ export default function SoThuChi({
               onChange={(s, e) => {
                 if (
                   hasDraft &&
-                  !window.confirm("Bỏ thay đổi chưa lưu để đổi khoảng ngày?")
+                  !window.confirm("Bỏ thay đổi chưa lưu để đổi ngày?")
                 )
                   return;
                 setDraft({});
@@ -514,178 +589,203 @@ export default function SoThuChi({
                 setEnd(e);
               }}
             />
-            <select
+            <div
+              className="stc-kind-tabs"
+              role="group"
               aria-label="Lọc thu chi"
-              value={kind}
-              onChange={(e) => {
-                setKind(e.target.value);
-                setA(null);
-                setB(null);
-              }}
             >
-              <option value="">Thu và chi</option>
-              <option>Thu</option>
-              <option>Chi</option>
-            </select>
-            <button onClick={newRow} disabled={busy || !!draft.moi}>
-              ＋ Thêm dòng
-            </button>
-            <button
-              disabled={busy}
-              onClick={() => {
-                if (
-                  hasDraft &&
-                  !window.confirm("Bỏ thay đổi chưa lưu và tải lại?")
-                )
-                  return;
-                setDraft({});
-                void load();
-              }}
-            >
-              Làm mới
-            </button>
-          </div>
-        </header>
-        {error && <p role="alert">{error}</p>}
-        {data ? (
-          <>
-            <div className="stc-totals">
-              <label>
-                Tiền tồn tháng {month.split("-").reverse().join("/")}
+              {[
+                ["", "Tổng"],
+                ["Thu", "Thu"],
+                ["Chi", "Chi"],
+              ].map(([k, label]) => (
+                <button
+                  key={k}
+                  aria-pressed={kind === k}
+                  onClick={() => {
+                    setKind(k);
+                    setA(null);
+                    setB(null);
+                  }}
+                >
+                  {label}
+                  <small>
+                    {vnd(
+                      k === "Thu"
+                        ? data?.tong_thang.thu
+                        : k === "Chi"
+                          ? data?.tong_thang.chi
+                          : Number(data?.tien_ton.so_tien || 0) +
+                            Number(data?.tong_thang.thu || 0) +
+                            Number(data?.tong_thang.chi || 0),
+                    )}
+                  </small>
+                </button>
+              ))}
+            </div>
+            {data && (
+              <label className="stc-opening">
+                <span>Tiền tồn · {month.split("-").reverse().join("/")}</span>
                 <NhapSoTien
                   label="Tiền tồn đầu tháng"
                   value={opening}
                   onChange={setOpening}
                 />
-                <button
-                  disabled={busy || opening === Number(data.tien_ton.so_tien)}
-                  onClick={async () => {
-                    setBusy(true);
-                    try {
-                      await quanTriApi(token, "thu-chi/tien-ton", "PUT", {
-                        thang: month,
-                        so_tien: opening,
-                        phien_ban: data.tien_ton.phien_ban,
-                      });
-                      await load();
-                    } catch (e) {
-                      setError((e as Error).message);
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                >
-                  Lưu tiền tồn
-                </button>
+                {opening !== Number(data.tien_ton.so_tien) && (
+                  <button
+                    disabled={busy || opening === Number(data.tien_ton.so_tien)}
+                    onClick={async () => {
+                      setBusy(true);
+                      try {
+                        await quanTriApi(token, "thu-chi/tien-ton", "PUT", {
+                          thang: month,
+                          so_tien: opening,
+                          phien_ban: data.tien_ton.phien_ban,
+                        });
+                        await load();
+                      } catch (e) {
+                        setError((e as Error).message);
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    Thay đổi
+                  </button>
+                )}
               </label>
-              <div>
-                <span>Thu cả tháng</span>
-                <strong>{vnd(data.tong_thang.thu)}</strong>
-              </div>
-              <div>
-                <span>Chi cả tháng</span>
-                <strong>{vnd(data.tong_thang.chi)}</strong>
-              </div>
-              <div>
-                <span>Tổng tiền tháng {month.slice(5)} · tồn + thu − chi</span>
-                <strong>
-                  {vnd(
-                    Number(data.tien_ton.so_tien) +
-                      Number(data.tong_thang.thu) +
-                      Number(data.tong_thang.chi),
-                  )}
-                </strong>
-              </div>
-            </div>
-            <p className="stc-hint">
-              Nhập tiền theo nghìn đồng. Thu là số dương, chi là số âm. Chọn màu
-              rồi nhấn ✓ để lưu dòng. Kéo chuột qua ô hoặc Shift + phím mũi tên
-              để chọn vùng; tổng vùng chỉ cộng cột Số tiền, không cộng tiền tồn.
-              {hasDraft &&
-                " Có thay đổi chưa lưu; biểu đồ và tổng tháng lấy dữ liệu đã lưu."}
-            </p>
-            <div className="stc-sheet-scroll">
-              <table className="stc-sheet">
-                <thead>
-                  <tr>
-                    {[
-                      "Ngày",
-                      "Tên khoản thu / chi",
-                      "Số tiền (đ)",
-                      "Thu / chi",
-                      "Chi nhánh / phòng",
-                      "Ghi chú",
-                      "Chứng từ",
-                      "Số dư lũy kế (đ)",
-                      "Thao tác",
-                    ].map((h) => (
-                      <th key={h}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {visible.map(rowElements)}
-                  {draft.moi && rowElements(draft.moi, visible.length)}
-                  {!visible.length && !draft.moi && (
-                    <tr>
-                      <td colSpan={9}>
-                        Chưa có dòng phù hợp. Nhấn Thêm dòng để bắt đầu.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colSpan={2}>
-                      Tổng dòng đang hiển thị {hasDraft ? "(bản nháp)" : ""}
-                    </td>
-                    <td>{vnd(filteredSum)}</td>
-                    <td colSpan={6}>
-                      {visible.length} dòng · Tiền tồn được quản lý riêng theo
-                      tháng
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-            <div className="stc-selection">
-              <strong>Tổng vùng: {vnd(selected)}</strong>
-              <button
-                onClick={() => {
-                  setA(null);
-                  setB(null);
-                }}
-              >
-                Bỏ chọn
-              </button>
-              <span>Tổng theo ngày trong dữ liệu đã tải:</span>
-              <input
-                aria-label="Tính tổng từ ngày"
-                type="date"
-                min={start}
-                max={end}
-                value={sumStart}
-                onChange={(e) => setSumStart(e.target.value)}
-              />
-              <span>→</span>
-              <input
-                aria-label="Tính tổng đến ngày"
-                type="date"
-                min={start}
-                max={end}
-                value={sumEnd}
-                onChange={(e) => setSumEnd(e.target.value)}
-              />
-              <b>
-                {sumStart && sumEnd && sumStart > sumEnd
-                  ? "Khoảng ngày không hợp lệ"
-                  : vnd(dateSum)}
-              </b>
-            </div>
-          </>
-        ) : (
-          <p>Đang tải sổ thu chi…</p>
+            )}
+          </div>
+        </header>
+        {error && <p role="alert">{error}</p>}
+        <div className="stc-mini-hint">
+          Nhập nghìn đồng · Chọn dòng để đổi màu, lưu hoặc xóa · Kéo qua ô để
+          tính tổng{hasDraft ? " · Có thay đổi chưa lưu" : ""}
+        </div>{" "}
+        <div className="stc-sheet-scroll">
+          <table className="stc-sheet">
+            <thead>
+              <tr>
+                {[
+                  "Ngày",
+                  "Tên khoản thu / chi",
+                  "Số tiền (đ)",
+                  "Thu / chi",
+                  "Chi nhánh / phòng",
+                  "Ghi chú",
+                  "Chứng từ",
+                  "Số dư lũy kế (đ)",
+                ].map((h) => (
+                  <th key={h}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map(rowElements)}
+              {draft.moi && rowElements(draft.moi, visible.length)}
+              {!visible.length && !draft.moi && (
+                <tr>
+                  <td colSpan={8}>
+                    {!data
+                      ? "Đang tải sổ thu chi…"
+                      : "Chưa có dòng phù hợp. Nhấn dấu + bên dưới để bắt đầu."}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan={2}>
+                  Tổng dòng đang hiển thị {hasDraft ? "(bản nháp)" : ""}
+                </td>
+                <td>{vnd(filteredSum)}</td>
+                <td colSpan={5}>
+                  {visible.length} dòng · Tiền tồn được quản lý riêng theo tháng
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        <div className="stc-table-footer">
+          <button
+            className="stc-add-row"
+            aria-label="Thêm dòng thu chi"
+            title="Thêm dòng thu chi"
+            onClick={newRow}
+            disabled={busy || !!draft.moi}
+          >
+            ＋
+          </button>
+        </div>
+        {active && (
+          <div className="stc-edit-tools">
+            <span>{active.ten || "Dòng mới"}</span>
+            <input
+              type="color"
+              aria-label="Màu hàng"
+              value={active.mau}
+              onChange={(e) => patch(active, { mau: e.target.value })}
+            />
+            {draft[active.id] && (
+              <>
+                <button
+                  disabled={busy}
+                  aria-label="Lưu dòng"
+                  onClick={() => void save(active)}
+                >
+                  ✓ Lưu
+                </button>
+                <button disabled={busy} onClick={() => undo(active)}>
+                  ↶ Hoàn tác
+                </button>
+              </>
+            )}
+            <button
+              disabled={busy}
+              aria-label="Xóa dòng"
+              onClick={() => void removeRow(active)}
+            >
+              ⌫ Xóa
+            </button>
+            <button title="Ẩn công cụ dòng" onClick={() => setActiveId("")}>
+              ×
+            </button>
+          </div>
         )}
+        <div className="stc-selection">
+          <strong>Tổng vùng: {vnd(selected)}</strong>
+          <button
+            onClick={() => {
+              setA(null);
+              setB(null);
+            }}
+          >
+            Bỏ chọn
+          </button>
+          <span>Tổng theo ngày trong dữ liệu đã tải:</span>
+          <input
+            aria-label="Tính tổng từ ngày"
+            type="date"
+            min={start}
+            max={end}
+            value={sumStart}
+            onChange={(e) => setSumStart(e.target.value)}
+          />
+          <span>→</span>
+          <input
+            aria-label="Tính tổng đến ngày"
+            type="date"
+            min={start}
+            max={end}
+            value={sumEnd}
+            onChange={(e) => setSumEnd(e.target.value)}
+          />
+          <b>
+            {sumStart && sumEnd && sumStart > sumEnd
+              ? "Khoảng ngày không hợp lệ"
+              : vnd(dateSum)}
+          </b>
+        </div>
       </section>
       {data && (
         <BieuDoThuChi
@@ -694,12 +794,15 @@ export default function SoThuChi({
           rooms={data.phong}
         />
       )}
-      <p className="stc-hint">
-        Sổ thu chi lưu riêng; không tự cộng doanh thu đặt phòng để tránh ghi
-        nhận trùng. Số dư lũy kế tính từ tiền tồn tháng bắt đầu và các dòng đã
-        lưu trước khoảng chọn. Biểu đồ theo khoảng ngày phía trên, không cộng
-        tiền tồn.
-      </p>
+      <details className="stc-howto">
+        <summary>Quy tắc tính số dư và dữ liệu xuất</summary>
+        <p>
+          Sổ thu chi lưu riêng; không tự cộng doanh thu đặt phòng để tránh ghi
+          nhận trùng. Số dư lũy kế tính từ tiền tồn tháng bắt đầu và các dòng đã
+          lưu trước khoảng chọn. Biểu đồ theo khoảng ngày phía trên, không cộng
+          tiền tồn.
+        </p>
+      </details>
       {docs && (
         <ChungTuThuChi
           token={token}

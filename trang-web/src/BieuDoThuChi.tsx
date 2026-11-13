@@ -1,3 +1,4 @@
+import { xuatBieuDoThuChi } from "./xuat-bieu-do-thu-chi";
 import { useMemo, useState } from "react";
 import { vnd } from "./bao-cao-api";
 import type { DongThuChi } from "./so-thu-chi";
@@ -77,6 +78,22 @@ export default function BieuDoThuChi({
       <header>
         <h2>Biểu đồ thu chi</h2>
         <div className="stc-tools">
+          <div className="stc-chart-export">
+            <button
+              onClick={() =>
+                xuatBieuDoThuChi(data, income, expense, percent, "svg")
+              }
+            >
+              ↗ SVG
+            </button>
+            <button
+              onClick={() =>
+                xuatBieuDoThuChi(data, income, expense, percent, "csv")
+              }
+            >
+              ↗ CSV biểu đồ
+            </button>
+          </div>
           <select
             aria-label="Chi nhánh biểu đồ"
             value={branch}

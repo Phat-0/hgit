@@ -63,7 +63,7 @@ export class ThuChiService {
     try {
       await c.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
       const rows = await c.query(
-        'SELECT t.*,t.ngay::text AS ngay,h.ten_homestay,p.ten_phong,(SELECT count(*)::int FROM public.chung_tu_thu_chi f WHERE f.thu_chi_id=t.id) AS so_chung_tu FROM public.so_thu_chi t LEFT JOIN public.homestay h ON h.id=t.homestay_id LEFT JOIN public.phong p ON p.id=t.phong_id WHERE t.ngay BETWEEN $1::date AND $2::date ORDER BY t.ngay,t.ngay_tao,t.id LIMIT 5001',
+        'SELECT t.*,t.ngay::text AS ngay,h.ten_homestay,p.ten_phong,(SELECT count(*)::int FROM public.chung_tu_thu_chi f WHERE f.thu_chi_id=t.id) AS so_chung_tu,(SELECT coalesce(jsonb_agg(jsonb_build_object(\'id\',f.id,\'ten_tep\',f.ten_tep) ORDER BY f.ngay_tao,f.id),\'[]\'::jsonb) FROM public.chung_tu_thu_chi f WHERE f.thu_chi_id=t.id) AS chung_tu FROM public.so_thu_chi t LEFT JOIN public.homestay h ON h.id=t.homestay_id LEFT JOIN public.phong p ON p.id=t.phong_id WHERE t.ngay BETWEEN $1::date AND $2::date ORDER BY t.ngay,t.ngay_tao,t.id LIMIT 5001',
         [start, end],
       );
       if (rows.rowCount! > 5000)
