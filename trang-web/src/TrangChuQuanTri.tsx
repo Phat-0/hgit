@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { type Khoi, type NoiDungTrangChu, macDinh } from "./trang-chu-noi-dung";
+import {
+  type Khoi,
+  type NoiDungTrangChu,
+  macDinh,
+  giaoDienMacDinh,
+} from "./trang-chu-noi-dung";
 import "./trang-chu-quan-tri.css";
 const khoiMoi = (): Khoi => ({
   hien: true,
@@ -168,6 +173,10 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
       </fieldset>
     );
   }
+  const ui = { ...giaoDienMacDinh, ...data.giao_dien };
+  function setUi(key: keyof typeof ui, value: string | number | boolean) {
+    change({ ...data, giao_dien: { ...ui, [key]: value } });
+  }
   return (
     <section className="tc-page">
       <div className="tc-toolbar">
@@ -201,6 +210,72 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
         </p>
       )}
       {notice && <p role="status">{notice}</p>}
+      <fieldset className="tc-block tc-design" disabled={busy}>
+        <legend>Thương hiệu và bố cục trang khách</legend>
+        <div className="tc-design-grid">
+          {[
+            ["ten_web", "Tên website"],
+            ["khau_hieu", "Dòng giới thiệu ngắn"],
+            ["tieu_de_phong", "Tiêu đề danh sách phòng"],
+          ].map(([key, label]) => (
+            <label key={key}>
+              {label}
+              <input
+                maxLength={150}
+                value={String(ui[key as keyof typeof ui])}
+                onChange={(e) => setUi(key as keyof typeof ui, e.target.value)}
+              />
+            </label>
+          ))}
+          <label>
+            Màu nền
+            <select
+              value={ui.mau_nen}
+              onChange={(e) => setUi("mau_nen", e.target.value)}
+            >
+              <option value="#4d2078">Tím đậm</option>
+              <option value="#39205f">Tím đêm</option>
+              <option value="#6b329b">Tím sáng</option>
+            </select>
+          </label>
+          <label>
+            Màu nút chính
+            <input
+              type="color"
+              value={ui.mau_nhan}
+              onChange={(e) => setUi("mau_nhan", e.target.value)}
+            />
+          </label>
+          <label>
+            Số thẻ mỗi hàng
+            <select
+              value={ui.so_cot}
+              onChange={(e) => setUi("so_cot", Number(e.target.value))}
+            >
+              {[2, 3, 4].map((n) => (
+                <option key={n}>{n}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Vị trí ảnh banner
+            <select
+              value={String(ui.anh_ben_trai)}
+              onChange={(e) => setUi("anh_ben_trai", e.target.value === "true")}
+            >
+              <option value="false">Bên phải</option>
+              <option value="true">Bên trái</option>
+            </select>
+          </label>
+        </div>
+        <div className="tc-preview" style={{ background: ui.mau_nen }}>
+          <strong>{ui.ten_web}</strong>
+          <small>{ui.khau_hieu}</small>
+          <h3>{data.hero?.tieu_de}</h3>
+          <p>{data.hero?.noi_dung}</p>
+          <span style={{ background: ui.mau_nhan }}>Xem trước màu nút</span>
+        </div>
+      </fieldset>
       <div className="tc-grid">
         {block("Banner đầu trang", data.hero, (b) =>
           change({ ...data, hero: b }),

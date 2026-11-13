@@ -1,0 +1,46 @@
+/** Dữ liệu giả lập chỉ trong context Playwright riêng; không gửi yêu cầu ghi ra API thật. */
+export async function duLieuGiaoDien(page){
+ await page.context().addInitScript(()=>{localStorage.clear();sessionStorage.clear();sessionStorage.setItem('homestay_admin_session',JSON.stringify({refresh_token:'fixture-refresh',email:'kiem-thu@example.invalid',remember:false}));});
+ const branch='11111111-1111-4111-8111-111111111111',room='22222222-2222-4222-8222-222222222222',order='33333333-3333-4333-8333-333333333333',category='44444444-4444-4444-8444-444444444444';
+ const today=new Date(Date.now()+7*3600000).toISOString().slice(0,10),month=today.slice(0,7);
+ const future=new Date(Date.now()+7*86400000).toISOString().slice(0,10);
+ const hours={gio_tu:'08:00',gio_den:'22:00',ngay_tu:'14:00',ngay_den:'12:00',dem_tu:'20:00',dem_den:'08:00'};
+ const branches=[{id:branch,ten_homestay:'Chi nhánh kiểm thử trung tâm'}];
+ const rooms=[{id:room,homestay_id:branch,ten_homestay:branches[0].ten_homestay,ma_phong:'P101',ten_phong:'Phòng kiểm thử 101',loai_phong_id:category,ten_loai:'Phòng cao cấp',so_gio_toi_thieu:2,gia_moi_gio:200000,gia_moi_ngay:700000,gia_moi_dem:500000,gia_phu_thu_gio:50000,cho_dat_theo_gio:true,cho_dat_theo_ngay:true,cho_dat_theo_dem:true,trang_thai_van_hanh:'Trống'}];
+ const booking={id:order,ma_dat_phong:'DPKIEMTHU001',ten_don:'Khách kiểm thử',ten_khach:'Khách kiểm thử',so_dien_thoai:'0901234567',ten_phong:rooms[0].ten_phong,ten_loai:rooms[0].ten_loai,ten_loai_phong:rooms[0].ten_loai,ten_homestay:branches[0].ten_homestay,phong_id:room,homestay_id:branch,hinh_thuc_dat:'Theo giờ',nhan_phong_luc:future+'T08:00:00+07:00',tra_phong_luc:future+'T10:00:00+07:00',ngay_tao:today+'T08:00:00+07:00',tien_phong:'200000',tien_dich_vu:'0',tien_giam:'0',tong_tien:'200000',tien_da_thanh_toan:'0',so_khach:2,trang_thai:'Đã xác nhận',trang_thai_hien_thi:'Chờ nhận phòng',trang_thai_thanh_toan:'Chưa thanh toán',ghi_chu:'',combo_id:null,thay_doi:[]};
+ const review={id:'review1',dat_phong_id:order,so_sao:5,ho_ten:'Nguyễn Văn An',noi_dung:'Phòng sạch đẹp, nhân viên hỗ trợ tận tình.',ngay_tao:today+'T09:00:00+07:00',ten_phong:rooms[0].ten_phong,ten_homestay:branches[0].ten_homestay,ma_dat_phong:booking.ma_dat_phong,trang_thai:'Hiển thị'};
+ const days=Array.from({length:Number(today.slice(8))},(_,i)=>({ngay:month+'-'+String(i+1).padStart(2,'0'),so_don:i%3,so_huy:i%5===0?1:0,doanh_thu:String(i%3*200000),tien_phong:String(i%3*200000),tien_dich_vu:'0',tien_giam:'0'}));
+ const report={tong_quan:{tong_homestay:2,tong_phong:10,tong_nguoi_dung:30,nguoi_dung_moi:4},danh_gia_theo_sao:[{sao:5,so_luong:3}],theo_phong:[],theo_thanh_toan:[],theo_ngay:days,theo_kieu:[{ten:'Theo giờ',so_don:12,so_huy:1,doanh_thu:'2400000'},{ten:'Theo ngày',so_don:3,so_huy:0,doanh_thu:'2100000'},{ten:'Theo đêm',so_don:5,so_huy:1,doanh_thu:'2000000'}],theo_chi_nhanh:[{ten:branches[0].ten_homestay,so_don:20,so_huy:2,doanh_thu:'6500000'}],theo_trang_thai:[{ten:'Đã xác nhận',so_don:18,so_huy:0,doanh_thu:'6500000'}],don:[booking],chi_nhanh:branches,da_thu:'1200000'};
+ const picture='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320"><rect width="480" height="320" fill="#6a38a0"/><circle cx="240" cy="160" r="100" fill="#a174c9"/><text x="130" y="170" fill="white" font-size="28">COMBO DEMO</text></svg>');
+ const combos=Array.from({length:8},(_,i)=>({id:'combo'+i,ten_combo:'Chương trình nghỉ dưỡng '+(i+1),gia_combo:'150000',so_gio_bao_gom:null,mo_ta:'Dịch vụ trang trí phòng và đồ uống. Chi tiết kiểm thử bố cục.',trang_thai:'Đang bán',anh_dai_dien:picture,anh:[{key:'demo',url:picture}],bat_dau:null,ket_thuc:null,pham_vi:'toan_he_thong',chi_nhanh_ids:[],phong_ids:[]}));
+ const home={hero:{hien:true,tieu_de:'Đổi không gian. Chạm cảm hứng.',noi_dung:'Một buổi hẹn, một đêm nghỉ.',anh:''},gioi_thieu:{hien:false,tieu_de:'Giới thiệu',noi_dung:'',anh:''},the:[],hien_phong:true,chan_trang:{hien:true,tieu_de:'HomeStay',noi_dung:'Đặt phòng linh hoạt.',anh:''}};
+ const pages=['tong-quan','lich','chi-nhanh','phong','loai-phong','goi-combo','dat-phong','trang-chu','nhan-vien','tin-nhan','danh-gia','bao-cao'];
+ await page.route('**/api/**',async route=>{const path=new URL(route.request().url()).pathname,method=route.request().method();let data={};
+ if(path.endsWith('/lam-moi'))data={access_token:'fixture-access',refresh_token:'fixture-refresh',nguoi_dung:{email:'kiem-thu@example.invalid'}};
+ else if(path.endsWith('/toi'))data={duoc_phep:true,quan_tri_he_thong:true,trang:pages};
+ else if(path.endsWith('/tong-quan-moi'))data={...report,tong_homestay:2,tong_phong:10,tong_dat_phong:20,tong_nguoi_dung:30,tong_danh_gia:6,danh_gia_tuan:2,chenh_lech_hom_qua:'200000',danh_gia_moi:[review]};
+ else if(path.endsWith('/bao-cao'))data=report;
+ else if(path.endsWith('/danh-gia'))data=[review];
+ else if(path.endsWith('/hien-thi'))data={mau:{},trang_thai:['Khóa sửa chữa'],phien_ban:1};
+ else if(path.endsWith('/cau-hinh-gio'))data=hours;
+ else if(path.endsWith('/lich-phong'))data={phong:rooms,khoa:[],gia:[],dat_phong:[]};
+ else if(path.endsWith('/don-dat-phong/tuy-chon'))data={rooms,combos,cau_hinh_gio:hours};
+ else if(path.endsWith('/don-dat-phong/thong-ke'))data={'Tất cả':20,'Đã xác nhận':18,'Đã hủy':2};
+ else if(path.endsWith('/don-dat-phong/'+order))data=booking;
+ else if(path.endsWith('/don-dat-phong'))data=[booking];
+ else if(path.endsWith('/phong/tuy-chon'))data={chi_nhanh:branches,loai_phong:[{id:category,homestay_id:branch,ten_loai:'Phòng cao cấp'}]};
+ else if(path.endsWith('/loai-phong'))data=[{id:category,homestay_id:branch,ten_homestay:branches[0].ten_homestay,ten_loai:'Phòng cao cấp',suc_chua:2,so_phong:5,mo_ta:'Có ban công',dien_tich_m2:'25'}];
+ else if(path.endsWith('/phong'))data={du_lieu:rooms,tong_so:1};
+ else if(path.endsWith('/combo'))data={combos,chi_nhanh:branches,phong:rooms};
+ else if(path.endsWith('/nhan-vien'))data={du_lieu:[{id:category,ho_ten:'Nhân viên kiểm thử',email:'staff@example.invalid',trang_thai:'Đang hoạt động',so_dien_thoai:'0901234567',phan_cong:[{vai_tro:'Quản lý',chi_nhanh_id:branch,ten_chi_nhanh:branches[0].ten_homestay}]}],chi_nhanh:branches,vai_tro:['Quản lý','Chăm sóc khách hàng']};
+ else if(path.endsWith('/vai-tro'))data={vai_tro:[{id:category,ma_vai_tro:'Quản lý',he_thong:true,quyen_trang:['lich','dat-phong']}],trang:pages.filter(x=>x!=='nhan-vien')};
+ else if(path.endsWith('/trang-chu'))data=path.includes('/quan-tri/')?{ban_nhap:home,da_xuat_ban:home,phien_ban:1}:home;
+ else if(path.endsWith('/cau-hinh'))data={chi_nhanh:branches,khung_gio:hours};
+ else if(path.includes('/thong-bao-don'))data={thong_bao:[],chua_doc:0,tong_so:0};
+ else if(path.endsWith('/chat'))data={toi:category,hoi_thoai:[],tong_so:0,tong_chua_doc:0};
+ else data={du_lieu:[],tong_so:0,chi_nhanh:branches};
+ if(method!=='GET'&&!path.endsWith('/lam-moi'))data={ok:true,id:order,...data};
+ await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(data)});
+ });
+ return {branch,room,order,today};
+}

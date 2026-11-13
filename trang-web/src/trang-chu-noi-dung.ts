@@ -1,3 +1,5 @@
+export type GiaoDienTrangChu={ten_web:string;khau_hieu:string;tieu_de_phong:string;mau_nen:string;mau_nhan:string;so_cot:number;anh_ben_trai:boolean};
+export const giaoDienMacDinh:GiaoDienTrangChu={ten_web:'HomeStay',khau_hieu:'MỘT KHOẢNG RIÊNG DÀNH CHO BẠN',tieu_de_phong:'Khám phá không gian',mau_nen:'#4d2078',mau_nhan:'#7135a3',so_cot:4,anh_ben_trai:false};
 export type Khoi = {
   hien: boolean;
   tieu_de: string;
@@ -5,6 +7,7 @@ export type Khoi = {
   anh: string;
 };
 export type NoiDungTrangChu = {
+  giao_dien?:GiaoDienTrangChu;
   hero: Khoi | null;
   gioi_thieu: Khoi | null;
   the: Khoi[];

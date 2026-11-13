@@ -59,7 +59,7 @@ export class ComboService {
     throw e;
   }
   async list(uid: string) {
-    await this.admin.kiemTraQuanTri(uid);
+    await this.admin.kiemTraTrang(uid,'goi-combo');
     const c = await this.db();
     try {
       const combos = await c.query(
@@ -137,7 +137,7 @@ export class ComboService {
     body: unknown,
     files?: ImageFile | ImageFile[],
   ) {
-    await this.admin.kiemTraQuanTri(uid);
+    await this.admin.kiemTraTrang(uid,'goi-combo');
     if (id) this.id(id);
     const x = docCombo(body);
     const incoming = files ? (Array.isArray(files) ? files : [files]) : [];
@@ -285,7 +285,7 @@ export class ComboService {
     }
   }
   async remove(uid: string, id: string) {
-    await this.admin.kiemTraQuanTri(uid);
+    await this.admin.kiemTraTrang(uid,'goi-combo');
     this.id(id);
     const c = await this.db();
     try {

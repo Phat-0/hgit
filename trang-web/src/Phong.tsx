@@ -36,7 +36,7 @@ export default function PhongPage({token}:{token:string}){
  async function deleteImage(imageId:string){if(!selected)return;setBusy(true);try{await api(token,'/'+selected.id+'/anh/'+imageId,'DELETE');setImages(current=>current.filter(x=>x.id!==imageId));}catch(e){setError(e instanceof Error?e.message:'Không xóa được ảnh');}finally{setBusy(false);}}
  const total=Math.max(1,Math.ceil((data?.tong_so??0)/10));
  return <section className="cn-page"><div className="cn-panel"><div className="cn-toolbar"><form className="cn-filters cn-filters-compact" onSubmit={e=>{e.preventDefault();setPage(1);setQuery(filter);}}>
- <input aria-label="Tìm phòng" placeholder="Mã phòng, tên phòng..." value={filter} onChange={e=>setFilter(e.target.value)} maxLength={150}/>
+ <input aria-label="Tìm phòng, loại phòng" placeholder="Mã phòng, tên phòng..." value={filter} onChange={e=>setFilter(e.target.value)} maxLength={150}/>
  <select aria-label="Chi nhánh" value={branch} onChange={e=>{setBranch(e.target.value);setPage(1);}}><option value="">Tất cả chi nhánh</option>{options.chi_nhanh.map(x=><option key={x.id} value={x.id}>{x.ten_homestay}</option>)}</select>
  <select aria-label="Trạng thái" value={status} onChange={e=>{setStatus(e.target.value);setPage(1);}}><option value="">Tất cả trạng thái</option>{states.map(x=><option key={x}>{x}</option>)}</select>
  <button type="submit">Tìm kiếm</button><button type="button" className="cn-light" onClick={()=>{setFilter('');setQuery('');setBranch('');setStatus('');setPage(1);}}>Đặt lại</button></form><button className="cn-primary cn-add-button" onClick={()=>open('create')}>＋ Thêm phòng</button></div>

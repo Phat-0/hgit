@@ -1,5 +1,5 @@
-import { type NoiDungTrangChu } from "./trang-chu-noi-dung";
-import { useEffect, useRef, useState } from "react";
+import {giaoDienMacDinh, type NoiDungTrangChu } from "./trang-chu-noi-dung";
+import { useEffect, useRef, useState,type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { RangePicker } from "./RangePicker";
 import ChonGio from "./ChonGio";
@@ -397,11 +397,14 @@ export default function App() {
     }
   }
   const modal = selected || login || history !== null;
+  const ui={...giaoDienMacDinh,...home?.giao_dien};
+  const rgb=[1,3,5].map(i=>parseInt(ui.mau_nhan.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
+  const buttonText=rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722>.179?'#20142b':'#fff';
   return (
-    <main className="kh-site">
+    <main className={"kh-site kh-cms-custom "+(ui.anh_ben_trai?"kh-hero-left":"")} style={{'--kh-bg':ui.mau_nen,'--kh-accent':ui.mau_nhan,'--kh-button-text':buttonText,'--kh-columns':ui.so_cot} as CSSProperties}>
       <header className="kh-nav">
         <a className="kh-brand" href="/">
-          H<span>◆</span>meStay
+          {ui.ten_web}
         </a>
         <nav>
           <button onClick={()=>window.dispatchEvent(new Event('homestay:mo-chat'))}>Hỗ trợ</button>
@@ -438,7 +441,7 @@ export default function App() {
       {home?.hero && (
         <section className="kh-hero kh-cms-hero">
           <div>
-            <span className="kh-pill">MỘT KHOẢNG RIÊNG DÀNH CHO BẠN</span>
+            <span className="kh-pill">{ui.khau_hieu}</span>
             <h1>{home.hero.tieu_de}</h1>
             <p>{home.hero.noi_dung}</p>
           </div>
@@ -596,7 +599,7 @@ export default function App() {
           <section id="phong-khach" className="kh-room-section">
             <div className="kh-section-title">
               <div>
-                <span>KHÁM PHÁ KHÔNG GIAN</span>
+                <span>{ui.tieu_de_phong}</span>
                 <h2>
                   {searched
                     ? "Phòng dành cho thời gian của bạn"

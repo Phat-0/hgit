@@ -27,7 +27,8 @@
     "db:trang-chu": "node --use-system-ca scripts/trang-chu.mjs",
     "db:chat-hop-thu": "node --use-system-ca scripts/chat-hop-thu.mjs",
     "db:chat-tien-ich": "node --use-system-ca scripts/chat-tien-ich.mjs",
-    "db:chat-bo-cuc": "node --use-system-ca scripts/chat-bo-cuc.mjs"
+    "db:chat-bo-cuc": "node --use-system-ca scripts/chat-bo-cuc.mjs",
+    "db:quan-tri-mo-rong": "node --use-system-ca scripts/quan-tri-mo-rong.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",

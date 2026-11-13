@@ -1,3 +1,8 @@
+import {HienThiLichService} from './hien-thi-lich.service.js';
+import {BaoCaoController} from './bao-cao.controller.js';
+import {BaoCaoService} from './bao-cao.service.js';
+import {VaiTroController} from './vai-tro.controller.js';
+import {VaiTroService} from './vai-tro.service.js';
 import { TienIchChatController } from './tien-ich-chat.controller.js';
 import { TienIchChatService } from './tien-ich-chat.service.js';
 import {
@@ -26,7 +31,7 @@ import { LichPhongService } from './lich-phong.service.js';
 
 @Module({
   imports: [XacThucModule],
-  controllers: [
+  controllers: [BaoCaoController,VaiTroController,
     TienIchChatController,
     TrangChuController,
     TrangChuKhachController,
@@ -39,7 +44,7 @@ import { LichPhongService } from './lich-phong.service.js';
     LichPhongController,
     DonLichController,
   ],
-  providers: [
+  providers: [HienThiLichService,BaoCaoService,VaiTroService,
     TienIchChatService,
     TrangChuService,
     NhanVienService,

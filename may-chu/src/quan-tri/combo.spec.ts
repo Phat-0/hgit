@@ -23,7 +23,7 @@ const png = {
 };
 function setup(failInsert = false) {
   const s = new ComboService({
-    kiemTraQuanTri: async () => {},
+    kiemTraTrang: async () => {},
   } as unknown as QuanTriService);
   const calls: string[] = [];
   const remove = vi.fn(async (_keys?: string[]) => ({ error: null })),
@@ -75,7 +75,7 @@ describe('Combo: dữ liệu và quyền', () => {
   });
   it('không truy cập DB nếu thiếu quyền', async () => {
     const s = new ComboService({
-      kiemTraQuanTri: async () => {
+      kiemTraTrang: async () => {
         throw Error('Không có quyền');
       },
     } as unknown as QuanTriService);

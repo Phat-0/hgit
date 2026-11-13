@@ -15,6 +15,7 @@ export type KhoiTrangChu = {
   anh: string;
 };
 export type CauHinhTrangChu = {
+  giao_dien?: {ten_web:string;khau_hieu:string;tieu_de_phong:string;mau_nen:string;mau_nhan:string;so_cot:number;anh_ben_trai:boolean};
   hero: KhoiTrangChu;
   gioi_thieu: KhoiTrangChu;
   the: KhoiTrangChu[];
@@ -64,7 +65,7 @@ export class TrangChuService {
     if (
       Object.keys(x).some(
         (k) =>
-          !['hero', 'gioi_thieu', 'the', 'hien_phong', 'chan_trang'].includes(
+          !['hero', 'gioi_thieu', 'the', 'hien_phong', 'chan_trang','giao_dien'].includes(
             k,
           ),
       ) ||
@@ -114,7 +115,10 @@ export class TrangChuService {
         anh: b.anh,
       };
     };
+    const ui=x.giao_dien as Record<string,unknown>|undefined;
+    if(ui&&(typeof ui!=='object'||Array.isArray(ui)||Object.keys(ui).some(k=>!['ten_web','khau_hieu','tieu_de_phong','mau_nen','mau_nhan','so_cot','anh_ben_trai'].includes(k))||['ten_web','khau_hieu','tieu_de_phong'].some(k=>typeof ui[k]!=='string'||!(ui[k] as string).trim()||(ui[k] as string).length>150)||!['#4d2078','#39205f','#6b329b'].includes(String(ui.mau_nen))||!/^#[0-9a-f]{6}$/i.test(String(ui.mau_nhan))||![2,3,4].includes(Number(ui.so_cot))||typeof ui.anh_ben_trai!=='boolean'))throw new BadRequestException('Thiết lập giao diện trang chủ không hợp lệ');
     return {
+      ...(ui?{giao_dien:ui as NonNullable<CauHinhTrangChu['giao_dien']>}:{}),
       hero: block(x.hero),
       gioi_thieu: block(x.gioi_thieu),
       the: x.the.map(block),
@@ -123,7 +127,7 @@ export class TrangChuService {
     };
   }
   async read(uid?: string) {
-    if (uid) await this.admin.kiemTraQuanTri(uid);
+    if (uid) await this.admin.kiemTraTrang(uid,'trang-chu');
     const c = await this.db();
     try {
       const r = await c.query(
@@ -148,7 +152,7 @@ export class TrangChuService {
     }
   }
   async save(uid: string, body: unknown) {
-    await this.admin.kiemTraQuanTri(uid);
+    await this.admin.kiemTraTrang(uid,'trang-chu');
     if (!body || typeof body !== 'object' || Array.isArray(body))
       throw new BadRequestException('Dữ liệu không hợp lệ');
     const b = body as Record<string, unknown>;
@@ -193,7 +197,7 @@ export class TrangChuService {
     uid: string,
     file?: { buffer: Buffer; size: number; mimetype: string },
   ) {
-    await this.admin.kiemTraQuanTri(uid);
+    await this.admin.kiemTraTrang(uid,'trang-chu');
     if (!file || file.size > 5242880 || !file.size)
       throw new BadRequestException('Chọn ảnh tối đa 5 MB');
     const b = file.buffer;

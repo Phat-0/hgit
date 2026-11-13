@@ -724,6 +724,7 @@ export default function TroChuyen({
                   />
                   <button
                     className="chat-support"
+                    title="Mở cuộc trò chuyện hỗ trợ cho tài khoản hiện tại; không tạo đơn đặt phòng"
                     disabled={busy}
                     onClick={() => void start()}
                   >

@@ -12,7 +12,7 @@ export class QuanTriController {
 
   @Get('toi')
   toi(@Req() req: RequestNguoiDung) {
-    return this.service.kiemTraQuanTri(req.nguoiDung.id);
+    return this.service.truyCap(req.nguoiDung.id);
   }
 
   @Get('tong-quan')

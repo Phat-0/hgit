@@ -1,73 +1,288 @@
-import ChiTietDonLich from './ChiTietDonLich';
-import './don-dat-phong-bang.css';
-import {nhanThanhToan,maDonGon,mauTrangThaiDon} from './hien-thi-don';
-import NhapTien from './NhapTien';
-import './don-dat-phong-form.css';
-import {ngayVietNam,goiYThoiGian} from './mac-dinh-thoi-gian';
-import {RangePicker,TimePicker} from './LichPhong';
-import {khoangThoiGianLich} from './khung-gio-dat-phong';
-import {useCallback,useEffect,useMemo,useRef,useState,type FormEvent} from 'react';
-type Booking={ten_khach:string;tien_dich_vu:string;ten_loai_phong:string|null;ten_khuyen_mai:string|null;id:string;ten_don:string;ma_dat_phong:string;hinh_thuc_dat:string;nhan_phong_luc:string;tra_phong_luc:string;trang_thai:string;trang_thai_hien_thi:string;trang_thai_thanh_toan:string;tinh_trang_phong_hien_tai:string|null;can_xac_nhan_lai:boolean;tong_tien:string;ghi_chu:string|null;combo:string|null;anh:string|null;ho_ten:string;so_dien_thoai:string|null;ten_phong:string;ma_phong:string;ten_homestay:string};
-const statuses=[{value:'Tất cả',label:'Tất cả'},{value:'Đã xác nhận',label:'Chờ nhận phòng'},{value:'Đã nhận phòng',label:'Đã nhận phòng'},{value:'Chờ xác nhận',label:'Chờ xác nhận'},{value:'Chưa nhận phòng',label:'Không nhận phòng'},{value:'Đã hủy',label:'Đã hủy'},{value:'Đã trả phòng',label:'Hoàn thành'},{value:'Thanh toán',label:'Thanh toán'}];
-type RoomOption={so_gio_toi_thieu:number;cho_dat_theo_gio:boolean;cho_dat_theo_ngay:boolean;cho_dat_theo_dem:boolean;ten_loai:string;id:string;ma_phong:string;ten_phong:string;homestay_id:string;loai_phong_id:string;ten_homestay:string;gia_moi_gio:number|string;gia_moi_ngay:number|string;gia_moi_dem:number|string;gia_phu_thu_gio:number|string;trang_thai_van_hanh:string};
-type ComboOption={pham_vi:string;chi_nhanh_ids:string[];phong_ids:string[];bat_dau:string|null;ket_thuc:string|null;id:string;homestay_id:string;ten_combo:string;gia_combo:number|string;so_gio_bao_gom:number|null};
-
-const bookingTimes=(kind:'ngay'|'dem'|'gio',a:string,b:string,st:string,et:string)=>khoangThoiGianLich(kind==='dem'?'qua-dem':kind,a,b,st,et);
-function withinBookingWindow(t:string,start:string,end:string){return start===end||(start<end?t>=start&&t<end:t>=start||t<end);}
-function date(v:string){return new Date(v).toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric',timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',hour12:false});}
-export default function DonDatPhong({token}:{token:string}){
- const [hourConfig,setHourConfig]=useState<Record<string,string>>({ngay_tu:'14:00',ngay_den:'12:00',gio_tu:'08:00',gio_den:'22:00',dem_tu:'20:00',dem_den:'08:00'});const [combos,setCombos]=useState<ComboOption[]>([]);const [comboId,setComboId]=useState('');const [extraHours,setExtraHours]=useState('0');const [priceEdited,setPriceEdited]=useState(false);const [branch,setBranch]=useState('');const [startDate,setStartDate]=useState(ngayVietNam());const [endDate,setEndDate]=useState(ngayVietNam());const [startTime,setStartTime]=useState('08:00');const [endTime,setEndTime]=useState('22:00');const [paymentState,setPaymentState]=useState('Chưa thanh toán');const [paymentTab,setPaymentTab]=useState('Chưa thanh toán');const [creating,setCreating]=useState(false),[rooms,setRooms]=useState<RoomOption[]>([]),[form,setForm]=useState({so_dien_thoai:'',phong_id:'',ten_khach:'',nhan_phong_luc:'',tra_phong_luc:'',so_khach:'1',tien_phong:'',ghi_chu:''}),[saving,setSaving]=useState(false),[formError,setFormError]=useState('');
- const selectedCombo=combos.find(x=>x.id===comboId);const selectedRoom=rooms.find(x=>x.id===form.phong_id);const [bookingKind,setBookingKind]=useState<'gio'|'ngay'|'dem'>('gio');const originalPrice=useMemo(()=>{if(!selectedRoom)return 0;const times=bookingTimes(bookingKind,startDate,endDate,bookingKind==='gio'?startTime:hourConfig[bookingKind+'_tu'],bookingKind==='gio'?endTime:hourConfig[bookingKind+'_den']);const from=times.start.getTime(),to=times.end.getTime();if(!Number.isFinite(from)||!Number.isFinite(to)||to<=from)return 0;const hours=(to-from)/3600000;const rate=Number(bookingKind==='gio'?selectedRoom.gia_moi_gio:bookingKind==='ngay'?selectedRoom.gia_moi_ngay:selectedRoom.gia_moi_dem)||0;const extra=Number(selectedRoom.gia_phu_thu_gio)||0;if(bookingKind==='gio'){const minimum=Math.max(1,Number(selectedRoom.so_gio_toi_thieu)||1);const billed=Math.ceil(hours);const surcharge=Number(selectedRoom.gia_phu_thu_gio)||0;if(selectedCombo?.so_gio_bao_gom)return Number(selectedCombo.gia_combo)+Math.max(0,billed-selectedCombo.so_gio_bao_gom)*surcharge;return rate+Math.max(0,billed-minimum)*surcharge+(selectedCombo?Number(selectedCombo.gia_combo):0); }const clockHours=(value:string)=>Number(value.slice(0,2))+Number(value.slice(3,5))/60;const baseHours=(clockHours(hourConfig[bookingKind+'_den'])-clockHours(hourConfig[bookingKind+'_tu'])+24)%24||24;const blocks=Math.max(1,Math.ceil(hours/24));const overtime=Math.max(0,hours-(blocks-1)*24-baseHours);return blocks*rate+(Math.ceil(overtime)+Math.max(0,Number(extraHours)||0))*extra+(selectedCombo?Number(selectedCombo.gia_combo):0);},[selectedRoom,selectedCombo,bookingKind,startDate,endDate,startTime,endTime,extraHours,hourConfig]);useEffect(()=>{if(!priceEdited)setForm(v=>({...v,tien_phong:String(originalPrice)}));},[originalPrice,priceEdited]);const discount=originalPrice>0?Math.max(0,(1-Number(form.tien_phong)/originalPrice)*100):0;
- useEffect(()=>{if(!creating)return;const proposed=goiYThoiGian(bookingKind,hourConfig);setStartDate(proposed.day);setEndDate(proposed.endDay);setStartTime(proposed.start);setEndTime(proposed.end);},[creating,bookingKind,hourConfig]);
- const [counts,setCounts]=useState<Record<string,number>>({});const requestSerial=useRef(0);
- const [rows,setRows]=useState<Booking[]>([]),[status,setStatus]=useState('Tất cả'),[search,setSearch]=useState(''),[filter,setFilter]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[detail,setDetail]=useState<Booking|null>(null);
- const act=async(id:string,hanh_dong:string,payload:Record<string,string>={})=>{try{const r=await fetch('/api/quan-tri/lich-phong/don-dat-phong/'+id,{method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({hanh_dong,...payload})});const j=await r.json();if(!r.ok)throw Error(Array.isArray(j.message)?j.message.join('; '):j.message||'Thao tác thất bại');setDetail(null);await load();}catch(e){setError(e instanceof Error?e.message:'Thao tác thất bại');}};
- useEffect(()=>{setComboId('');setPriceEdited(false);},[form.phong_id,bookingKind,startDate,endDate,startTime,endTime]);
- const openCreate=async()=>{setFormError('');const today=ngayVietNam();setStartDate(today);setEndDate(today);setBranch('');setComboId('');setBookingKind('gio');setForm({so_dien_thoai:'',phong_id:'',ten_khach:'',nhan_phong_luc:'',tra_phong_luc:'',so_khach:'1',tien_phong:'',ghi_chu:''});setExtraHours('0');setPriceEdited(false);setRooms([]);setCombos([]);setSaving(true);setCreating(true);try{const r=await fetch('/api/quan-tri/lich-phong/don-dat-phong/tuy-chon',{headers:{Authorization:'Bearer '+token}});const j=await r.json();if(!r.ok)throw Error(j.message||'Không tải được phòng');setRooms(j.rooms||[]);setHourConfig(j.cau_hinh_gio);setCombos(j.combos||[]);}catch(e){setFormError(e instanceof Error?e.message:'Không tải được tùy chọn');}finally{setSaving(false);}};
- const saveCreate=async(e:FormEvent)=>{e.preventDefault();const interval=bookingTimes(bookingKind,startDate,endDate,bookingKind==='gio'?startTime:hourConfig[bookingKind+'_tu'],bookingKind==='gio'?endTime:hourConfig[bookingKind+'_den']);if(!Number.isFinite(interval.start.getTime())||!Number.isFinite(interval.end.getTime())){setFormError('Ngày hoặc giờ nhận/trả phòng không hợp lệ.');return;}if(interval.start.getTime()<Date.now()-60000){setFormError('Giờ nhận phòng đã qua. Vui lòng chọn giờ sắp tới hoặc ngày khác.');return;}if(!form.phong_id){setFormError('Vui lòng chọn phòng cụ thể.');return;}if(bookingKind==='gio'){const open=hourConfig.gio_tu||'08:00',close=hourConfig.gio_den||'22:00';if(!withinBookingWindow(startTime,open,close)||!withinBookingWindow(endTime,open,close)&&endTime!==close){setFormError('Giờ nhận và trả phải thuộc khung giờ Theo giờ đã thiết lập trong trang Lịch.');return;}if(startDate===endDate&&endTime<=startTime){setFormError('Giờ trả phải sau giờ nhận, theo quy tắc chọn giờ tại trang Lịch.');return;}}setSaving(true);setFormError('');try{const r=await fetch('/api/quan-tri/lich-phong/don-dat-phong',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({...form,ten_khach:form.ten_khach.trim(),hinh_thuc_dat:bookingKind==='gio'?'Theo giờ':bookingKind==='ngay'?'Theo ngày':'Theo đêm',combo_id:comboId||null,nhan_phong_luc:bookingTimes(bookingKind,startDate,endDate,bookingKind==='gio'?startTime:hourConfig[bookingKind+'_tu'],bookingKind==='gio'?endTime:hourConfig[bookingKind+'_den']).start.toISOString(),tra_phong_luc:bookingTimes(bookingKind,startDate,endDate,bookingKind==='gio'?startTime:hourConfig[bookingKind+'_tu'],bookingKind==='gio'?endTime:hourConfig[bookingKind+'_den']).end.toISOString(),trang_thai:'Đã xác nhận',trang_thai_thanh_toan:paymentState,tien_phong:Number(form.tien_phong),so_khach:Number(form.so_khach)})});const j=await r.json();if(!r.ok)throw Error(Array.isArray(j.message)?j.message.join('; '):j.message||'Không tạo được đơn');setCreating(false);await load();}catch(e){setFormError(e instanceof Error?e.message:'Không tạo được đơn');}finally{setSaving(false);}};
- const load=useCallback(async()=>{
-  const serial=++requestSerial.current;setBusy(true);setError('');
-  try{
-   const q=new URLSearchParams({trang_thai:status==='Tất cả'?'':status==='Thanh toán'?paymentTab:status,tim_kiem:filter});
-   const [listResponse,countResponse]=await Promise.all([
-    fetch('/api/quan-tri/lich-phong/don-dat-phong?'+q,{headers:{Authorization:'Bearer '+token}}),
-    fetch('/api/quan-tri/lich-phong/don-dat-phong/thong-ke?'+new URLSearchParams({tim_kiem:filter}),{headers:{Authorization:'Bearer '+token}})
-   ]);
-   const [list,count]=await Promise.all([listResponse.json(),countResponse.json()]);
-   if(!listResponse.ok)throw Error(list.message||'Không tải được đơn đặt phòng');
-   if(!countResponse.ok)throw Error(count.message||'Không tải được số đơn');
-   if(serial===requestSerial.current){setRows(list);setCounts(count);}
-  }catch(e){if(serial===requestSerial.current)setError(e instanceof Error?e.message:'Không tải được đơn');}
-  finally{if(serial===requestSerial.current)setBusy(false);}
- },[token,status,filter,paymentTab]);
- useEffect(()=>{void load();return()=>{requestSerial.current++;};},[load]);
- return <section className="dp-page"><div className="dp-head"><form className="dp-filters" onSubmit={e=>{e.preventDefault();setFilter(search.trim());}}><label className="dp-search-label"><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Mã đặt phòng, tên khách hoặc số điện thoại"/></label><button type="submit" aria-label="Tìm kiếm" title="Tìm kiếm">⌕</button><button type="button" onClick={()=>{setSearch('');setFilter('');setStatus('Tất cả');}}>Xóa lọc</button></form><div className="dp-head-actions"><button type="button" onClick={()=>void openCreate()}>+ Tạo mới</button><button type="button" onClick={()=>void load()} disabled={busy}>↻ Tải lại</button></div></div><div className="dp-tabs" role="tablist" aria-label="Trạng thái đặt phòng">{statuses.map(x=><button role="tab" aria-selected={status===x.value} type="button" key={x.value} className={status===x.value?'active':''} onClick={()=>setStatus(x.value)}>{x.label}<span className="dp-tab-count">{counts[x.value]??'—'}</span></button>)}</div>{status==='Thanh toán'&&<div className="dp-payment-tabs">{['Đã thanh toán','Chưa thanh toán'].map(x=><button type="button" className={paymentTab===x?'active':''} key={x} onClick={()=>setPaymentTab(x)}>{x} <span>{counts[x]??'—'}</span></button>)}</div>}{error&&<p role="alert" className="cn-error">{error}</p>}<div className="dp-table-wrap" role="region" aria-label="Danh sách đơn đặt phòng, cuộn ngang để xem thêm" tabIndex={0} aria-busy={busy}><table className="dp-table dp-table-bookings"><colgroup>{[112,160,120,150,150,130,155,160,185,170,110,155,100].map((width,i)=><col key={i} style={{width}}/>)}</colgroup><thead><tr><th>Mã đặt phòng</th><th>Tổng tiền thanh toán</th><th>Loại đặt phòng</th><th>Nhận phòng</th><th>Trả phòng</th><th>Loại phòng</th><th>Phòng</th><th>Tình trạng đặt phòng</th><th>Khách hàng</th><th>Combo / Ưu đãi</th><th>Phí dịch vụ</th><th>Ghi chú</th><th>Thao tác</th></tr></thead><tbody>{rows.map(r=>{
- const payment=nhanThanhToan(r.trang_thai_thanh_toan);
- const unconfirmed=['Chờ thanh toán','Chờ xác nhận'].includes(r.trang_thai)||(r.can_xac_nhan_lai&&r.trang_thai==='Đã xác nhận');
- const bookingStatus=r.trang_thai_hien_thi||r.trang_thai;
- return <tr key={r.id} className={'dp-booking-row'+(unconfirmed?' dp-booking-unconfirmed':'')} tabIndex={0} aria-label={'Xem đơn '+r.ma_dat_phong+' của '+r.ho_ten} onClick={()=>setDetail(r)} onKeyDown={e=>{if(e.target===e.currentTarget&&(e.key==='Enter'||e.key===' ')){e.preventDefault();setDetail(r);}}}>
-  <td className="dp-code-cell"><button type="button" className="dp-link dp-code" title={r.ma_dat_phong} onClick={e=>{e.stopPropagation();setDetail(r);}}>{maDonGon(r.ma_dat_phong)}</button>{unconfirmed&&<small className="dp-confirmation-note">Chưa xác nhận</small>}</td>
-  <td className="dp-money"><span>{Number(r.tong_tien).toLocaleString('vi-VN')} ₫</span><small className={'dp-payment-label dp-payment-'+payment.tone}>{payment.text}</small></td>
-  <td className="dp-booking-kind"><span aria-hidden="true">◷</span> {r.hinh_thuc_dat==='Theo đêm'?'Qua đêm':r.hinh_thuc_dat}</td>
-  <td className="dp-date-cell">{date(r.nhan_phong_luc)}</td><td className="dp-date-cell">{date(r.tra_phong_luc)}</td>
-  <td><span className="dp-room-type">{r.ten_loai_phong||'—'}</span></td>
-  <td title={r.ten_homestay}><strong className="dp-room-name">{r.ten_phong||r.ma_phong}</strong><small>{r.tinh_trang_phong_hien_tai||'—'}</small></td>
-  <td><span className={'dp-order-status dp-order-'+mauTrangThaiDon(bookingStatus)}>{bookingStatus}</span></td>
-  <td className="dp-guest-cell"><strong title={r.ho_ten||r.ten_don}>{r.ho_ten||r.ten_don||'Chưa có tên khách'}</strong><small>{r.so_dien_thoai||'—'}</small></td>
-  <td className="dp-offer-cell"><span>{r.combo||r.ten_khuyen_mai||'—'}</span>{r.combo&&r.ten_khuyen_mai&&<small>{r.ten_khuyen_mai}</small>}</td>
-  <td className="dp-service-fee">{Number(r.tien_dich_vu||0).toLocaleString('vi-VN')} ₫</td>
-  <td className="dp-note-cell" title={r.ghi_chu||''}>{r.ghi_chu||'—'}</td>
-  <td className="dp-row-actions"><button type="button" aria-label={'Xem chi tiết đơn '+r.ma_dat_phong} title="Xem chi tiết" onClick={e=>{e.stopPropagation();setDetail(r);}}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7M14 3v6h6M14 3l6 6"/><circle cx="16" cy="16" r="4"/><path d="m19 19 3 3"/></svg></button><button type="button" aria-label={'Thao tác với đơn '+r.ma_dat_phong} title="Thao tác với đơn" onClick={e=>{e.stopPropagation();setDetail(r);}}>⋯</button></td>
- </tr>;
- })}{!rows.length&&<tr><td colSpan={13} className="dp-empty">{busy?'Đang tải dữ liệu...':'Không có đơn phù hợp'}</td></tr>}</tbody></table></div><p className="dp-count">Hiển thị {rows.length} / {counts[status==='Thanh toán'?paymentTab:status]??rows.length} đơn phù hợp · tối đa 300 đơn mỗi lần tải.</p>{detail&&<ChiTietDonLich id={detail.id} token={token} onClose={()=>setDetail(null)} onChanged={load} extraActions={<div className="dp-detail-actions">{[['xac_nhan','Xác nhận đơn',['Chờ xác nhận']],['khach_den','Khách đã đến',['Chờ xác nhận','Đã xác nhận']],['nhan_phong','Nhận phòng',['Đã xác nhận']],['tra_phong','Trả phòng',['Đã nhận phòng']]].map(([action,label,allowed])=>(allowed as string[]).includes(detail.trang_thai)&&<button type="button" key={action as string} onClick={()=>{if(window.confirm('Xác nhận: '+label+'?'))void act(detail.id,action as string);}}>{label}</button>)}<label>Thanh toán<select aria-label="Trạng thái thanh toán" value={detail.trang_thai_thanh_toan} onChange={e=>void act(detail.id,'thanh_toan',{trang_thai_thanh_toan:e.target.value})}>{['Chưa thanh toán','Cọc','Đủ'].map(x=><option key={x} value={x}>{nhanThanhToan(x).text}</option>)}</select></label></div>}/>}{creating&&<div className="dp-modal" onMouseDown={e=>{if(e.target===e.currentTarget)setCreating(false);}}><form className="dp-dialog dp-create dp-create-aligned" onSubmit={saveCreate}><div className="dp-dialog-head"><h2>Tạo đơn đặt phòng</h2><button type="button" onClick={()=>setCreating(false)} aria-label="Đóng">×</button></div><p className="dp-hint">Nhập tên khách hàng, chọn hình thức đặt và phòng; giờ áp dụng theo thiết lập Lịch. Có thể đặt cho khách chưa đăng ký tài khoản.</p>
-<label>Tên khách hàng<input required maxLength={150} value={form.ten_khach} onChange={e=>setForm({...form,ten_khach:e.target.value})} placeholder="Ví dụ: Nguyễn Văn An"/></label>
-<label>Số điện thoại khách<input required value={form.so_dien_thoai} onChange={e=>setForm({...form,so_dien_thoai:e.target.value})} placeholder="+849xxxxxxxx"/></label>
-<label>Chi nhánh<select required value={branch} onChange={e=>{setBranch(e.target.value);setComboId('');setForm({...form,phong_id:''});setPriceEdited(false);}}><option value="">Chọn chi nhánh</option>{Array.from(new Map(rooms.map(x=>[x.homestay_id,x.ten_homestay])).entries()).map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label>
-<label>Loại phòng muốn đặt<select value={bookingKind} onChange={e=>{setBookingKind(e.target.value as 'gio'|'ngay'|'dem');setForm(v=>({...v,phong_id:''}));setPriceEdited(false);}}><option value="gio">Theo giờ</option><option value="ngay">Theo ngày</option><option value="dem">Qua đêm</option></select></label><label>Phòng<select required value={form.phong_id} onChange={e=>{setForm({...form,phong_id:e.target.value});setPriceEdited(false);}}><option value="">Chọn phòng</option>{rooms.filter(x=>x.homestay_id===branch&&(bookingKind==='gio'?x.cho_dat_theo_gio:bookingKind==='ngay'?x.cho_dat_theo_ngay:x.cho_dat_theo_dem)).map(x=><option key={x.id} value={x.id}>{x.ten_phong||x.ma_phong}</option>)}</select></label><div className="dp-create-range"><span>Khoảng ngày</span><RangePicker start={startDate} end={endDate} minDate={ngayVietNam()} onChange={(a,b)=>{setStartDate(a);setEndDate(b);}} compact/></div><div className="dp-plan-kind">Khung giờ áp dụng: {bookingKind==='gio'?(hourConfig.gio_tu+' – '+hourConfig.gio_den):bookingKind==='ngay'?(hourConfig.ngay_tu+' – '+hourConfig.ngay_den):(hourConfig.dem_tu+' – '+hourConfig.dem_den)}</div><label>Combo (tùy chọn)<select value={comboId} onChange={e=>{setComboId(e.target.value);setPriceEdited(false);}}><option value="">Không chọn combo</option>{combos.filter(x=>{const interval=bookingTimes(bookingKind,startDate,endDate,bookingKind==='gio'?startTime:hourConfig[bookingKind+'_tu'],bookingKind==='gio'?endTime:hourConfig[bookingKind+'_den']);return !!selectedRoom&&(x.pham_vi==='toan_he_thong'||x.pham_vi==='chi_nhanh'&&x.chi_nhanh_ids.includes(branch)||x.pham_vi==='phong'&&x.phong_ids.includes(selectedRoom.id))&&(!x.so_gio_bao_gom||bookingKind==='gio')&&(!x.bat_dau||new Date(x.bat_dau)<=interval.start)&&(!x.ket_thuc||new Date(x.ket_thuc)>=interval.end);}).map(x=><option key={x.id} value={x.id}>{x.ten_combo} · {Number(x.gia_combo).toLocaleString('vi-VN')} ₫{x.so_gio_bao_gom?' · '+x.so_gio_bao_gom+' giờ':''}</option>)}</select></label>
-{bookingKind==='gio'&&<div className="dp-time-row"><span>Thời gian</span><div><label>Giờ nhận<TimePicker value={startTime} onChange={setStartTime}/></label><label>Giờ trả<TimePicker value={endTime} minValue={startDate===endDate?startTime:undefined} onChange={setEndTime}/></label></div></div>}
-{bookingKind!=='gio'&&<label>Giờ phụ thu dự kiến<input type="number" min="0" step="1" value={extraHours} onChange={e=>setExtraHours(e.target.value)}/></label>}{bookingKind==='gio'&&selectedRoom&&<p className="dp-plan-kind">Tối thiểu {selectedRoom.so_gio_toi_thieu} giờ; giá phòng áp dụng cho số giờ đầu này.</p>}<label>Số khách<input required type="number" min="1" max="100" value={form.so_khach} onChange={e=>setForm({...form,so_khach:e.target.value})}/></label>
-<label>Tiền phòng (₫)<NhapTien required value={form.tien_phong} onValueChange={v=>{setPriceEdited(true);setForm({...form,tien_phong:v});}}/></label>{priceEdited&&<div className="dp-price-info"><span>Giá gốc: {originalPrice.toLocaleString('vi-VN')} ₫</span><span>Giảm: {discount.toFixed(1)}%</span><button type="button" onClick={()=>setPriceEdited(false)}>Đặt lại giá gốc</button></div>}
-<label>Trạng thái đơn<input value="Đã xác nhận" readOnly aria-readonly="true"/></label>
-<label>Thanh toán<select value={paymentState} onChange={e=>setPaymentState(e.target.value)}>{['Chưa thanh toán','Cọc','Đủ'].map(x=><option key={x}>{x}</option>)}</select></label>
-<label>Ghi chú<textarea value={form.ghi_chu} onChange={e=>setForm({...form,ghi_chu:e.target.value})}/></label>{formError&&<p className="cn-error" role="alert">{formError}</p>}<div className="dp-create-actions"><button type="button" onClick={()=>setCreating(false)}>Hủy</button><button type="submit" disabled={saving}>{saving?'Đang lưu...':'Tạo đơn'}</button></div></form></div>}</section>;
+import { useCallback, useEffect, useState, useRef } from "react";
+import ChiTietDonLich from "./ChiTietDonLich";
+import FormDonDatPhong from "./FormDonDatPhong";
+import { quanTriApi, vnd, lucVN, type RecentOrder } from "./bao-cao-api";
+import { nhanThanhToan, maDonGon } from "./hien-thi-don";
+import "./don-dat-phong-bang.css";
+type Booking = RecentOrder & {
+  so_dien_thoai: string;
+  trang_thai_hien_thi: string;
+  trang_thai_thanh_toan: string;
+  tien_dich_vu: string;
+  ten_loai_phong: string;
+  combo: string | null;
+  ghi_chu: string | null;
+};
+const statuses = [
+  ["", "Tất cả"],
+  ["Đã xác nhận", "Chờ nhận phòng"],
+  ["Đã nhận phòng", "Đã nhận phòng"],
+  ["Chờ xác nhận", "Chờ xác nhận"],
+  ["Chưa nhận phòng", "Không nhận phòng"],
+  ["Đã hủy", "Đã hủy"],
+  ["Đã trả phòng", "Hoàn thành"],
+  ["Thanh toán", "Thanh toán"],
+];
+export default function DonDatPhong({
+  token,
+  initialId,
+}: {
+  token: string;
+  initialId?: string;
+}) {
+  const request = useRef(0);
+  const [rows, setRows] = useState<Booking[]>([]),
+    [counts, setCounts] = useState<Record<string, number>>({}),
+    [status, setStatus] = useState(""),
+    [search, setSearch] = useState(""),
+    [filter, setFilter] = useState(""),
+    [payment, setPayment] = useState("Chưa thanh toán"),
+    [creating, setCreating] = useState(false),
+    [id, setId] = useState(initialId || ""),
+    [error, setError] = useState("");
+  const load = useCallback(async () => {
+    const serial = ++request.current;
+    setError("");
+    try {
+      const q = new URLSearchParams({
+        trang_thai: status === "Thanh toán" ? payment : status,
+        tim_kiem: filter,
+      });
+      const [list, c] = await Promise.all([
+        quanTriApi<Booking[]>(token, "lich-phong/don-dat-phong?" + q),
+        quanTriApi<Record<string, number>>(
+          token,
+          "lich-phong/don-dat-phong/thong-ke?tim_kiem=" +
+            encodeURIComponent(filter),
+        ),
+      ]);
+      if (serial === request.current) {
+        setRows(list);
+        setCounts(c);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Không tải được đơn");
+    }
+  }, [token, status, filter, payment]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  async function action(type: string, body: unknown = {}) {
+    try {
+      await quanTriApi(token, "lich-phong/don-dat-phong/" + id, "PATCH", {
+        hanh_dong: type,
+        ...(body as object),
+      });
+      await load();
+      setId("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Không cập nhật được đơn");
+    }
+  }
+  return (
+    <section className="dp-page">
+      <div className="dp-toolbar">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            setFilter(search);
+          }}
+        >
+          <input
+            aria-label="Tìm đơn đặt phòng"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Mã đặt, tên khách, điện thoại, phòng…"
+          />
+          <button>Tìm</button>
+        </form>
+        <button onClick={() => setCreating(true)}>+ Tạo mới</button>
+        <button onClick={() => void load()}>↻ Tải lại</button>
+      </div>
+      <nav className="dp-tabs">
+        {statuses.map(([v, label]) => (
+          <button
+            key={v}
+            className={status === v ? "active" : ""}
+            onClick={() => setStatus(v)}
+          >
+            {label} <span>{counts[v || "Tất cả"] || 0}</span>
+          </button>
+        ))}
+      </nav>
+      {status === "Thanh toán" && (
+        <div className="dp-payment-tabs">
+          {["Chưa thanh toán", "Cọc", "Đủ"].map((s) => (
+            <button key={s} onClick={() => setPayment(s)}>
+              {nhanThanhToan(s).text} {counts[s] || 0}
+            </button>
+          ))}
+        </div>
+      )}
+      {error && (
+        <p className="cn-error" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="dp-table-scroll">
+        <table className="dp-table-bookings">
+          <thead>
+            <tr>
+              {[
+                "Mã đặt",
+                "Tổng thanh toán",
+                "Kiểu đặt",
+                "Nhận phòng",
+                "Trả phòng",
+                "Loại phòng",
+                "Phòng",
+                "Tình trạng",
+                "Khách hàng",
+                "Combo",
+                "Phí dịch vụ",
+                "Ghi chú",
+                "Thao tác",
+              ].map((x) => (
+                <th key={x}>{x}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((d) => (
+              <tr
+                key={d.id}
+                onClick={() => setId(d.id)}
+                className={
+                  d.trang_thai === "Chờ xác nhận"
+                    ? "dp-booking-unconfirmed"
+                    : ""
+                }
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") setId(d.id);
+                }}
+              >
+                <td>
+                  <button className="dp-code" onClick={() => setId(d.id)}>
+                    {maDonGon(d.ma_dat_phong)}
+                  </button>
+                </td>
+                <td>
+                  {vnd(d.tong_tien)}
+                  <small
+                    style={{
+                      display: "block",
+                      color:
+                        d.trang_thai_thanh_toan === "Đủ"
+                          ? "#00884f"
+                          : "#a65c12",
+                    }}
+                  >
+                    {nhanThanhToan(d.trang_thai_thanh_toan).text}
+                  </small>
+                </td>
+                <td>{d.hinh_thuc_dat}</td>
+                <td>{lucVN(d.nhan_phong_luc)}</td>
+                <td>{lucVN(d.tra_phong_luc)}</td>
+                <td>{d.ten_loai_phong}</td>
+                <td>
+                  {d.ten_phong}
+                  <small style={{ display: "block" }}>{d.ten_homestay}</small>
+                </td>
+                <td>{d.trang_thai_hien_thi || d.trang_thai}</td>
+                <td>
+                  {d.ten_khach}
+                  <small style={{ display: "block" }}>
+                    {d.so_dien_thoai || "—"}
+                  </small>
+                </td>
+                <td>{d.combo || "—"}</td>
+                <td>{vnd(d.tien_dich_vu)}</td>
+                <td>{d.ghi_chu || "—"}</td>
+                <td>
+                  <button
+                    title="Xem chi tiết đơn"
+                    aria-label="Xem chi tiết đơn"
+                    onClick={() => setId(d.id)}
+                  >
+                    ⋯
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {!rows.length && (
+              <tr>
+                <td colSpan={13}>Không có đơn phù hợp</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <footer>Hiển thị {rows.length} đơn mới nhất · tối đa 300 đơn</footer>
+      {creating && (
+        <FormDonDatPhong
+          token={token}
+          onClose={() => setCreating(false)}
+          onSaved={load}
+        />
+      )}
+      {id && (
+        <ChiTietDonLich
+          id={id}
+          token={token}
+          onClose={() => setId("")}
+          onChanged={load}
+          extraActions={
+            <div className="don-lich-actions">
+              <button
+                disabled={
+                  rows.find((r) => r.id === id)?.trang_thai !== "Chờ xác nhận"
+                }
+                onClick={() => void action("xac_nhan")}
+              >
+                Xác nhận
+              </button>
+              <button
+                disabled={
+                  rows.find((r) => r.id === id)?.trang_thai !== "Đã xác nhận"
+                }
+                onClick={() => void action("nhan_phong")}
+              >
+                Nhận phòng
+              </button>
+              <button
+                disabled={
+                  rows.find((r) => r.id === id)?.trang_thai !== "Đã nhận phòng"
+                }
+                onClick={() => void action("tra_phong")}
+              >
+                Trả phòng
+              </button>
+              <label>
+                Thanh toán
+                <select
+                  aria-label="Cập nhật thanh toán"
+                  value={
+                    rows.find((r) => r.id === id)?.trang_thai_thanh_toan ||
+                    "Chưa thanh toán"
+                  }
+                  onChange={(e) =>
+                    void action("thanh_toan", {
+                      trang_thai_thanh_toan: e.target.value,
+                    })
+                  }
+                >
+                  {["Chưa thanh toán", "Cọc", "Đủ"].map((s) => (
+                    <option key={s} value={s}>
+                      {nhanThanhToan(s).text}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          }
+        />
+      )}
+    </section>
+  );
 }

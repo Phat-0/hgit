@@ -11,20 +11,22 @@ export class DonLichService{
  private id(value:string){if(!UUID.test(value))throw new BadRequestException('Mã đơn hoặc phòng không hợp lệ');}
  private failure(e:unknown):never{const code=(e as {code?:string}).code;if(code==='23514')throw new BadRequestException('Giá hoặc thông tin đơn không thỏa điều kiện dữ liệu');if(['23P01','P0001','40P01'].includes(code||''))throw new ConflictException('Phòng đã có lịch trùng hoặc đang được cập nhật. Hãy tải lại và chọn thời gian khác');throw e;}
  async detail(uid:string,id:string){
-  await this.admin.kiemTraQuanTri(uid);this.id(id);const c=await this.db();try{
+  await this.admin.kiemTraTrang(uid,'lich|dat-phong|danh-gia|bao-cao');this.id(id);const c=await this.db();try{
    const result=await c.query(`SELECT d.*,p.ten_phong,p.ma_phong,h.ten_homestay,
     COALESCE(NULLIF(NULLIF(btrim(d.ten_don),d.ma_dat_phong),''),NULLIF(btrim(n.ho_ten),''),'Chưa có tên khách') AS ten_khach,
     COALESCE(d.so_dien_thoai_dat,n.so_dien_thoai) AS so_dien_thoai,
     co.ten_combo FROM public.dat_phong d JOIN public.phong p ON p.id=d.phong_id
     JOIN public.homestay h ON h.id=d.homestay_id LEFT JOIN public.nguoi_dung n ON n.id=d.nguoi_dung_id
     LEFT JOIN public.combo co ON co.id=d.combo_id WHERE d.id=$1`,[id]);
-   if(!result.rowCount)throw new NotFoundException('Không tìm thấy đơn');return result.rows[0];
+   if(!result.rowCount)throw new NotFoundException('Không tìm thấy đơn');
+   const history=await c.query(`SELECT j.id,j.ngay_tao,j.du_lieu_cu||jsonb_build_object('ten_phong',COALESCE(j.du_lieu_cu->>'ten_phong',p.ten_phong)) AS du_lieu_cu,j.du_lieu_moi||jsonb_build_object('ten_phong',COALESCE(j.du_lieu_moi->>'ten_phong',q.ten_phong)) AS du_lieu_moi FROM public.nhat_ky_don_dat_phong j LEFT JOIN public.phong p ON p.id::text=j.du_lieu_cu->>'phong_id' LEFT JOIN public.phong q ON q.id::text=j.du_lieu_moi->>'phong_id' WHERE j.dat_phong_id=$1 AND j.hanh_dong='sua_tu_lich' AND (j.du_lieu_cu->>'phong_id' IS DISTINCT FROM j.du_lieu_moi->>'phong_id' OR (j.du_lieu_cu->>'nhan_phong_luc')::timestamptz IS DISTINCT FROM (j.du_lieu_moi->>'nhan_phong_luc')::timestamptz OR (j.du_lieu_cu->>'tra_phong_luc')::timestamptz IS DISTINCT FROM (j.du_lieu_moi->>'tra_phong_luc')::timestamptz) ORDER BY j.ngay_tao DESC,j.id DESC LIMIT 20`,[id]);
+   return {...result.rows[0],thay_doi:history.rows};
   }finally{await c.end();}
  }
  async edit(uid:string,id:string,body:unknown){
-  await this.admin.kiemTraQuanTri(uid);this.id(id);
+  await this.admin.kiemTraTrang(uid,'lich|dat-phong');this.id(id);
   if(!body||typeof body!=='object'||Array.isArray(body))throw new BadRequestException('Dữ liệu đơn không hợp lệ');
-  const x=body as Record<string,unknown>,allowed=['ten_khach','ten_don','phong_id','hinh_thuc_dat','nhan_phong_luc','tra_phong_luc','so_khach','tien_phong','so_dien_thoai','ghi_chu'];
+  const x=body as Record<string,unknown>,allowed=['ten_khach','ten_don','phong_id','hinh_thuc_dat','nhan_phong_luc','tra_phong_luc','so_khach','tien_phong','so_dien_thoai','ghi_chu','combo_id'];
   if(Object.keys(x).some(k=>!allowed.includes(k)))throw new BadRequestException('Trường dữ liệu không được phép');
   const guestName=x.ten_khach??x.ten_don;
   const name=typeof guestName==='string'?guestName.trim():'',room=String(x.phong_id||''),kind=String(x.hinh_thuc_dat||'') as HinhThucDat;
@@ -54,21 +56,23 @@ export class DonLichService{
     savedHours=kiemTraCauHinhGio(config.rows[0]?.khung_gio);
     kiemTraThoiGianDat(kind,start,end,savedHours,Number(p.so_gio_toi_thieu));
    }
-   if(d.combo_id&&changedSchedule){const combo=await c.query(COMBO_THEO_PHONG+" AND co.trang_thai='Đang bán' AND (co.bat_dau IS NULL OR co.bat_dau<=$4) AND (co.ket_thuc IS NULL OR co.ket_thuc>=$5) AND (co.so_gio_bao_gom IS NULL OR $6='Theo giờ') FOR SHARE OF co",[d.combo_id,p.homestay_id,room,start.toISOString(),end.toISOString(),kind]);if(!combo.rowCount)throw new BadRequestException('Combo của đơn không áp dụng cho phòng hoặc thời gian mới');}
+   const comboId=x.combo_id===undefined?d.combo_id:x.combo_id;
+   if(comboId&&(changedSchedule||comboId!==d.combo_id)){this.id(String(comboId));const combo=await c.query(COMBO_THEO_PHONG+" AND co.trang_thai='Đang bán' AND (co.bat_dau IS NULL OR co.bat_dau<=$4) AND (co.ket_thuc IS NULL OR co.ket_thuc>=$5) AND (co.so_gio_bao_gom IS NULL OR $6='Theo giờ') FOR SHARE OF co",[comboId,p.homestay_id,room,start.toISOString(),end.toISOString(),kind]);if(!combo.rowCount)throw new BadRequestException('Combo của đơn không áp dụng cho phòng hoặc thời gian mới');}
    const paid=await c.query("SELECT COALESCE(sum(so_tien),0) AS tong FROM public.thanh_toan WHERE dat_phong_id=$1 AND trang_thai='Đã xác nhận'",[id]);
    if(amount+Number(d.tien_dich_vu)-Number(d.tien_giam)<Math.max(Number(d.tien_da_thanh_toan),Number(paid.rows[0]?.tong||0)))throw new ConflictException('Tổng tiền mới thấp hơn tiền đã thu; cần xử lý thanh toán trước');
+   const oldRoom=await c.query('SELECT ten_phong FROM public.phong WHERE id=$1',[d.phong_id]);
    const snapshot={...d.cau_hinh_gia_chot,tien_phong_chot:amount,nguoi_sua_id:uid,gia_moi_gio:p.gia_moi_gio,gia_moi_ngay:p.gia_moi_ngay,gia_moi_dem:p.gia_moi_dem,so_gio_toi_thieu:p.so_gio_toi_thieu,gia_phu_thu_gio:p.gia_phu_thu_gio,khung_gio:savedHours};
    await c.query(`UPDATE public.dat_phong SET ten_don=$2,phong_id=$3,homestay_id=$4,hinh_thuc_dat=$5,
     nhan_phong_luc=$6,tra_phong_luc=$7,so_khach=$8,tien_phong=$9,so_dien_thoai_dat=$10,
     nguoi_dung_id=CASE WHEN so_dien_thoai_dat IS DISTINCT FROM $10 THEN NULL ELSE nguoi_dung_id END,
-    ghi_chu=$11,cau_hinh_gia_chot=$12::jsonb,goi_gia_id=NULL,ngay_cap_nhat=now() WHERE id=$1`,
-    [id,name,room,p.homestay_id,kind,start.toISOString(),end.toISOString(),guests,amount,phone,note,JSON.stringify(snapshot)]);
-   await c.query('INSERT INTO public.nhat_ky_don_dat_phong(dat_phong_id,nguoi_thuc_hien_id,hanh_dong,du_lieu_cu,du_lieu_moi) VALUES($1,$2,$3,$4::jsonb,$5::jsonb)',[id,uid,'sua_tu_lich',JSON.stringify({ten_khach:d.ten_don,phong_id:d.phong_id,nhan_phong_luc:d.nhan_phong_luc,tra_phong_luc:d.tra_phong_luc,tien_phong:d.tien_phong}),JSON.stringify(x)]);
+    ghi_chu=$11,cau_hinh_gia_chot=$12::jsonb,goi_gia_id=NULL,combo_id=$13,ngay_cap_nhat=now() WHERE id=$1`,
+    [id,name,room,p.homestay_id,kind,start.toISOString(),end.toISOString(),guests,amount,phone,note,JSON.stringify(snapshot),comboId||null]);
+   await c.query('INSERT INTO public.nhat_ky_don_dat_phong(dat_phong_id,nguoi_thuc_hien_id,hanh_dong,du_lieu_cu,du_lieu_moi) VALUES($1,$2,$3,$4::jsonb,$5::jsonb)',[id,uid,'sua_tu_lich',JSON.stringify({ten_khach:d.ten_don,ten_phong:oldRoom.rows[0]?.ten_phong,phong_id:d.phong_id,nhan_phong_luc:d.nhan_phong_luc,tra_phong_luc:d.tra_phong_luc,tien_phong:d.tien_phong}),JSON.stringify({...x,ten_phong:p.ten_phong})]);
    await c.query('COMMIT');return {ok:true};
   }catch(e){await c.query('ROLLBACK');this.failure(e);}finally{await c.end();}
  }
  async remove(uid:string,id:string){
-  await this.admin.kiemTraQuanTri(uid);this.id(id);const c=await this.db();try{
+  await this.admin.kiemTraTrang(uid,'lich|dat-phong');this.id(id);const c=await this.db();try{
    await c.query('BEGIN');const r=await c.query('SELECT trang_thai FROM public.dat_phong WHERE id=$1 FOR UPDATE',[id]);
    if(!r.rowCount)throw new NotFoundException('Không tìm thấy đơn');const state=r.rows[0].trang_thai;
    if(!['Chờ thanh toán','Chờ xác nhận','Đã xác nhận'].includes(state))throw new ConflictException('Không xóa khỏi lịch đơn đã nhận/trả phòng hoặc đã hủy');

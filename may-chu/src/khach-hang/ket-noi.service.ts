@@ -72,7 +72,7 @@ export class KetNoiKhachService {
   }
   async staff(c: KhachDb, id: string, branch?: string | null) {
     const r = await c.query(
-      `SELECT EXISTS(SELECT 1 FROM public.nguoi_dung_vai_tro nv JOIN public.vai_tro v ON v.id=nv.vai_tro_id WHERE nv.nguoi_dung_id=$1 AND nv.ngay_thu_hoi IS NULL AND (v.ma_vai_tro='Quản trị hệ thống' AND nv.homestay_id IS NULL OR v.ma_vai_tro IN ('Quản lý','Chăm sóc khách hàng') AND nv.homestay_id=$2)) AS ok`,
+      `SELECT EXISTS(SELECT 1 FROM public.nguoi_dung_vai_tro nv JOIN public.vai_tro v ON v.id=nv.vai_tro_id WHERE nv.nguoi_dung_id=$1 AND nv.ngay_thu_hoi IS NULL AND (v.ma_vai_tro='Quản trị hệ thống' AND nv.homestay_id IS NULL OR 'tin-nhan'=ANY(v.quyen_trang) OR v.ma_vai_tro IN ('Quản lý','Chăm sóc khách hàng') AND nv.homestay_id=$2)) AS ok`,
       [id, branch || null],
     );
     return !!r.rows[0].ok;

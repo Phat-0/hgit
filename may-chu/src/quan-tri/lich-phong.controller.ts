@@ -1,3 +1,4 @@
+import {HienThiLichService} from './hien-thi-lich.service.js';
 import {Body,Controller,Delete,Get,Param,Patch,Post,Query,Req,UseGuards} from '@nestjs/common';
 import type {Request} from 'express';
 import {SupabaseAuthGuard} from '../xac-thuc/supabase-auth.guard.js';
@@ -6,7 +7,9 @@ type Auth=Request & {nguoiDung:{id:string}};
 @Controller('quan-tri/lich-phong')
 @UseGuards(SupabaseAuthGuard)
 export class LichPhongController{
- constructor(private readonly service:LichPhongService){}
+ constructor(private readonly service:LichPhongService,private readonly display:HienThiLichService){}
+ @Get('hien-thi') displaySettings(@Req() r:Auth){return this.display.read(r.nguoiDung.id);}
+ @Patch('hien-thi') saveDisplay(@Req() r:Auth,@Body() b:unknown){return this.display.save(r.nguoiDung.id,b);}
  @Get() calendar(@Req() r:Auth,@Query('homestay_id') branch:string,@Query('bat_dau') a:string,@Query('ket_thuc') b:string){return this.service.calendar(r.nguoiDung.id,branch||'',a,b);}
  @Get('cau-hinh-gio') hourSettings(@Req() r:Auth){return this.service.hourSettings(r.nguoiDung.id);}
  @Patch('cau-hinh-gio') saveHourSettings(@Req() r:Auth,@Body() b:unknown){return this.service.saveHourSettings(r.nguoiDung.id,b);}

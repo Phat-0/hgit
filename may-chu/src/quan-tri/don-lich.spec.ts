@@ -5,7 +5,7 @@ import {DonLichService} from './don-lich.service.js';
 const id='00000000-0000-4000-8000-000000000001';
 function service(state:string){
  const calls:{sql:string;args:unknown[]}[]=[];
- const s=new DonLichService({kiemTraQuanTri:async()=>({duoc_phep:true})} as unknown as QuanTriService);
+ const s=new DonLichService({kiemTraTrang:async()=>({duoc_phep:true})} as unknown as QuanTriService);
  Object.assign(s,{db:async()=>({query:async(sql:string,args:unknown[]=[])=>{calls.push({sql,args});return sql.startsWith('SELECT trang_thai')?{rowCount:1,rows:[{trang_thai:state}]}:{rowCount:1,rows:[]};},end:async()=>{}})});
  return {s,calls};
 }
@@ -23,7 +23,7 @@ describe('Xóa đơn từ lịch',()=>{
   expect(calls.some(c=>c.sql.startsWith('UPDATE'))).toBe(false);
  });
  it('kiểm tra quyền trước khi truy cập đơn',async()=>{
-  const s=new DonLichService({kiemTraQuanTri:async()=>{throw Error('Không có quyền');}} as unknown as QuanTriService);
+  const s=new DonLichService({kiemTraTrang:async()=>{throw Error('Không có quyền');}} as unknown as QuanTriService);
   Object.assign(s,{db:async()=>{throw Error('Không được gọi DB');}});
   await expect(s.remove(id,id)).rejects.toThrow('Không có quyền');
  });

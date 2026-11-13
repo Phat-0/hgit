@@ -165,6 +165,7 @@ await db.exec(
     "utf8",
   ),
 );
+await db.exec(fs.readFileSync(root+'/co-so-du-lieu/migrations/20261113092348_tong_quan_danh_gia_quyen_lich.sql','utf8'));
 const { ChatService } = await import(
   root + "/may-chu/dist/khach-hang/chat.service.js"
 );
@@ -530,7 +531,7 @@ const { TrangChuService, MAC_DINH_TRANG_CHU } = await import(
   root + "/may-chu/dist/quan-tri/trang-chu.service.js"
 );
 const cms = new TrangChuService({
-  kiemTraQuanTri: async (id) => {
+  kiemTraTrang: async (id) => {
     if (id !== admin) throw Error("Forbidden");
   },
 });
@@ -796,7 +797,7 @@ const { TienIchChatService } = await import(
   root + "/may-chu/dist/quan-tri/tien-ich-chat.service.js"
 );
 const utils = new TienIchChatService({
-  kiemTraQuanTri: async (id) => {
+  kiemTraTrang: async (id) => {
     if (id !== admin) throw Error("Forbidden");
   },
 });
@@ -962,4 +963,65 @@ assert.equal(
 console.log(
   "PASS Chat lần 2: tên khách có số tăng/giữ nguyên trong phiên, tên phía khách không lộ nhãn, thứ tự mẫu qua chỉnh sửa và migration lặp, quyền/ID trùng/ID không tồn tại.",
 );
+// Kiểm tra nghiệp vụ mới bằng PostgreSQL thật trong PGlite.
+const { QuanTriService }=await import(root+'/may-chu/dist/quan-tri/quan-tri.service.js');
+const authorization=new QuanTriService();authorization.ketNoi=connection;
+assert.equal((await authorization.truyCap(admin)).quan_tri_he_thong,true);
+await assert.rejects(()=>authorization.truyCap(uid),/chưa được cấp quyền/);
+const {VaiTroService}=await import(root+'/may-chu/dist/quan-tri/vai-tro.service.js');
+const rolesService=new VaiTroService(authorization);rolesService.db=connection;
+await assert.rejects(()=>rolesService.save(uid,undefined,{ten:'Vai trò lạ',trang:['bao-cao']}),/quyền quản trị/);
+await assert.rejects(()=>rolesService.save(admin,undefined,{ten:'Vai trò lạ',trang:['nhan-vien']}),/không hợp lệ/);
+await rolesService.save(admin,undefined,{ten:'Kiểm thử báo cáo',trang:['bao-cao']});
+const reportRole=(await db.query("SELECT id FROM public.vai_tro WHERE ma_vai_tro='Kiểm thử báo cáo'")).rows[0].id;
+await db.query('INSERT INTO public.nguoi_dung_vai_tro(nguoi_dung_id,vai_tro_id,homestay_id) VALUES($1,$2,$3)',[other,reportRole,branch]);
+assert.deepEqual((await authorization.truyCap(other)).trang,['bao-cao']);
+await assert.rejects(()=>authorization.kiemTraTrang(other,'phong'),/không được cấp quyền/);
+const {BaoCaoService}=await import(root+'/may-chu/dist/quan-tri/bao-cao.service.js');
+const reports=new BaoCaoService(authorization);reports.db=connection;
+for(const [i,created,amount,state] of [[0,'2026-12-01T16:59:00Z',100000,'Đã xác nhận'],[1,'2026-12-01T17:01:00Z',200000,'Đã xác nhận'],[2,'2026-12-01T17:02:00Z',300000,'Đã hủy'],[3,'2026-12-01T17:03:00Z',400000,'Chờ xác nhận']]) {
+ await db.query(`INSERT INTO public.dat_phong(ma_dat_phong,ten_don,homestay_id,phong_id,hinh_thuc_dat,nhan_phong_luc,tra_phong_luc,so_khach,trang_thai,tien_phong,ngay_tao) VALUES($1,'Khách báo cáo',$2,$3,'Theo giờ',$4,$5,1,$6,$7,$8)`,['BAOCAO'+i,branch,room2,`2032-03-0${i+1}T08:00:00+07:00`,`2032-03-0${i+1}T10:00:00+07:00`,state,amount,created]);
+}
+const report=await reports.report(other,'2026-12-01','2026-12-03',branch);
+assert.deepEqual(report.theo_ngay.map(x=>x.so_don),[1,3,0]);
+assert.deepEqual(report.theo_ngay.map(x=>Number(x.doanh_thu)),[100000,200000,0]);
+assert.equal(report.theo_ngay[1].so_huy,1);assert.equal(Number(report.da_thu),0);
+assert.equal(report.theo_kieu[0].so_don,4);
+await assert.rejects(()=>reports.report(uid,'2026-12-01','2026-12-03'),/chưa được cấp quyền/);
+await assert.rejects(()=>reports.report(admin,'2026-12-03','2026-12-01'),/khoảng ngày/);
+await assert.rejects(()=>reports.report(admin,'2026-01-01','2028-01-01'),/khoảng ngày/);
+const {HienThiLichService}=await import(root+'/may-chu/dist/quan-tri/hien-thi-lich.service.js');
+const appearance=new HienThiLichService(authorization);appearance.db=connection;
+const display=await appearance.read(admin);
+await appearance.save(admin,{mau:{'Khóa sửa chữa':'#b091da'},trang_thai:['Khóa sửa chữa'],phien_ban:display.phien_ban});
+const anotherDisplay=new HienThiLichService(authorization);anotherDisplay.db=connection;
+assert.equal((await anotherDisplay.read(admin)).mau['Khóa sửa chữa'],'#b091da');
+await assert.rejects(()=>appearance.save(admin,{...display}),/vừa được người khác/);
+await assert.rejects(()=>appearance.save(admin,{mau:{x:'url(evil)'},trang_thai:[],phien_ban:2}),/mã màu/);
+await assert.rejects(()=>appearance.read(other),/không được cấp quyền/);
+await rolesService.save(admin,reportRole,{ten:'Kiểm thử báo cáo',trang:[]});
+await assert.rejects(()=>reports.report(other,'2026-12-01','2026-12-03'),/chưa được cấp quyền/);
+const {DonLichService}=await import(root+'/may-chu/dist/quan-tri/don-lich.service.js');
+const editing=new DonLichService(authorization);editing.db=connection;
+const editId=(await db.query("SELECT id FROM public.dat_phong WHERE ma_dat_phong='BAOCAO0'")).rows[0].id;
+await editing.edit(admin,editId,{ten_khach:'Khách sửa đơn',phong_id:room,hinh_thuc_dat:'Theo giờ',nhan_phong_luc:'2033-03-01T08:00:00+07:00',tra_phong_luc:'2033-03-01T10:00:00+07:00',so_khach:1,tien_phong:200000,so_dien_thoai:'0901234567',ghi_chu:'Đổi phòng và ngày',combo_id:null});
+const editedDetail=await editing.detail(admin,editId);
+assert.equal(editedDetail.phong_id,room);assert.equal(editedDetail.thay_doi.length,1);
+assert.equal(editedDetail.thay_doi[0].du_lieu_cu.phong_id,room2);assert.equal(editedDetail.thay_doi[0].du_lieu_moi.phong_id,room);
+assert.equal(editedDetail.thay_doi[0].du_lieu_cu.ten_phong,'Phòng thử');
+const cmsNow=await cms.read(admin);
+const configUi={ten_web:'Nơi nghỉ',khau_hieu:'Không gian riêng',tieu_de_phong:'Các phòng',mau_nen:'#39205f',mau_nhan:'#7135a3',so_cot:3,anh_ben_trai:true};
+await cms.save(admin,{cau_hinh:{...cmsNow.ban_nhap,giao_dien:configUi},phien_ban:cmsNow.phien_ban,xuat_ban:true});
+assert.deepEqual((await cms.read()).giao_dien,configUi);
+await assert.rejects(()=>cms.save(admin,{cau_hinh:{...cmsNow.ban_nhap,giao_dien:{...configUi,mau_nhan:'url(javascript:evil)'}},phien_ban:cmsNow.phien_ban+1,xuat_ban:false}),/không hợp lệ/);
+const {PhongService}=await import(root+'/may-chu/dist/quan-tri/phong.service.js');
+const roomService=new PhongService(authorization);roomService.db=connection;roomService.storage=()=>({});
+const roomSearch=await roomService.list(admin,'Cao cấp');assert.ok(roomSearch.du_lieu.some(r=>r.id===room));assert.ok(roomSearch.tong_so>=2);
+const overview=await reports.overview(admin,'2026-12');
+assert.equal(overview.theo_ngay.length,31);assert.equal(overview.tong_danh_gia,0);
+await db.exec('SET ROLE authenticated');
+await assert.rejects(()=>db.query("UPDATE public.cau_hinh_hien_thi_lich SET mau='{}' WHERE id=1"),/permission denied/);
+await db.exec('RESET ROLE');
+console.log('PASS Tổng quan/Báo cáo: múi giờ/ngày trống/loại đơn hủy; quyền trang tạo/gán/thu hồi, backend từ chối truy cập; thiết lập đồng bộ và chống ghi đè; lịch sử đổi phòng/ngày và RLS cấu hình.');
+
 await db.close();

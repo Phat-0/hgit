@@ -192,7 +192,7 @@ export class ChatService {
         `SELECT n.id,n.ho_ten AS ten_hien_thi FROM public.nguoi_dung n WHERE n.id<>$1 AND n.trang_thai='Đang hoạt động' AND (
       ($2<>'' AND CASE WHEN regexp_replace(n.so_dien_thoai,'[ .()-]','','g')~'^0[0-9]{9}$' THEN '+84'||substr(regexp_replace(n.so_dien_thoai,'[ .()-]','','g'),2) WHEN n.so_dien_thoai~'^84[0-9]{9}$' THEN '+'||n.so_dien_thoai ELSE n.so_dien_thoai END=$2)
       OR ($2='' AND position($3 in translate(lower(n.ho_ten),'àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ','aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd'))>0 AND (
-        EXISTS(SELECT 1 FROM public.nguoi_dung_vai_tro nv JOIN public.vai_tro v ON v.id=nv.vai_tro_id WHERE nv.nguoi_dung_id=n.id AND nv.ngay_thu_hoi IS NULL AND v.ma_vai_tro IN ('Quản trị hệ thống','Quản lý','Chăm sóc khách hàng'))
+        EXISTS(SELECT 1 FROM public.nguoi_dung_vai_tro nv JOIN public.vai_tro v ON v.id=nv.vai_tro_id WHERE nv.nguoi_dung_id=n.id AND nv.ngay_thu_hoi IS NULL AND (v.ma_vai_tro IN ('Quản trị hệ thống','Quản lý','Chăm sóc khách hàng') OR 'tin-nhan'=ANY(v.quyen_trang)))
         OR EXISTS(SELECT 1 FROM public.thanh_vien_tro_chuyen a JOIN public.thanh_vien_tro_chuyen b ON a.cuoc_tro_chuyen_id=b.cuoc_tro_chuyen_id WHERE a.nguoi_dung_id=$1 AND b.nguoi_dung_id=n.id)
       ))) ORDER BY n.ho_ten,n.id LIMIT 20`,
         [user.id, exact, normal],
@@ -225,7 +225,7 @@ export class ChatService {
         `WITH eligible AS (
         SELECT t.*,h.ten_homestay,n.ho_ten,
         EXISTS(SELECT 1 FROM public.thanh_vien_tro_chuyen m WHERE m.cuoc_tro_chuyen_id=t.id AND m.nguoi_dung_id=$1) AS member,
-        ($1::uuid IS NOT NULL AND t.loai='ho_tro' AND EXISTS(SELECT 1 FROM public.nguoi_dung_vai_tro nv JOIN public.vai_tro v ON v.id=nv.vai_tro_id WHERE nv.nguoi_dung_id=$1 AND nv.ngay_thu_hoi IS NULL AND (v.ma_vai_tro='Quản trị hệ thống' AND nv.homestay_id IS NULL OR v.ma_vai_tro IN ('Quản lý','Chăm sóc khách hàng') AND nv.homestay_id=t.homestay_id))) AS staff
+        ($1::uuid IS NOT NULL AND t.loai='ho_tro' AND EXISTS(SELECT 1 FROM public.nguoi_dung_vai_tro nv JOIN public.vai_tro v ON v.id=nv.vai_tro_id WHERE nv.nguoi_dung_id=$1 AND nv.ngay_thu_hoi IS NULL AND (v.ma_vai_tro='Quản trị hệ thống' AND nv.homestay_id IS NULL OR 'tin-nhan'=ANY(v.quyen_trang) OR v.ma_vai_tro IN ('Quản lý','Chăm sóc khách hàng') AND nv.homestay_id=t.homestay_id))) AS staff
         FROM public.cuoc_tro_chuyen t LEFT JOIN public.homestay h ON h.id=t.homestay_id LEFT JOIN public.nguoi_dung n ON n.id=t.khach_hang_id
       ), items AS (
         SELECT e.id,e.loai,e.trang_thai,e.ngay_cap_nhat,e.ten_homestay,

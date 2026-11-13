@@ -24,7 +24,7 @@ export class TienIchChatService {
     if (!UUID.test(id)) throw new BadRequestException('Mã không hợp lệ');
   }
   async templates(uid: string) {
-    await this.admin.kiemTraQuanTri(uid);
+    await this.admin.kiemTraTrang(uid,'tin-nhan');
     const c = await this.db();
     try {
       return {
@@ -44,7 +44,7 @@ export class TienIchChatService {
     }
   }
   async saveTemplate(uid: string, id: string | undefined, body: unknown) {
-    await this.admin.kiemTraQuanTri(uid);
+    await this.admin.kiemTraTrang(uid,'tin-nhan');
     if (id) this.id(id);
     if (!body || typeof body !== 'object' || Array.isArray(body))
       throw new BadRequestException('Dữ liệu không hợp lệ');
@@ -126,7 +126,7 @@ export class TienIchChatService {
     }
   }
   async reorder(uid: string, body: unknown) {
-    await this.admin.kiemTraQuanTri(uid);
+    await this.admin.kiemTraTrang(uid,'tin-nhan');
     const ids = (body as { ids?: unknown } | null)?.ids;
     if (
       !Array.isArray(ids) ||
@@ -168,7 +168,7 @@ export class TienIchChatService {
     }
   }
   async deleteTemplate(uid: string, id: string) {
-    await this.admin.kiemTraQuanTri(uid);
+    await this.admin.kiemTraTrang(uid,'tin-nhan');
     this.id(id);
     const c = await this.db();
     try {
@@ -194,7 +194,7 @@ export class TienIchChatService {
     }
   }
   async notifications(uid: string, filter = '', offset = 0) {
-    await this.admin.kiemTraQuanTri(uid);
+    await this.admin.kiemTraTrang(uid,'dat-phong');
     if (
       !['', 'Đơn mới', 'Đơn hủy'].includes(filter) ||
       !Number.isInteger(offset) ||
@@ -222,7 +222,7 @@ export class TienIchChatService {
     }
   }
   async readNotification(uid: string, id?: string) {
-    await this.admin.kiemTraQuanTri(uid);
+    await this.admin.kiemTraTrang(uid,'dat-phong');
     if (id) this.id(id);
     const c = await this.db();
     try {

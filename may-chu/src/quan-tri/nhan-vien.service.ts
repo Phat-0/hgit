@@ -9,7 +9,7 @@ import {
 import { Client } from 'pg';
 import { createClient } from '@supabase/supabase-js';
 import { QuanTriService } from './quan-tri.service.js';
-const ROLES = ['Quản lý', 'Chăm sóc khách hàng', 'Nhân viên vệ sinh'];
+const PROTECTED = ['Quản trị hệ thống', 'Khách hàng'];
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 @Injectable()
@@ -66,7 +66,7 @@ export class NhanVienService {
       x.ho_ten.trim().length > 150
     )
       throw new BadRequestException('Tên phải từ 2 đến 150 ký tự');
-    if (typeof x.vai_tro !== 'string' || !ROLES.includes(x.vai_tro))
+    if (typeof x.vai_tro !== 'string' || PROTECTED.includes(x.vai_tro) || x.vai_tro.length > 100)
       throw new BadRequestException('Vai trò nhân viên không hợp lệ');
     if (!['Đang hoạt động', 'Tạm khóa'].includes(String(x.trang_thai)))
       throw new BadRequestException('Trạng thái không hợp lệ');
@@ -97,14 +97,15 @@ export class NhanVienService {
       const r = await c.query(
         `SELECT n.id,n.ho_ten,n.so_dien_thoai,n.trang_thai,a.email,
    coalesce(jsonb_agg(jsonb_build_object('vai_tro',v.ma_vai_tro,'chi_nhanh_id',nv.homestay_id,'ten_chi_nhanh',h.ten_homestay)) FILTER(WHERE nv.ngay_thu_hoi IS NULL),'[]') AS phan_cong
-   FROM public.nguoi_dung n JOIN auth.users a ON a.id=n.id JOIN public.nguoi_dung_vai_tro nv ON nv.nguoi_dung_id=n.id JOIN public.vai_tro v ON v.id=nv.vai_tro_id LEFT JOIN public.homestay h ON h.id=nv.homestay_id WHERE v.ma_vai_tro=ANY($1::text[]) AND ($2::uuid IS NULL OR n.id=$2)
+   FROM public.nguoi_dung n JOIN auth.users a ON a.id=n.id JOIN public.nguoi_dung_vai_tro nv ON nv.nguoi_dung_id=n.id JOIN public.vai_tro v ON v.id=nv.vai_tro_id LEFT JOIN public.homestay h ON h.id=nv.homestay_id WHERE v.ma_vai_tro<>ALL($1::text[]) AND ($2::uuid IS NULL OR n.id=$2)
    GROUP BY n.id,a.email ORDER BY n.ho_ten,n.id LIMIT 1000`,
-        [ROLES, id || null],
+        [PROTECTED, id || null],
       );
       const branches = await c.query(
         'SELECT id,ten_homestay FROM public.homestay ORDER BY ten_homestay',
       );
-      return { du_lieu: r.rows, chi_nhanh: branches.rows };
+      const roles=await c.query("SELECT ma_vai_tro FROM public.vai_tro WHERE ma_vai_tro NOT IN ('Quản trị hệ thống','Khách hàng') ORDER BY ma_vai_tro");
+      return { du_lieu: r.rows, chi_nhanh: branches.rows,vai_tro:roles.rows.map(x=>x.ma_vai_tro) };
     } finally {
       await c.end();
     }
@@ -138,7 +139,7 @@ export class NhanVienService {
       if (branches.rowCount !== x.branches.length)
         throw new BadRequestException('Chi nhánh không tồn tại');
       const role = await c.query(
-        'SELECT id FROM public.vai_tro WHERE ma_vai_tro=$1',
+        "SELECT id FROM public.vai_tro WHERE ma_vai_tro=$1 AND ma_vai_tro NOT IN ('Quản trị hệ thống','Khách hàng')",
         [x.role],
       );
       if (!role.rowCount)
@@ -187,8 +188,8 @@ export class NhanVienService {
         );
       if (updating) {
         const staff = await c.query(
-          'SELECT 1 FROM public.nguoi_dung_vai_tro nv JOIN public.vai_tro v ON v.id=nv.vai_tro_id WHERE nv.nguoi_dung_id=$1 AND v.ma_vai_tro=ANY($2::text[]) LIMIT 1',
-          [id, ROLES],
+          'SELECT 1 FROM public.nguoi_dung_vai_tro nv JOIN public.vai_tro v ON v.id=nv.vai_tro_id WHERE nv.nguoi_dung_id=$1 AND v.ma_vai_tro<>ALL($2::text[]) LIMIT 1',
+          [id, PROTECTED],
         );
         if (!staff.rowCount)
           throw new NotFoundException('Không tìm thấy nhân viên');
@@ -202,8 +203,8 @@ export class NhanVienService {
         [id, x.name, x.phone, x.state],
       );
       await c.query(
-        'UPDATE public.nguoi_dung_vai_tro SET ngay_thu_hoi=now() WHERE nguoi_dung_id=$1 AND ngay_thu_hoi IS NULL AND vai_tro_id IN(SELECT id FROM public.vai_tro WHERE ma_vai_tro=ANY($2::text[]))',
-        [id, ROLES],
+        'UPDATE public.nguoi_dung_vai_tro SET ngay_thu_hoi=now() WHERE nguoi_dung_id=$1 AND ngay_thu_hoi IS NULL AND vai_tro_id IN(SELECT id FROM public.vai_tro WHERE ma_vai_tro<>ALL($2::text[]))',
+        [id, PROTECTED],
       );
       await c.query(
         'INSERT INTO public.nguoi_dung_vai_tro(nguoi_dung_id,vai_tro_id,homestay_id) SELECT $1,$2,unnest($3::uuid[])',
@@ -267,8 +268,8 @@ export class NhanVienService {
       if (p.rowCount)
         throw new ForbiddenException('Không xóa quản trị tại trang này');
       const r = await c.query(
-        'UPDATE public.nguoi_dung_vai_tro SET ngay_thu_hoi=now() WHERE nguoi_dung_id=$1 AND ngay_thu_hoi IS NULL AND vai_tro_id IN(SELECT id FROM public.vai_tro WHERE ma_vai_tro=ANY($2::text[])) RETURNING id',
-        [id, ROLES],
+        'UPDATE public.nguoi_dung_vai_tro SET ngay_thu_hoi=now() WHERE nguoi_dung_id=$1 AND ngay_thu_hoi IS NULL AND vai_tro_id IN(SELECT id FROM public.vai_tro WHERE ma_vai_tro<>ALL($2::text[])) RETURNING id',
+        [id, PROTECTED],
       );
       if (!r.rowCount)
         throw new NotFoundException('Nhân viên đã được gỡ hoặc không tồn tại');

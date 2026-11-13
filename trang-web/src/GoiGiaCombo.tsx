@@ -13,6 +13,7 @@ import ChonGio from "./ChonGio";
 import AnhPhongNoi from "./AnhPhongNoi";
 import NhapTien from "./NhapTien";
 import "./combo.css";
+import "./combo-mo-rong.css";
 type Branch = { id: string; ten_homestay: string };
 type Room = {
   id: string;
@@ -414,6 +415,145 @@ export default function GoiGiaCombo({ token }: { token: string }) {
       setBusy(false);
     }
   }
+  const [columns, setColumns] = useState(
+    window.innerWidth <= 600 ? 1 : window.innerWidth <= 1000 ? 2 : 4,
+  );
+  useEffect(() => {
+    const size = () =>
+      setColumns(
+        window.innerWidth <= 600 ? 1 : window.innerWidth <= 1000 ? 2 : 4,
+      );
+    window.addEventListener("resize", size);
+    return () => window.removeEventListener("resize", size);
+  }, []);
+  function detail(active: Combo) {
+    return (
+      <section id="combo-detail" className="cm-detail cm-detail-centered">
+        <div className="cm-detail-images">
+          {(active.anh?.length
+            ? active.anh
+                .map((image) => image.url)
+                .filter((url): url is string => !!url)
+            : active.anh_dai_dien
+              ? [active.anh_dai_dien]
+              : []
+          ).map((url, index) => (
+            <button
+              type="button"
+              key={url}
+              className="cm-image-button"
+              aria-label={"Phóng to ảnh combo " + (index + 1)}
+              onClick={() => {
+                setLightboxUrl(url);
+                setImageOpen(true);
+              }}
+            >
+              <img src={url} alt={active.ten_combo + " · ảnh " + (index + 1)} />
+              <span>Nhấn để xem ảnh</span>
+            </button>
+          ))}
+          {!active.anh?.length && !active.anh_dai_dien && (
+            <div className="cm-image-empty">Chưa có ảnh chương trình</div>
+          )}
+        </div>
+        <div className="cm-detail-toolbar">
+          <span
+            className={"cm-status " + (ongoing(active) ? "running" : "stopped")}
+          >
+            {ongoing(active)
+              ? "Đang chạy"
+              : active.trang_thai === "Tạm ngưng"
+                ? "Tạm ngưng"
+                : active.bat_dau && new Date(active.bat_dau).getTime() > now
+                  ? "Chưa đến thời gian áp dụng"
+                  : "Đã hết thời gian áp dụng"}
+          </span>
+          <div className="cm-icon-actions">
+            <button
+              type="button"
+              title="Chỉnh sửa combo"
+              aria-label="Chỉnh sửa combo"
+              onClick={() => open("edit", active)}
+            >
+              <Icon kind="edit" />
+            </button>
+            <button
+              type="button"
+              title="Xóa combo"
+              aria-label="Xóa combo"
+              className="cm-danger"
+              onClick={() => {
+                setEditing(active);
+                setFormError("");
+                setModal("delete");
+              }}
+            >
+              <Icon kind="delete" />
+            </button>
+          </div>
+        </div>
+        <dl className="cm-info-grid">
+          <div>
+            <dt>Loại combo</dt>
+            <dd>
+              {active.so_gio_bao_gom
+                ? "Combo giờ · " + active.so_gio_bao_gom + " giờ bao gồm"
+                : "Combo dịch vụ"}
+            </dd>
+          </div>
+          <div>
+            <dt>Trạng thái</dt>
+            <dd>{active.trang_thai}</dd>
+          </div>
+          <div className="cm-validity">
+            <div>
+              <dt>Bắt đầu</dt>
+              <dd>{displayTime(active.bat_dau)}</dd>
+            </div>
+            <div>
+              <dt>Kết thúc</dt>
+              <dd>{displayTime(active.ket_thuc)}</dd>
+            </div>
+          </div>
+          <div>
+            <dt>Chi nhánh</dt>
+            <dd>
+              {active.pham_vi === "toan_he_thong"
+                ? "Toàn hệ thống"
+                : branches
+                    .filter((b) => branchIds(active).includes(b.id))
+                    .map((b) => b.ten_homestay)
+                    .join(", ") || "Chưa chọn"}
+            </dd>
+          </div>
+          <div>
+            <dt>Phòng áp dụng</dt>
+            <dd>
+              {active.pham_vi === "phong"
+                ? rooms
+                    .filter((r) => active.phong_ids.includes(r.id))
+                    .map(
+                      (r) =>
+                        (branches.find((b) => b.id === r.homestay_id)
+                          ?.ten_homestay || "") +
+                        " · " +
+                        r.ten_phong +
+                        " (" +
+                        r.ma_phong +
+                        ")",
+                    )
+                    .join(", ")
+                : "Tất cả phòng trong phạm vi chi nhánh"}
+            </dd>
+          </div>
+          <div className="cm-info-description">
+            <dt>Chi tiết</dt>
+            <dd>{active.mo_ta || "Chưa có mô tả"}</dd>
+          </div>
+        </dl>
+      </section>
+    );
+  }
   return (
     <section className="gc-page combo-page">
       <header className="cm-header">
@@ -502,42 +642,71 @@ export default function GoiGiaCombo({ token }: { token: string }) {
       )}
       <div className="cm-gallery">
         <div className="cm-cards" ref={grid} aria-busy={loading}>
-          {filtered.map((c) => (
-            <button
-              data-combo={c.id}
-              key={c.id}
-              className={"cm-card" + (selected === c.id ? " cm-chosen" : "")}
-              aria-expanded={modal === "view" && selected === c.id}
-              aria-controls="combo-detail"
-              onClick={() => {
-                setSelected(c.id);
-                setModal("view");
-              }}
-            >
-              <div className="cm-photo">
-                {c.anh_dai_dien ? (
-                  <img src={c.anh_dai_dien} alt="" loading="lazy" />
-                ) : (
-                  <span className="cm-placeholder">COMBO</span>
-                )}
-                <span
-                  className={"cm-live " + (ongoing(c) ? "running" : "stopped")}
-                  title={ongoing(c) ? "Đang chạy" : "Không hoạt động"}
-                  aria-label={ongoing(c) ? "Đang chạy" : "Không hoạt động"}
-                >
-                  {ongoing(c) ? "✓" : "●"}
-                </span>
-                <div className="cm-overlay">
-                  <strong>{c.ten_combo}</strong>
-                  <b>{money(c.gia_combo)}</b>
-                  <small>
-                    {c.so_gio_bao_gom
-                      ? c.so_gio_bao_gom + " giờ"
-                      : "Combo dịch vụ"}
-                  </small>
-                </div>
-              </div>
-            </button>
+          {Array.from({ length: columns }, (_, column) => (
+            <div className="cm-column" key={column}>
+              {filtered
+                .filter((_, index) => index % columns === column)
+                .map((c) => (
+                  <div className="cm-card-stack" key={c.id}>
+                    <button
+                      data-combo={c.id}
+                      key={c.id}
+                      className={
+                        "cm-card" + (selected === c.id ? " cm-chosen" : "")
+                      }
+                      aria-expanded={selected === c.id}
+                      aria-controls="combo-detail"
+                      onClick={() => {
+                        setSelected(selected === c.id ? null : c.id);
+                      }}
+                    >
+                      <div className="cm-photo">
+                        {c.anh_dai_dien ? (
+                          <img src={c.anh_dai_dien} alt="" loading="lazy" />
+                        ) : (
+                          <span className="cm-placeholder">COMBO</span>
+                        )}
+                        <span
+                          className={
+                            "cm-live " + (ongoing(c) ? "running" : "stopped")
+                          }
+                          title={ongoing(c) ? "Đang chạy" : "Không hoạt động"}
+                          aria-label={
+                            ongoing(c) ? "Đang chạy" : "Không hoạt động"
+                          }
+                        >
+                          {ongoing(c) ? "✓" : "●"}
+                        </span>
+                        <div className="cm-overlay">
+                          <strong>{c.ten_combo}</strong>
+                          <b>{money(c.gia_combo)}</b>
+                          <small>
+                            {c.so_gio_bao_gom
+                              ? c.so_gio_bao_gom + " giờ"
+                              : "Combo dịch vụ"}
+                          </small>
+                        </div>
+                      </div>
+                    </button>
+                    {selected === c.id && (
+                      <div className="cm-inline-detail">
+                        <header>
+                          <strong>
+                            {c.ten_combo} · {money(c.gia_combo)}
+                          </strong>
+                          <button
+                            aria-label="Thu gọn chi tiết combo"
+                            onClick={() => setSelected(null)}
+                          >
+                            ×
+                          </button>
+                        </header>
+                        {detail(c)}
+                      </div>
+                    )}
+                  </div>
+                ))}
+            </div>
           ))}
           {!filtered.length && !error && (
             <div className="cm-empty">
@@ -602,145 +771,7 @@ export default function GoiGiaCombo({ token }: { token: string }) {
               </header>
               {modal === "view" ? (
                 active ? (
-                  <section
-                    id="combo-detail"
-                    className="cm-detail cm-detail-centered"
-                  >
-                    <div className="cm-detail-images">
-                      {(active.anh?.length
-                        ? active.anh
-                            .map((image) => image.url)
-                            .filter((url): url is string => !!url)
-                        : active.anh_dai_dien
-                          ? [active.anh_dai_dien]
-                          : []
-                      ).map((url, index) => (
-                        <button
-                          type="button"
-                          key={url}
-                          className="cm-image-button"
-                          aria-label={"Phóng to ảnh combo " + (index + 1)}
-                          onClick={() => {
-                            setLightboxUrl(url);
-                            setImageOpen(true);
-                          }}
-                        >
-                          <img
-                            src={url}
-                            alt={active.ten_combo + " · ảnh " + (index + 1)}
-                          />
-                          <span>Nhấn để xem ảnh</span>
-                        </button>
-                      ))}
-                      {!active.anh?.length && !active.anh_dai_dien && (
-                        <div className="cm-image-empty">
-                          Chưa có ảnh chương trình
-                        </div>
-                      )}
-                    </div>
-                    <div className="cm-detail-toolbar">
-                      <span
-                        className={
-                          "cm-status " +
-                          (ongoing(active) ? "running" : "stopped")
-                        }
-                      >
-                        {ongoing(active)
-                          ? "Đang chạy"
-                          : active.trang_thai === "Tạm ngưng"
-                            ? "Tạm ngưng"
-                            : active.bat_dau &&
-                                new Date(active.bat_dau).getTime() > now
-                              ? "Chưa đến thời gian áp dụng"
-                              : "Đã hết thời gian áp dụng"}
-                      </span>
-                      <div className="cm-icon-actions">
-                        <button
-                          type="button"
-                          title="Chỉnh sửa combo"
-                          aria-label="Chỉnh sửa combo"
-                          onClick={() => open("edit", active)}
-                        >
-                          <Icon kind="edit" />
-                        </button>
-                        <button
-                          type="button"
-                          title="Xóa combo"
-                          aria-label="Xóa combo"
-                          className="cm-danger"
-                          onClick={() => {
-                            setEditing(active);
-                            setFormError("");
-                            setModal("delete");
-                          }}
-                        >
-                          <Icon kind="delete" />
-                        </button>
-                      </div>
-                    </div>
-                    <dl className="cm-info-grid">
-                      <div>
-                        <dt>Loại combo</dt>
-                        <dd>
-                          {active.so_gio_bao_gom
-                            ? "Combo giờ · " +
-                              active.so_gio_bao_gom +
-                              " giờ bao gồm"
-                            : "Combo dịch vụ"}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>Trạng thái</dt>
-                        <dd>{active.trang_thai}</dd>
-                      </div>
-                      <div className="cm-validity">
-                        <div>
-                          <dt>Bắt đầu</dt>
-                          <dd>{displayTime(active.bat_dau)}</dd>
-                        </div>
-                        <div>
-                          <dt>Kết thúc</dt>
-                          <dd>{displayTime(active.ket_thuc)}</dd>
-                        </div>
-                      </div>
-                      <div>
-                        <dt>Chi nhánh</dt>
-                        <dd>
-                          {active.pham_vi === "toan_he_thong"
-                            ? "Toàn hệ thống"
-                            : branches
-                                .filter((b) => branchIds(active).includes(b.id))
-                                .map((b) => b.ten_homestay)
-                                .join(", ") || "Chưa chọn"}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>Phòng áp dụng</dt>
-                        <dd>
-                          {active.pham_vi === "phong"
-                            ? rooms
-                                .filter((r) => active.phong_ids.includes(r.id))
-                                .map(
-                                  (r) =>
-                                    (branches.find(
-                                      (b) => b.id === r.homestay_id,
-                                    )?.ten_homestay || "") +
-                                    " · " +
-                                    r.ten_phong +
-                                    " (" +
-                                    r.ma_phong +
-                                    ")",
-                                )
-                                .join(", ")
-                            : "Tất cả phòng trong phạm vi chi nhánh"}
-                        </dd>
-                      </div>
-                      <div className="cm-info-description">
-                        <dt>Chi tiết</dt>
-                        <dd>{active.mo_ta || "Chưa có mô tả"}</dd>
-                      </div>
-                    </dl>
-                  </section>
+                  detail(active)
                 ) : (
                   <p className="cm-alert">
                     Combo không còn trong danh sách. Hãy đóng và làm mới.
