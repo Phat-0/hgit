@@ -1,3 +1,5 @@
+import {ThuChiController} from './thu-chi.controller.js';
+import {ThuChiService} from './thu-chi.service.js';
 import {TepVaChatDonService} from './tep-va-chat-don.service.js';
 import {HienThiLichService} from './hien-thi-lich.service.js';
 import {BaoCaoController} from './bao-cao.controller.js';
@@ -32,7 +34,7 @@ import { LichPhongService } from './lich-phong.service.js';
 
 @Module({
   imports: [XacThucModule],
-  controllers: [BaoCaoController,VaiTroController,
+  controllers: [ThuChiController,BaoCaoController,VaiTroController,
     TienIchChatController,
     TrangChuController,
     TrangChuKhachController,
@@ -45,7 +47,7 @@ import { LichPhongService } from './lich-phong.service.js';
     LichPhongController,
     DonLichController,
   ],
-  providers: [TepVaChatDonService,HienThiLichService,BaoCaoService,VaiTroService,
+  providers: [ThuChiService,TepVaChatDonService,HienThiLichService,BaoCaoService,VaiTroService,
     TienIchChatService,
     TrangChuService,
     NhanVienService,

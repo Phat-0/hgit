@@ -131,7 +131,7 @@ export class BaoCaoService {
     const c = await this.db();
     try {
       const stats = await c.query(
-        `SELECT (SELECT count(*)::int FROM public.homestay) AS tong_homestay,(SELECT count(*)::int FROM public.phong) AS tong_phong,(SELECT count(*)::int FROM public.nguoi_dung) AS tong_nguoi_dung,(SELECT count(*)::int FROM public.dat_phong) AS tong_dat_phong,(SELECT count(*)::int FROM public.danh_gia) AS tong_danh_gia,(SELECT count(*)::int FROM public.danh_gia WHERE ngay_tao >= date_trunc('week',now() AT TIME ZONE 'Asia/Ho_Chi_Minh') AT TIME ZONE 'Asia/Ho_Chi_Minh') AS danh_gia_tuan`,
+        `SELECT (SELECT count(*)::int FROM public.homestay) AS tong_homestay,(SELECT count(*)::int FROM public.phong) AS tong_phong,(SELECT count(*)::int FROM public.nguoi_dung) AS tong_nguoi_dung,(SELECT count(*)::int FROM public.dat_phong) AS tong_dat_phong,(SELECT count(*)::int FROM public.danh_gia) AS tong_danh_gia,(SELECT coalesce(round(avg(so_sao)::numeric,1),0) FROM public.danh_gia) AS sao_trung_binh,(SELECT count(*)::int FROM public.danh_gia WHERE ngay_tao >= date_trunc('week',now() AT TIME ZONE 'Asia/Ho_Chi_Minh') AT TIME ZONE 'Asia/Ho_Chi_Minh') AS danh_gia_tuan`,
       );
       const change = await c.query(
         `SELECT coalesce(sum(tong_tien) FILTER(WHERE (ngay_tao AT TIME ZONE 'Asia/Ho_Chi_Minh')::date=$1::date),0)-coalesce(sum(tong_tien) FILTER(WHERE (ngay_tao AT TIME ZONE 'Asia/Ho_Chi_Minh')::date=$1::date-1),0) AS chenh_lech FROM public.dat_phong WHERE trang_thai IN ('Đã xác nhận','Đã nhận phòng','Đã trả phòng') AND ngay_tao >= ($1::date-1) AT TIME ZONE 'Asia/Ho_Chi_Minh'`,

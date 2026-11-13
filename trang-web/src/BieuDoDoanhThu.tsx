@@ -37,8 +37,8 @@ export default function BieuDoDoanhThu({
           <div
             className="dt-columns"
             style={{
-              gridTemplateColumns: `repeat(${Math.max(1, data.length)},minmax(48px,1fr))`,
-              minWidth: Math.max(280, data.length * 48),
+              gridTemplateColumns: `repeat(${Math.max(1, data.length)},minmax(84px,1fr))`,
+              minWidth: Math.max(280, data.length * 84),
             }}
           >
             {data.map((d) => (
@@ -55,13 +55,13 @@ export default function BieuDoDoanhThu({
                     style={{ height: (d.money / max) * 170 }}
                   >
                     <span className="dt-money">{gon(d.money)} đ</span>
-                    <span
-                      className={
-                        "dt-count " + (d.money === 0 ? "dt-count-zero" : "")
-                      }
-                    >
-                      {d.count} đơn
-                    </span>
+                  </span>
+                  <span
+                    className={
+                      "dt-count " + (d.money === 0 ? "dt-count-zero" : "")
+                    }
+                  >
+                    {d.count}
                   </span>
                 </span>
                 <span className="dt-label">{d.label}</span>
@@ -71,7 +71,7 @@ export default function BieuDoDoanhThu({
         </div>
       </div>
       <small>
-        Độ cao: doanh thu · Trong cột: số đơn · Trỏ chuột để xem số tiền đầy đủ.
+        Độ cao: doanh thu · Dưới cột: số đơn · Trỏ chuột để xem số tiền đầy đủ.
       </small>
       {!data.length && <p>Chưa có dữ liệu trong khoảng này.</p>}
     </figure>

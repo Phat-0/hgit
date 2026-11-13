@@ -67,10 +67,10 @@ export default function TongQuan({ token, onGo }: { token: string; onGo: Go }) {
     },
     {
       ten: "Đánh giá",
-      so: data.tong_danh_gia,
+      so: Number(data.sao_trung_binh||0).toLocaleString('vi-VN')+' / 5',
       icon: "◷",
       tone: "orange",
-      note: data.danh_gia_tuan + " đánh giá mới tuần này",
+      note: data.tong_danh_gia+" đánh giá · "+data.danh_gia_tuan + " mới tuần này",
       go: () => onGo("danh-gia"),
     },
   ];

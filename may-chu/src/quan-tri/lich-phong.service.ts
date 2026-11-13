@@ -49,7 +49,7 @@ export class LichPhongService{
  }
  async bookingOptions(uid:string){
   await this.admin.kiemTraTrang(uid,'lich|dat-phong');const c=await this.db();try{
-   const rooms=await c.query("SELECT p.*,h.ten_homestay,lp.ten_loai,lp.suc_chua FROM public.phong p JOIN public.homestay h ON h.id=p.homestay_id JOIN public.loai_phong lp ON lp.id=p.loai_phong_id WHERE h.trang_thai='Đang hoạt động' AND p.trang_thai_van_hanh NOT IN ('Bảo trì','Bị khóa') ORDER BY h.ten_homestay,p.ma_phong LIMIT 500");
+   const rooms=await c.query("SELECT p.*,h.ten_homestay,lp.ten_loai,lp.suc_chua FROM public.phong p JOIN public.homestay h ON h.id=p.homestay_id JOIN public.loai_phong lp ON lp.id=p.loai_phong_id WHERE h.trang_thai='Đang hoạt động' AND "+TRANG_THAI_PHONG+"='Trống' ORDER BY h.ten_homestay,p.ma_phong LIMIT 500");
    const combos=await c.query("SELECT co.id,co.homestay_id,co.ten_combo,co.gia_combo,co.so_gio_bao_gom,co.pham_vi,co.bat_dau,co.ket_thuc,ARRAY(SELECT homestay_id FROM public.combo_chi_nhanh WHERE combo_id=co.id) AS chi_nhanh_ids,ARRAY(SELECT phong_id FROM public.combo_phong WHERE combo_id=co.id) AS phong_ids FROM public.combo co WHERE co.trang_thai='Đang bán' ORDER BY co.ten_combo");
    const config=await c.query('SELECT khung_gio FROM public.cau_hinh_gio_dat_phong WHERE id=1');
    return {rooms:rooms.rows,combos:combos.rows,cau_hinh_gio:kiemTraCauHinhGio(config.rows[0]?.khung_gio)};
@@ -80,10 +80,11 @@ export class LichPhongService{
   const paidAmount=soTienDaGhiNhan(payment,x.tien_da_thanh_toan,amount);
   const c=await this.db();try{
    await c.query('BEGIN');
-   const selected=await c.query('SELECT p.*,l.suc_chua,h.trang_thai AS trang_thai_chi_nhanh FROM public.phong p JOIN public.loai_phong l ON l.id=p.loai_phong_id JOIN public.homestay h ON h.id=p.homestay_id WHERE p.id=$1 FOR UPDATE OF p',[room]);
+   const selected=await c.query('SELECT p.*,'+TRANG_THAI_PHONG+' AS trang_thai_hien_thi,l.suc_chua,h.trang_thai AS trang_thai_chi_nhanh FROM public.phong p JOIN public.loai_phong l ON l.id=p.loai_phong_id JOIN public.homestay h ON h.id=p.homestay_id WHERE p.id=$1 FOR UPDATE OF p',[room]);
    if(!selected.rowCount)throw new BadRequestException('Không tìm thấy phòng');
    const o=selected.rows[0],flag=kind==='Theo giờ'?'cho_dat_theo_gio':kind==='Theo ngày'?'cho_dat_theo_ngay':'cho_dat_theo_dem';
-   if(!o[flag]||o.trang_thai_chi_nhanh!=='Đang hoạt động'||['Bảo trì','Bị khóa'].includes(o.trang_thai_van_hanh))throw new BadRequestException('Phòng không nhận đặt theo hình thức này');
+   if((o.trang_thai_hien_thi||o.trang_thai_van_hanh)!=='Trống')throw new ConflictException('Chỉ đặt được đơn khi phòng trống; hãy hoàn tất vệ sinh hoặc mở khóa trước');
+   if(!o[flag]||o.trang_thai_chi_nhanh!=='Đang hoạt động')throw new BadRequestException('Phòng không nhận đặt theo hình thức này');
    if(guests>o.suc_chua)throw new BadRequestException('Số khách vượt sức chứa loại phòng');
    const config=await c.query('SELECT khung_gio FROM public.cau_hinh_gio_dat_phong WHERE id=1 FOR SHARE');
    const hours=kiemTraCauHinhGio(config.rows[0]?.khung_gio);

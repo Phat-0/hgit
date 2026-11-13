@@ -95,6 +95,7 @@ export type Overview = Report & {
   tong_dat_phong: number;
   tong_nguoi_dung: number;
   tong_danh_gia: number;
+  sao_trung_binh: string;
   danh_gia_tuan: number;
   chenh_lech_hom_qua: string;
   danh_gia_moi: Review[];

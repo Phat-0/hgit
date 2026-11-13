@@ -831,7 +831,8 @@ export default function LichPhong({ token }: { token: string }) {
         .filter((x) => x.phong_id === room.id)
         .map((x) => ({
           ...x,
-          group:x.trang_thai_thanh_toan||'Chưa thanh toán',
+          group:x.trang_thai_phong||'Bị khóa',
+          isLock:true,
           label:
             (x.ten_khach || x.ly_do || "Khóa lịch") +
             (x.gia_ghi_nhan != null && Number(x.gia_ghi_nhan) > 0
@@ -844,6 +845,7 @@ export default function LichPhong({ token }: { token: string }) {
         .map((x) => ({
           ...x,
           group: x.trang_thai_thanh_toan || "Chưa thanh toán",
+          isLock:false,
           label: x.ten_don || x.ten_khach || x.ma_dat_phong || "Đặt phòng",
         })),
     ];
@@ -852,6 +854,7 @@ export default function LichPhong({ token }: { token: string }) {
       .map((x) => ({
         id: x.id,
         group: x.group,
+        isLock:x.isLock,
         label: x.label,
         ...viTriDoanLich(
           new Date(x.bat_dau).getTime(),
@@ -1064,7 +1067,7 @@ export default function LichPhong({ token }: { token: string }) {
                         colSpan={cell.count}
                         className="lp-day-slot"
                       >
-                        <div className="lp-day-stack">{cell.items.length?cell.items.map(item=><button type="button" className="lp-day-click" key={item.id} title={new Date(item.bat_dau).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})+' → '+new Date(item.ket_thuc).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})} onClick={()=>{const lock=data.khoa.find(k=>k.id===item.id);if(lock)editLock(lock);else setBookingDetail(item.id)}}><span className="lp-booking-pill" style={{background:tone(item.trang_thai_thanh_toan||'Chưa thanh toán',true),color:contrastText(tone(item.trang_thai_thanh_toan||'Chưa thanh toán',true))}}><NoiDungLich item={item} lock={data.khoa.some(k=>k.id===item.id)}/></span></button>):<button className="lp-day-click" title="Tạo đơn hoặc khóa lịch" onClick={()=>select(room,cell.date)}/>}</div>
+                        <div className="lp-day-stack">{cell.items.length?cell.items.map(item=><button type="button" className="lp-day-click" key={item.id} title={new Date(item.bat_dau).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})+' → '+new Date(item.ket_thuc).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})} onClick={()=>{const lock=data.khoa.find(k=>k.id===item.id);if(lock)editLock(lock);else setBookingDetail(item.id)}}><span className="lp-booking-pill lp-event-card" style={{background:tone(data.khoa.some(k=>k.id===item.id)?item.trang_thai_phong||'Bị khóa':item.trang_thai_thanh_toan||'Chưa thanh toán',!data.khoa.some(k=>k.id===item.id)),color:contrastText(tone(data.khoa.some(k=>k.id===item.id)?item.trang_thai_phong||'Bị khóa':item.trang_thai_thanh_toan||'Chưa thanh toán',!data.khoa.some(k=>k.id===item.id)))}}><NoiDungLich item={item} lock={data.khoa.some(k=>k.id===item.id)}/></span></button>):<button className="lp-day-click" title="Tạo đơn hoặc khóa lịch" onClick={()=>select(room,cell.date)}/>}</div>
                       </td>
                     ))
                   ) : (
@@ -1092,12 +1095,12 @@ export default function LichPhong({ token }: { token: string }) {
                           <button
                             key={x.id}
                             type="button"
-                            className="lp-span"
+                            className="lp-span lp-event-card"
                             style={{
                               left: x.left + "%",
                               width: x.width + "%",
-                              background: tone(x.group,true),
-                              color:contrastText(tone(x.group,true)),
+                              background: tone(x.group,!x.isLock),
+                              color:contrastText(tone(x.group,!x.isLock)),
                             }}
                             title={
                               x.label +
@@ -1491,7 +1494,7 @@ export default function LichPhong({ token }: { token: string }) {
                 ×
               </button>
             </div>
-            {!editingBlock&&<div className="lp-create-switch"><button className={createMode==='don'?'active':''} onClick={()=>setCreateMode('don')}>Tạo đơn đặt phòng</button><button className={createMode==='khoa'?'active':''} onClick={()=>setCreateMode('khoa')}>Khóa lịch</button></div>}
+            {!editingBlock&&<div className="lp-create-switch"><button className={createMode==='don'?'active':''} disabled={(selected.room.trang_thai_hien_thi||selected.room.trang_thai_van_hanh||'Trống')!=='Trống'} title={(selected.room.trang_thai_hien_thi||selected.room.trang_thai_van_hanh||'Trống')!=='Trống'?'Chỉ đặt được khi phòng trống':'Tạo đơn đặt phòng'} onClick={()=>setCreateMode('don')}>Tạo đơn đặt phòng</button><button className={createMode==='khoa'?'active':''} onClick={()=>setCreateMode('khoa')}>Khóa lịch</button></div>}
             {!editingBlock&&createMode==='don'?<FormDonDatPhong embedded token={token} seed={{phong_id:selected.room.id,date:selected.date,kind:mode==='ngay'?'ngay':'gio',time:mode==='chi-tiet'?from:undefined}} onClose={()=>setSelected(null)} onSaved={load}/>: (            editingBlock && !lockEditMode ? (
               <div className="lp-lock-details">
                 <div>

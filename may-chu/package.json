@@ -29,7 +29,8 @@
     "db:chat-tien-ich": "node --use-system-ca scripts/chat-tien-ich.mjs",
     "db:chat-bo-cuc": "node --use-system-ca scripts/chat-bo-cuc.mjs",
     "db:quan-tri-mo-rong": "node --use-system-ca scripts/quan-tri-mo-rong.mjs",
-    "db:lich-don-trang-thai": "node --use-system-ca scripts/lich-don-trang-thai.mjs"
+    "db:lich-don-trang-thai": "node --use-system-ca scripts/lich-don-trang-thai.mjs",
+    "db:so-thu-chi": "node --use-system-ca scripts/so-thu-chi.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",

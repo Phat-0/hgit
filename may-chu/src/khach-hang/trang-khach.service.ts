@@ -1,3 +1,4 @@
+import {TRANG_THAI_PHONG} from '../quan-tri/trang-thai-phong.sql.js';
 import {
   BadRequestException,
   ConflictException,
@@ -16,7 +17,7 @@ import {
   type HinhThucDat,
 } from '../quan-tri/khung-gio.js';
 import { COMBO_THEO_PHONG } from '../quan-tri/combo.input.js';
-const ROOM = `SELECT p.*,h.ten_homestay,h.dia_chi,h.tinh_thanh,l.ten_loai,l.mo_ta,l.suc_chua,l.dien_tich_m2 FROM public.phong p JOIN public.homestay h ON h.id=p.homestay_id JOIN public.loai_phong l ON l.id=p.loai_phong_id WHERE h.trang_thai='Đang hoạt động' AND p.trang_thai_van_hanh NOT IN ('Bảo trì','Bị khóa')`;
+const ROOM = `SELECT p.*,h.ten_homestay,h.dia_chi,h.tinh_thanh,l.ten_loai,l.mo_ta,l.suc_chua,l.dien_tich_m2 FROM public.phong p JOIN public.homestay h ON h.id=p.homestay_id JOIN public.loai_phong l ON l.id=p.loai_phong_id WHERE h.trang_thai='Đang hoạt động' AND ${TRANG_THAI_PHONG}='Trống'`;
 @Injectable()
 export class TrangKhachService {
   constructor(private readonly conn: KetNoiKhachService) {}

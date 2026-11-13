@@ -1,3 +1,4 @@
+import {TRANG_THAI_PHONG} from './trang-thai-phong.sql.js';
 import {soTienDaGhiNhan} from './thanh-toan-don.js';
 import {COMBO_THEO_PHONG} from './combo.input.js';
 import {BadRequestException,ConflictException,Injectable,NotFoundException} from '@nestjs/common';
@@ -50,11 +51,12 @@ export class DonLichService{
    if(target==='Chờ thanh toán'&&!d.het_han_giu_cho)throw new BadRequestException('Không thể đổi về Chờ thanh toán khi đơn không có hạn giữ chỗ');
    const changedSchedule=room!==d.phong_id||kind!==d.hinh_thuc_dat||start.getTime()!==new Date(d.nhan_phong_luc).getTime()||end.getTime()!==new Date(d.tra_phong_luc).getTime();
    if(changedSchedule&&start.getTime()<Date.now()-60000)throw new BadRequestException('Không chuyển đơn sang giờ nhận phòng đã qua');
-   const rooms=await c.query('SELECT p.*,l.suc_chua,h.trang_thai AS trang_thai_chi_nhanh FROM public.phong p JOIN public.loai_phong l ON l.id=p.loai_phong_id JOIN public.homestay h ON h.id=p.homestay_id WHERE p.id=$1 FOR UPDATE OF p',[room]);
+   const rooms=await c.query('SELECT p.*,'+TRANG_THAI_PHONG+' AS trang_thai_hien_thi,l.suc_chua,h.trang_thai AS trang_thai_chi_nhanh FROM public.phong p JOIN public.loai_phong l ON l.id=p.loai_phong_id JOIN public.homestay h ON h.id=p.homestay_id WHERE p.id=$1 FOR UPDATE OF p',[room]);
    if(!rooms.rowCount)throw new BadRequestException('Không tìm thấy phòng');const p=rooms.rows[0];
    if(guests>p.suc_chua)throw new BadRequestException('Số khách vượt sức chứa phòng');
    let savedHours=d.cau_hinh_gia_chot?.khung_gio;
    if(changedSchedule){
+    if((p.trang_thai_hien_thi||p.trang_thai_van_hanh)!=="Trống")throw new ConflictException("Chỉ chuyển lịch đặt sang phòng đang trống");
     const flag=kind==='Theo giờ'?'cho_dat_theo_gio':kind==='Theo ngày'?'cho_dat_theo_ngay':'cho_dat_theo_dem';
     if(!p[flag]||p.trang_thai_chi_nhanh!=='Đang hoạt động'||['Bảo trì','Bị khóa'].includes(p.trang_thai_van_hanh))throw new BadRequestException('Phòng không nhận đặt theo hình thức này');
     const config=await c.query('SELECT khung_gio FROM public.cau_hinh_gio_dat_phong WHERE id=1 FOR SHARE');
