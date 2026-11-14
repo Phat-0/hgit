@@ -3,3 +3,4 @@ body>.lp-range-dual.lp-range-portal{position:fixed!important;right:auto!importan
 .lp-range-portal button{cursor:pointer}
 .lp-range-portal .lp-calendar-month{min-width:0}
 @media(max-width:540px){body>.lp-range-portal .lp-calendar-pair{display:grid;grid-template-columns:1fr;gap:16px}}
+.lp-range-portal .lp-range-quick-month{display:flex;align-items:end;justify-content:space-between;gap:12px;padding:10px 12px;margin:4px 0 12px;border-radius:10px;background:#f4edfb;border:1px solid #e6d9f0}.lp-range-quick-month label{display:flex;flex-direction:column;gap:5px;margin:0;color:#73558b;font-size:11px}.lp-range-quick-month input[type=month]{width:165px;max-width:100%;padding:6px 8px;background:white;color:#543668;border:1px solid #d9c3e9;border-radius:7px;font:inherit}.lp-range-quick-month button{padding:8px 12px;background:#9566bd;color:#fff;border:0;border-radius:7px;font-size:12px;white-space:nowrap}.lp-range-quick-month button:disabled{opacity:.45;cursor:default}

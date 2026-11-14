@@ -14,6 +14,7 @@ Object.assign(globalThis, {
   FormData: dom.window.FormData,
   File: dom.window.File,
   IS_REACT_ACT_ENVIRONMENT: true,
+  ResizeObserver:class{observe(){} disconnect(){}},
 });
 window.confirm = () => true;
 dom.window.HTMLElement.prototype.scrollIntoView = () => {};
@@ -542,7 +543,7 @@ await click(document.querySelector('.qt-stats>[role=button]'));assert.equal(goCa
 await act(async()=>root.unmount());root=createRoot(document.getElementById('root')!);
 await act(async()=>root.render(<BaoCao token="admin" onGo={go}/>));await wait();
 assert.equal(document.querySelectorAll('.stc-sheet tbody tr').length,2);
-assert.equal(document.querySelectorAll('.stc-sheet th').length,8);assert.equal(document.querySelector('.stc-row-actions'),null);assert.ok(document.querySelector('.stc-add-row'));assert.equal([...document.querySelectorAll('button')].some(e=>e.textContent==='Thay đổi'),false);
+assert.equal(document.querySelectorAll('.stc-sheet th').length,9);assert.equal(document.querySelector('.stc-row-actions'),null);assert.ok(document.querySelector('.stc-add-row'));assert.equal([...document.querySelectorAll('button')].some(e=>e.textContent==='Thay đổi'),false);
 await edit(document.querySelector('[aria-label="Tiền tồn đầu tháng"]') as HTMLInputElement,'1500');assert.ok([...document.querySelectorAll('button')].some(e=>e.textContent==='Thay đổi'));await edit(document.querySelector('[aria-label="Tiền tồn đầu tháng"]') as HTMLInputElement,'1000');assert.equal([...document.querySelectorAll('button')].some(e=>e.textContent==='Thay đổi'),false);
 
 const {csvThuChi,xlsxThuChi}=await import('../trang-web/src/xuat-so-thu-chi.ts');
@@ -552,21 +553,40 @@ const fsExport=await import('node:fs');fsExport.writeFileSync('/tmp/hgit-kiem-th
 assert.equal(new DataView(exportBuffer).getUint32(0,true),0x04034b50);
 
 assert.match(document.querySelector('.stc-kind-tabs')!.textContent!,/1.250.000/);
-const cashCells=document.querySelectorAll('.stc-sheet tbody tr');
-await act(async()=>cashCells[0].querySelectorAll('td')[2].dispatchEvent(new dom.window.MouseEvent('pointerdown',{bubbles:true,buttons:1})));
-await act(async()=>cashCells[1].querySelectorAll('td')[2].dispatchEvent(new dom.window.MouseEvent('pointerover',{bubbles:true,buttons:1})));
-assert.match(document.querySelector('.stc-selection strong')!.textContent!,/250.000/);
-await act(async()=>window.dispatchEvent(new dom.window.MouseEvent('pointerup',{bubbles:true})));
+const rowChecks=document.querySelectorAll('.stc-sheet tbody .stc-select-cell input');
+await click(rowChecks[0]);await click(rowChecks[1]);
+assert.equal(document.querySelectorAll('.stc-selected-row').length,2);
+assert.equal(document.querySelector('.stc-selected'),null);
+assert.match(document.querySelector('.stc-row-selection-total strong')!.textContent!,/250.000/);
+const clearRows=document.querySelector('[aria-label="Bỏ chọn hàng"]')!;assert.doesNotMatch(clearRows.textContent!,/Bỏ chọn/);await click(clearRows);assert.equal(document.querySelectorAll('.stc-selected-row').length,0);
+const columnHandle=document.querySelector('[role="separator"]')!;const oldWidth=Number(columnHandle.getAttribute('aria-valuenow'));
+await act(async()=>columnHandle.dispatchEvent(new dom.window.MouseEvent('pointerdown',{bubbles:true,clientX:100,buttons:1})));
+await act(async()=>window.dispatchEvent(new dom.window.MouseEvent('pointermove',{clientX:160,buttons:1})));
+await act(async()=>window.dispatchEvent(new dom.window.MouseEvent('pointerup')));
+assert.equal(Number(columnHandle.getAttribute('aria-valuenow')),oldWidth+60);
+await act(async()=>columnHandle.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Home',bubbles:true})));
+assert.equal(Number(columnHandle.getAttribute('aria-valuenow')),oldWidth);
 const firstKind=document.querySelector('.stc-sheet [aria-label="Thu hoặc chi"]') as HTMLSelectElement;
 await act(async()=>{firstKind.value='Chi';firstKind.dispatchEvent(new dom.window.Event('change',{bubbles:true}))});
 assert.equal((document.querySelector('.stc-sheet [aria-label="Số tiền thu chi"]') as HTMLInputElement).value,'-300.000');
 assert.match(document.querySelector('.stc-kind-tabs')!.textContent!,/1.250.000/);
 await click(document.querySelector('.stc-charts input[type=checkbox]'));
 assert.match(document.querySelector('.stc-chart-grid figcaption')!.textContent!,/%/);
-const {tongVung}=await import('../trang-web/src/so-thu-chi.ts');
-assert.equal(tongVung([{so_tien:300000},{so_tien:-50000}] as any,{row:1,col:2},{row:0,col:2}),250000);
-assert.equal(tongVung([{so_tien:300000}] as any,{row:0,col:1},{row:0,col:1}),0);
-console.log('PASS UI thu chi: kéo chọn vùng tính tổng riêng, đổi loại đảo dấu, số dư tháng không đổi theo bản nháp, biểu đồ % và lọc.');
+const {tongDong}=await import('../trang-web/src/so-thu-chi.ts');
+assert.deepEqual(tongDong([{so_tien:300000},{so_tien:-50000}] as any),{tong:250000,thu:300000,chi:-50000});
+await click(document.querySelector('.stc-compact-toolbar .lp-range-button'));
+assert.ok(document.querySelector('.lp-calendar-pair'));assert.ok(document.querySelector('[aria-label="Chọn nhanh tháng"]'));
+await edit(document.querySelector('[aria-label="Chọn nhanh tháng"]') as HTMLInputElement,'2028-02');
+await click([...document.querySelectorAll('.lp-range-portal button')].find(e=>e.textContent==='Chọn tháng')!);await wait();
+assert.ok(uiRequests.some(u=>u.includes('/thu-chi?')&&u.includes('tu_ngay=2028-02-01')&&u.includes('den_ngay=2028-02-29')));
+await click(document.querySelector('.stc-add-row'));assert.equal((document.querySelector('[data-row-id="moi"] [aria-label="Ngày thu chi"]') as HTMLInputElement).value,fixtures.today);
+await click(document.querySelector('[aria-label="Hoàn tác hàng đã chọn"]'));assert.equal(document.querySelector('[data-row-id="moi"]'),null);
+await click(document.querySelector('.stc-compact-toolbar .lp-range-button'));
+await click([...document.querySelectorAll('.lp-calendar-month')][0].querySelectorAll('button')[9]);
+await click([...document.querySelectorAll('.lp-calendar-month')][0].querySelectorAll('button')[11]);await wait();
+assert.ok(uiRequests.some(u=>u.includes('/thu-chi?')&&u.includes('tu_ngay=2028-02-10')&&u.includes('den_ngay=2028-02-12')));
+assert.equal(document.querySelectorAll('.stc-period-total .lp-range-button').length,1);assert.equal(document.querySelectorAll('.stc-period-stats>span').length,3);
+console.log('PASS UI thu chi: chọn cả hàng/bỏ chọn bằng icon, kéo rộng cột, tháng nhuận/chọn ngày giữ nguyên, dòng mới dùng ngày hiện tại và tổng thu/chi tách tiền tồn.');
 assert.match(document.querySelector('.bc-page')!.textContent!,/Tiền đã thu/);assert.match(document.querySelector('.bc-page')!.textContent!,/Theo thanh toán/);assert.match(document.querySelector('.bc-page')!.textContent!,/Đánh giá trong kỳ/);
 await act(async()=>root.unmount());root=createRoot(document.getElementById('root')!);
 await act(async()=>root.render(<DanhGia token="admin" initial={{tu_ngay:fixtures.today,den_ngay:fixtures.today}}/>));await wait(250);

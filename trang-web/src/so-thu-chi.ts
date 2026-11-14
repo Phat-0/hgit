@@ -10,15 +10,19 @@ export type DongThuChi = {
   mau: string;
   phien_ban: number;
   so_chung_tu?: number;
-  chung_tu?:{id:string;ten_tep:string}[];
+  chung_tu?: { id: string; ten_tep: string }[];
 };
-export type OChon = { row: number; col: number };
-export function tongVung(rows: DongThuChi[], a: OChon | null, b: OChon | null) {
-  if (!a || !b || Math.min(a.col, b.col) > 2 || Math.max(a.col, b.col) < 2)
-    return 0;
-  return rows
-    .slice(Math.min(a.row, b.row), Math.max(a.row, b.row) + 1)
-    .reduce((s, r) => s + Number(r.so_tien), 0);
+export function tongDong(rows: DongThuChi[]) {
+  return rows.reduce(
+    (s, r) => {
+      const n = Number(r.so_tien);
+      s.tong += n;
+      if (n > 0) s.thu += n;
+      else s.chi += n;
+      return s;
+    },
+    { tong: 0, thu: 0, chi: 0 },
+  );
 }
 export function doiLoaiTien(n: number, kind: "Thu" | "Chi") {
   return (kind === "Thu" ? 1 : -1) * Math.abs(n);

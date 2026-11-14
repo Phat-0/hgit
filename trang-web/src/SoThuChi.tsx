@@ -1,3 +1,4 @@
+import { useDoRongCot } from "./ChinhDoRongCot";
 import {
   bangXuatThuChi,
   csvThuChi,
@@ -15,11 +16,10 @@ import { RangePicker } from "./RangePicker";
 import { quanTriApi, vnd, ngayVN } from "./bao-cao-api";
 import { docTienNghin, nghinDongDeSua } from "./tien-te";
 import {
-  tongVung,
+  tongDong,
   doiLoaiTien,
   ngayCuoiThang,
   type DongThuChi,
-  type OChon,
 } from "./so-thu-chi";
 import BieuDoThuChi from "./BieuDoThuChi";
 import ChungTuThuChi from "./ChungTuThuChi";
@@ -91,10 +91,11 @@ export default function SoThuChi({
     [draft, setDraft] = useState<Record<string, DongThuChi>>({}),
     [opening, setOpening] = useState(0),
     [docs, setDocs] = useState(""),
-    [a, setA] = useState<OChon | null>(null),
-    [b, setB] = useState<OChon | null>(null),
+    [selectedIds, setSelectedIds] = useState<Set<string>>(new Set()),
     [sumStart, setSumStart] = useState(""),
     [sumEnd, setSumEnd] = useState("");
+  const { widths, handle } = useDoRongCot();
+  const anchorId = useRef("");
   const dragging = useRef(false),
     seq = useRef(0);
   const month = start.slice(0, 7);
@@ -108,8 +109,7 @@ export default function SoThuChi({
       if (n !== seq.current) return;
       setData(d);
       setOpening(Number(d.tien_ton.so_tien));
-      setA(null);
-      setB(null);
+      setSelectedIds(new Set());
       setError("");
     } catch (e) {
       if (n === seq.current) {
@@ -119,6 +119,7 @@ export default function SoThuChi({
     }
   }, [token, start, end]);
   useEffect(() => {
+    setData(null);
     void load();
     return () => {
       seq.current++;
@@ -138,31 +139,29 @@ export default function SoThuChi({
   const rows = (data?.dong || []).map((r) => draft[r.id] || r);
   const visible = rows.filter(
     (r) =>
-      (!kind || r.loai === kind) &&
-      (!query ||
-        [
-          r.ten,
-          r.ghi_chu,
-          data?.chi_nhanh.find((h) => h.id === r.homestay_id)?.ten_homestay,
-          data?.phong.find((p) => p.id === r.phong_id)?.ten_phong,
-        ]
-          .join(" ")
-          .toLocaleLowerCase("vi")
-          .includes(query.toLocaleLowerCase("vi"))),
+      !!draft[r.id] ||
+      ((!kind || r.loai === kind) &&
+        (!query ||
+          [
+            r.ten,
+            r.ghi_chu,
+            data?.chi_nhanh.find((h) => h.id === r.homestay_id)?.ten_homestay,
+            data?.phong.find((p) => p.id === r.phong_id)?.ten_phong,
+          ]
+            .join(" ")
+            .toLocaleLowerCase("vi")
+            .includes(query.toLocaleLowerCase("vi")))),
   );
   const hasDraft = Object.keys(draft).length > 0;
-  const selected = tongVung(
-      draft.moi ? [...visible, draft.moi] : visible,
-      a,
-      b,
+  const displayRows = draft.moi ? [...visible, draft.moi] : visible;
+  const selectedRows = displayRows.filter((r) => selectedIds.has(r.id));
+  const selected = tongDong(selectedRows);
+  const dateStats = tongDong(
+    rows.filter(
+      (r) => (!sumStart || r.ngay >= sumStart) && (!sumEnd || r.ngay <= sumEnd),
     ),
-    dateSum = rows
-      .filter(
-        (r) =>
-          (!sumStart || r.ngay >= sumStart) && (!sumEnd || r.ngay <= sumEnd),
-      )
-      .reduce((s, r) => s + Number(r.so_tien), 0),
-    filteredSum = visible.reduce((s, r) => s + Number(r.so_tien), 0);
+  );
+  const filteredSum = tongDong(visible).tong;
   let running =
     Number(data?.tien_ton.so_tien || 0) + Number(data?.truoc_ky || 0);
   const balances = new Map<string, number>();
@@ -170,48 +169,46 @@ export default function SoThuChi({
     running += Number(r.so_tien);
     balances.set(r.id, running);
   }
-  const [activeId, setActiveId] = useState("");
-  const active =
-    rows.find((r) => r.id === activeId) ||
-    (activeId === "moi" ? draft.moi : undefined);
+
   function patch(row: DongThuChi, x: Partial<DongThuChi>) {
     setDraft((d) => ({ ...d, [row.id]: { ...row, ...x } }));
   }
-  async function save(row: DongThuChi) {
-    const inputs = document.querySelectorAll<HTMLInputElement>(
-      '[data-row-id="' + row.id + '"] input',
-    );
-    for (const input of inputs) {
-      if (!input.reportValidity()) return;
+  async function saveSelected() {
+    const changed = selectedRows.filter((r) => draft[r.id]);
+    if (!changed.length) return;
+    for (const row of changed) {
+      for (const input of document.querySelectorAll<HTMLInputElement>(
+        '[data-row-id="' + row.id + '"] input',
+      ))
+        if (!input.reportValidity()) return;
     }
     setBusy(true);
-    try {
-      await quanTriApi(
-        token,
-        "thu-chi" + (row.id === "moi" ? "" : "/" + row.id),
-        row.id === "moi" ? "POST" : "PUT",
-        row,
-      );
-      setDraft((d) => {
-        const next = { ...d };
-        delete next[row.id];
-        return next;
-      });
-      await load();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
+    const failed: string[] = [];
+    for (const row of changed) {
+      try {
+        await quanTriApi(
+          token,
+          "thu-chi" + (row.id === "moi" ? "" : "/" + row.id),
+          row.id === "moi" ? "POST" : "PUT",
+          row,
+        );
+        undo(row);
+      } catch (e) {
+        failed.push(row.ten + ": " + (e as Error).message);
+      }
     }
+    await load();
+    if (failed.length) setError(failed.join(" · "));
+    setBusy(false);
   }
   function newRow() {
     if (draft.moi) return;
-    setActiveId("moi");
+    setSelectedIds(new Set(["moi"]));
     setDraft((d) => ({
       ...d,
       moi: {
         id: "moi",
-        ngay: start,
+        ngay: ngayVN(),
         ten: "",
         so_tien: 0,
         loai: "Thu",
@@ -225,34 +222,66 @@ export default function SoThuChi({
   }
   if (draft.moi) balances.set("moi", running + Number(draft.moi.so_tien));
   function undo(row: DongThuChi) {
+    if (row.id === "moi")
+      setSelectedIds((ids) => {
+        const next = new Set(ids);
+        next.delete("moi");
+        return next;
+      });
     setDraft((d) => {
       const n = { ...d };
       delete n[row.id];
       return n;
     });
   }
-  async function removeRow(row: DongThuChi) {
-    if (row.id === "moi") {
-      undo(row);
-      setActiveId("");
+  async function removeSelected() {
+    if (
+      !selectedRows.length ||
+      !window.confirm("Xóa " + selectedRows.length + " hàng đã chọn?")
+    )
+      return;
+    setBusy(true);
+    const failed: string[] = [];
+    for (const row of selectedRows) {
+      try {
+        if (row.id !== "moi")
+          await quanTriApi(
+            token,
+            "thu-chi/" + row.id + "?phien_ban=" + row.phien_ban,
+            "DELETE",
+          );
+        undo(row);
+      } catch (e) {
+        failed.push(row.ten + ": " + (e as Error).message);
+      }
+    }
+    await load();
+    if (failed.length) setError("Các hàng chưa xóa: " + failed.join(" · "));
+    setBusy(false);
+  }
+  function selectRange(id: string) {
+    const first = displayRows.findIndex((r) => r.id === anchorId.current),
+      last = displayRows.findIndex((r) => r.id === id);
+    if (first < 0 || last < 0) {
+      setSelectedIds(new Set([id]));
       return;
     }
-    if (!window.confirm("Xóa khoản " + row.ten + "?")) return;
-    setBusy(true);
-    try {
-      await quanTriApi(
-        token,
-        "thu-chi/" + row.id + "?phien_ban=" + row.phien_ban,
-        "DELETE",
-      );
-      undo(row);
-      setActiveId("");
-      await load();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
+    setSelectedIds(
+      new Set(
+        displayRows
+          .slice(Math.min(first, last), Math.max(first, last) + 1)
+          .map((r) => r.id),
+      ),
+    );
+  }
+  function toggleRow(id: string) {
+    setSelectedIds((ids) => {
+      const next = new Set(ids);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    anchorId.current = id;
   }
   function exportFile(format: string) {
     if (!data) return;
@@ -319,78 +348,7 @@ export default function SoThuChi({
   const rowElements = (row: DongThuChi, index: number) => {
     const text = chuTrenMau(row.mau),
       getCell = (col: number, content: ReactNode) => (
-        <td
-          key={col}
-          tabIndex={0}
-          style={{ background: row.mau, color: text }}
-          className={
-            a &&
-            b &&
-            index >= Math.min(a.row, b.row) &&
-            index <= Math.max(a.row, b.row) &&
-            col >= Math.min(a.col, b.col) &&
-            col <= Math.max(a.col, b.col)
-              ? "stc-selected"
-              : ""
-          }
-          onPointerDown={(e) => {
-            if ((e.target as HTMLElement).closest("button,a,input[type=color]"))
-              return;
-            if (e.shiftKey && a) {
-              setB({ row: index, col });
-              e.preventDefault();
-            } else {
-              setA({ row: index, col });
-              setB({ row: index, col });
-            }
-            dragging.current = true;
-          }}
-          onPointerEnter={(e) => {
-            if (dragging.current && e.buttons === 1) setB({ row: index, col });
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              setA(null);
-              setB(null);
-            }
-            if (
-              e.shiftKey &&
-              ["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].includes(
-                e.key,
-              )
-            ) {
-              e.preventDefault();
-              if (!a) setA({ row: index, col });
-              const cur = b || { row: index, col };
-              setB({
-                row: Math.max(
-                  0,
-                  Math.min(
-                    visible.length - 1,
-                    cur.row +
-                      (e.key === "ArrowDown"
-                        ? 1
-                        : e.key === "ArrowUp"
-                          ? -1
-                          : 0),
-                  ),
-                ),
-                col: Math.max(
-                  0,
-                  Math.min(
-                    7,
-                    cur.col +
-                      (e.key === "ArrowRight"
-                        ? 1
-                        : e.key === "ArrowLeft"
-                          ? -1
-                          : 0),
-                  ),
-                ),
-              });
-            }
-          }}
-        >
+        <td key={col} style={{ background: row.mau, color: text }}>
           {content}
         </td>
       );
@@ -398,14 +356,78 @@ export default function SoThuChi({
       <tr
         key={row.id}
         data-row-id={row.id}
-        onFocusCapture={() => setActiveId(row.id)}
-        onPointerDown={() => setActiveId(row.id)}
+        aria-selected={selectedIds.has(row.id)}
+        className={selectedIds.has(row.id) ? "stc-selected-row" : ""}
+        tabIndex={0}
+        onFocusCapture={(e) => {
+          if (
+            e.target === e.currentTarget ||
+            (e.target as HTMLElement).closest("[data-row-check]")
+          )
+            return;
+          if (!selectedIds.has(row.id)) setSelectedIds(new Set([row.id]));
+        }}
+        onPointerDown={(e) => {
+          if (
+            busy ||
+            (e.target as HTMLElement).closest("[data-row-check],button,a")
+          )
+            return;
+          const interactive = !!(e.target as HTMLElement).closest(
+            "input,select",
+          );
+          if (e.shiftKey && !interactive) {
+            e.preventDefault();
+            selectRange(row.id);
+          } else if (e.ctrlKey || e.metaKey) {
+            toggleRow(row.id);
+          } else if (!selectedIds.has(row.id) || !interactive) {
+            setSelectedIds(new Set([row.id]));
+            anchorId.current = row.id;
+          }
+          dragging.current = !interactive;
+        }}
+        onPointerEnter={(e) => {
+          if (dragging.current && e.buttons === 1) selectRange(row.id);
+        }}
+        onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return;
+          if (e.key === " ") {
+            e.preventDefault();
+            toggleRow(row.id);
+          }
+          if (e.key === "Escape") setSelectedIds(new Set());
+          if (e.shiftKey && ["ArrowUp", "ArrowDown"].includes(e.key)) {
+            e.preventDefault();
+            const next =
+              displayRows[
+                Math.max(
+                  0,
+                  Math.min(
+                    displayRows.length - 1,
+                    index + (e.key === "ArrowDown" ? 1 : -1),
+                  ),
+                )
+              ];
+            if (!anchorId.current) anchorId.current = row.id;
+            selectRange(next.id);
+          }
+        }}
         onContextMenu={(e) => {
           e.preventDefault();
-          setActiveId(row.id);
+          if (!selectedIds.has(row.id)) setSelectedIds(new Set([row.id]));
         }}
         aria-label={"Dòng " + (row.ten || "mới")}
       >
+        <td className="stc-select-cell" data-row-check>
+          <input
+            type="checkbox"
+            aria-label={"Chọn hàng " + (row.ten || "mới")}
+            checked={selectedIds.has(row.id)}
+            disabled={busy}
+            onChange={() => toggleRow(row.id)}
+          />
+        </td>
         {getCell(
           0,
           <input
@@ -532,7 +554,38 @@ export default function SoThuChi({
         <header className="stc-compact-header">
           <div className="stc-title-row">
             <h2>Sổ thu chi</h2>
-            <div>
+          </div>
+          <div className="stc-compact-toolbar">
+            <input
+              className="stc-search"
+              aria-label="Tìm thu chi"
+              placeholder="Tìm tên, ghi chú, chi nhánh, phòng"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setSelectedIds(new Set());
+              }}
+            />
+            <RangePicker
+              disabled={busy}
+              quickMonth
+              compact
+              start={start}
+              end={end}
+              onChange={(s, e) => {
+                if (
+                  hasDraft &&
+                  !window.confirm("Bỏ thay đổi chưa lưu để đổi ngày?")
+                )
+                  return;
+                setDraft({});
+                setStart(s);
+                setEnd(e);
+                setSumStart("");
+                setSumEnd("");
+              }}
+            />
+            <div className="stc-header-actions">
               <button
                 disabled={busy}
                 title="Làm mới"
@@ -541,7 +594,6 @@ export default function SoThuChi({
                   if (hasDraft && !window.confirm("Bỏ thay đổi chưa lưu?"))
                     return;
                   setDraft({});
-                  setActiveId("");
                   void load();
                 }}
               >
@@ -562,33 +614,56 @@ export default function SoThuChi({
               </select>
             </div>
           </div>
-          <div className="stc-compact-toolbar">
+        </header>
+        {error && <p role="alert">{error}</p>}
+        <div className="stc-ledger-actions">
+          <div className="stc-row-tools">
             <input
-              className="stc-search"
-              aria-label="Tìm thu chi"
-              placeholder="Tìm tên, ghi chú, chi nhánh, phòng"
-              value={query}
+              type="color"
+              aria-label="Màu hàng đã chọn"
+              title="Chọn màu cho các hàng được chọn"
+              disabled={busy || !selectedRows.length}
+              value={selectedRows[0]?.mau || "#ffffff"}
               onChange={(e) => {
-                setQuery(e.target.value);
-                setA(null);
-                setB(null);
+                for (const row of selectedRows)
+                  patch(row, { mau: e.target.value });
               }}
             />
-            <RangePicker
-              compact
-              start={start}
-              end={end}
-              onChange={(s, e) => {
-                if (
-                  hasDraft &&
-                  !window.confirm("Bỏ thay đổi chưa lưu để đổi ngày?")
-                )
-                  return;
-                setDraft({});
-                setStart(s);
-                setEnd(e);
-              }}
-            />
+            <button
+              title="Xóa hàng đã chọn"
+              aria-label="Xóa hàng đã chọn"
+              disabled={busy || !selectedRows.length}
+              onClick={() => void removeSelected()}
+            >
+              ⌫
+            </button>
+            {selectedRows.some((r) => draft[r.id]) && (
+              <>
+                <button
+                  aria-label="Lưu hàng đã chọn"
+                  disabled={busy}
+                  onClick={() => void saveSelected()}
+                >
+                  ✓ Lưu
+                </button>
+                <button
+                  title="Hoàn tác hàng đã chọn"
+                  aria-label="Hoàn tác hàng đã chọn"
+                  disabled={busy}
+                  onClick={() => {
+                    for (const row of selectedRows) undo(row);
+                  }}
+                >
+                  ↶
+                </button>
+              </>
+            )}
+            <small>
+              {selectedRows.length ? selectedRows.length + " hàng đã chọn" : ""}
+            </small>
+          </div>
+          <div className="stc-ledger-summary">
+            {" "}
             <div
               className="stc-kind-tabs"
               role="group"
@@ -604,8 +679,7 @@ export default function SoThuChi({
                   aria-pressed={kind === k}
                   onClick={() => {
                     setKind(k);
-                    setA(null);
-                    setB(null);
+                    setSelectedIds(new Set());
                   }}
                 >
                   {label}
@@ -656,16 +730,41 @@ export default function SoThuChi({
               </label>
             )}
           </div>
-        </header>
-        {error && <p role="alert">{error}</p>}
-        <div className="stc-mini-hint">
-          Nhập nghìn đồng · Chọn dòng để đổi màu, lưu hoặc xóa · Kéo qua ô để
-          tính tổng{hasDraft ? " · Có thay đổi chưa lưu" : ""}
-        </div>{" "}
+        </div>
         <div className="stc-sheet-scroll">
-          <table className="stc-sheet">
+          <table
+            className="stc-sheet"
+            style={{
+              width: widths.reduce((a, b) => a + b, 36),
+              minWidth: widths.reduce((a, b) => a + b, 36),
+            }}
+          >
+            <colgroup>
+              <col style={{ width: 36 }} />
+              {widths.map((w, i) => (
+                <col key={i} style={{ width: w }} />
+              ))}
+            </colgroup>
             <thead>
               <tr>
+                <th className="stc-select-cell">
+                  <input
+                    type="checkbox"
+                    aria-label="Chọn tất cả hàng hiển thị"
+                    disabled={!displayRows.length || busy}
+                    checked={
+                      !!displayRows.length &&
+                      displayRows.every((r) => selectedIds.has(r.id))
+                    }
+                    onChange={(e) =>
+                      setSelectedIds(
+                        e.target.checked
+                          ? new Set(displayRows.map((r) => r.id))
+                          : new Set(),
+                      )
+                    }
+                  />
+                </th>
                 {[
                   "Ngày",
                   "Tên khoản thu / chi",
@@ -675,17 +774,20 @@ export default function SoThuChi({
                   "Ghi chú",
                   "Chứng từ",
                   "Số dư lũy kế (đ)",
-                ].map((h) => (
-                  <th key={h}>{h}</th>
+                ].map((h, i) => (
+                  <th key={h}>
+                    {h}
+                    {handle(i, h)}
+                  </th>
                 ))}
               </tr>
             </thead>
-            <tbody>
+            <tbody inert={busy}>
               {visible.map(rowElements)}
               {draft.moi && rowElements(draft.moi, visible.length)}
               {!visible.length && !draft.moi && (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={9}>
                     {!data
                       ? "Đang tải sổ thu chi…"
                       : "Chưa có dòng phù hợp. Nhấn dấu + bên dưới để bắt đầu."}
@@ -695,7 +797,7 @@ export default function SoThuChi({
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={2}>
+                <td colSpan={3}>
                   Tổng dòng đang hiển thị {hasDraft ? "(bản nháp)" : ""}
                 </td>
                 <td>{vnd(filteredSum)}</td>
@@ -717,74 +819,47 @@ export default function SoThuChi({
             ＋
           </button>
         </div>
-        {active && (
-          <div className="stc-edit-tools">
-            <span>{active.ten || "Dòng mới"}</span>
-            <input
-              type="color"
-              aria-label="Màu hàng"
-              value={active.mau}
-              onChange={(e) => patch(active, { mau: e.target.value })}
-            />
-            {draft[active.id] && (
-              <>
-                <button
-                  disabled={busy}
-                  aria-label="Lưu dòng"
-                  onClick={() => void save(active)}
-                >
-                  ✓ Lưu
-                </button>
-                <button disabled={busy} onClick={() => undo(active)}>
-                  ↶ Hoàn tác
-                </button>
-              </>
-            )}
-            <button
-              disabled={busy}
-              aria-label="Xóa dòng"
-              onClick={() => void removeRow(active)}
-            >
-              ⌫ Xóa
-            </button>
-            <button title="Ẩn công cụ dòng" onClick={() => setActiveId("")}>
-              ×
-            </button>
-          </div>
-        )}
         <div className="stc-selection">
-          <strong>Tổng vùng: {vnd(selected)}</strong>
-          <button
-            onClick={() => {
-              setA(null);
-              setB(null);
-            }}
-          >
-            Bỏ chọn
-          </button>
-          <span>Tổng theo ngày trong dữ liệu đã tải:</span>
-          <input
-            aria-label="Tính tổng từ ngày"
-            type="date"
-            min={start}
-            max={end}
-            value={sumStart}
-            onChange={(e) => setSumStart(e.target.value)}
-          />
-          <span>→</span>
-          <input
-            aria-label="Tính tổng đến ngày"
-            type="date"
-            min={start}
-            max={end}
-            value={sumEnd}
-            onChange={(e) => setSumEnd(e.target.value)}
-          />
-          <b>
-            {sumStart && sumEnd && sumStart > sumEnd
-              ? "Khoảng ngày không hợp lệ"
-              : vnd(dateSum)}
-          </b>
+          <div className="stc-row-selection-total">
+            <button
+              title="Bỏ chọn hàng"
+              aria-label="Bỏ chọn hàng"
+              disabled={!selectedIds.size}
+              onClick={() => {
+                setSelectedIds(new Set());
+              }}
+            >
+              ⊠
+            </button>
+            <strong>
+              Đã chọn {selectedRows.length} hàng · {vnd(selected.tong)}
+            </strong>
+          </div>
+          <div className="stc-period-total">
+            <RangePicker
+              compact
+              quickMonth
+              start={sumStart || start}
+              end={sumEnd || end}
+              minDate={start}
+              maxDate={end}
+              onChange={(a, b) => {
+                setSumStart(a);
+                setSumEnd(b);
+              }}
+            />
+            <div className="stc-period-stats">
+              <span className="stc-sum-total">
+                Tổng <b>{vnd(dateStats.tong)}</b>
+              </span>
+              <span className="stc-sum-income">
+                Thu <b>{vnd(dateStats.thu)}</b>
+              </span>
+              <span className="stc-sum-expense">
+                Chi <b>{vnd(dateStats.chi)}</b>
+              </span>
+            </div>
+          </div>
         </div>
       </section>
       {data && (
