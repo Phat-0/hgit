@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 const macDinh = [125, 210, 145, 80, 185, 175, 90, 160];
+export function lapDayCot(raw: number[], frameWidth: number) {
+  const extra = Math.max(0, frameWidth - 36 - raw.reduce((a, b) => a + b, 0));
+  return raw.map((w) => w + extra / raw.length);
+}
 export function useDoRongCot() {
   const [widths, setWidths] = useState<number[]>(() => {
     try {
@@ -18,13 +22,29 @@ export function useDoRongCot() {
       return macDinh;
     }
   });
-  const drag = useRef<{ index: number; x: number; width: number } | null>(null);
+  const frame = useRef<HTMLDivElement>(null);
+  const [frameWidth, setFrameWidth] = useState(0);
+  useEffect(() => {
+    if (!frame.current) return;
+    const measure = () => setFrameWidth(frame.current?.clientWidth || 0);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(frame.current);
+    return () => ro.disconnect();
+  }, []);
+  const fitted = lapDayCot(widths, frameWidth);
+  const drag = useRef<{
+    index: number;
+    x: number;
+    width: number;
+    all: number[];
+  } | null>(null);
   useEffect(() => {
     const move = (e: PointerEvent) => {
       if (!drag.current) return;
       const d = drag.current;
       setWidths((w) =>
-        w.map((n, i) =>
+        d.all.map((n, i) =>
           i === d.index
             ? Math.max(70, Math.min(600, d.width + e.clientX - d.x))
             : n,
@@ -55,7 +75,7 @@ export function useDoRongCot() {
         tabIndex={0}
         aria-orientation="vertical"
         aria-label={"Độ rộng cột " + label}
-        aria-valuenow={Math.round(widths[index])}
+        aria-valuenow={Math.round(fitted[index])}
         aria-valuemin={70}
         aria-valuemax={600}
         className="stc-column-resize"
@@ -63,7 +83,12 @@ export function useDoRongCot() {
         onPointerDown={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          drag.current = { index, x: e.clientX, width: widths[index] };
+          drag.current = {
+            index,
+            x: e.clientX,
+            width: fitted[index],
+            all: fitted,
+          };
         }}
         onDoubleClick={() =>
           setWidths((w) => w.map((n, i) => (i === index ? macDinh[i] : n)))
@@ -87,5 +112,5 @@ export function useDoRongCot() {
       />
     );
   }
-  return { widths, handle };
+  return { widths: fitted, handle, frame };
 }

@@ -32,6 +32,15 @@ export class ThuChiController {
   @Post() create(@Req() r: Auth, @Body() b: unknown) {
     return this.service.save(r.nguoiDung.id, undefined, b);
   }
+  @Get('bieu-do') chartSettings(@Req() r: Auth) {
+    return this.service.chartSettings(r.nguoiDung.id);
+  }
+  @Put('bieu-do') saveChartSettings(
+    @Req() r: Auth,
+    @Body() b: Record<string, unknown>,
+  ) {
+    return this.service.saveChartSettings(r.nguoiDung.id, b);
+  }
   @Put('tien-ton') opening(@Req() r: Auth, @Body() b: Record<string, unknown>) {
     return this.service.opening(r.nguoiDung.id, b);
   }

@@ -525,7 +525,7 @@ const {duLieuGiaoDien}=await import('./du-lieu-giao-dien.mjs');
 let routeHandler:any;
 const fixtures=await duLieuGiaoDien({context:()=>({addInitScript:async()=>{}}),route:async(_p:any,handler:any)=>{routeHandler=handler}} as any);
 const uiRequests:string[]=[];
-globalThis.fetch=async(url:any,init:any={})=>new Promise(resolve=>{const full=new URL(url,'https://home.test').href;uiRequests.push(full);void routeHandler({request:()=>({url:()=>full,method:()=>init.method||'GET'}),fulfill:async({status,body}:any)=>resolve({ok:status<400,json:async()=>JSON.parse(body)} as any)});});
+globalThis.fetch=async(url:any,init:any={})=>new Promise(resolve=>{const full=new URL(url,'https://home.test').href;uiRequests.push(full);void routeHandler({request:()=>({url:()=>full,method:()=>init.method||'GET',postDataJSON:()=>init.body?JSON.parse(init.body):null}),fulfill:async({status,body}:any)=>resolve({ok:status<400,json:async()=>JSON.parse(body)} as any)});});
 const {default:TongQuan}=await import('../trang-web/src/TongQuan.tsx');
 const {default:BaoCao}=await import('../trang-web/src/BaoCao.tsx');
 const {default:DanhGia}=await import('../trang-web/src/DanhGia.tsx');
@@ -557,7 +557,7 @@ const rowChecks=document.querySelectorAll('.stc-sheet tbody .stc-select-cell inp
 await click(rowChecks[0]);await click(rowChecks[1]);
 assert.equal(document.querySelectorAll('.stc-selected-row').length,2);
 assert.equal(document.querySelector('.stc-selected'),null);
-assert.match(document.querySelector('.stc-row-selection-total strong')!.textContent!,/250.000/);
+assert.match(document.querySelector('.stc-row-selection-total strong')!.textContent!,/2 hàng/);assert.doesNotMatch(document.querySelector('.stc-row-selection-total strong')!.textContent!,/250.000/);assert.equal(document.querySelector('.stc-sheet tfoot'),null);
 const clearRows=document.querySelector('[aria-label="Bỏ chọn hàng"]')!;assert.doesNotMatch(clearRows.textContent!,/Bỏ chọn/);await click(clearRows);assert.equal(document.querySelectorAll('.stc-selected-row').length,0);
 const columnHandle=document.querySelector('[role="separator"]')!;const oldWidth=Number(columnHandle.getAttribute('aria-valuenow'));
 await act(async()=>columnHandle.dispatchEvent(new dom.window.MouseEvent('pointerdown',{bubbles:true,clientX:100,buttons:1})));
@@ -566,6 +566,9 @@ await act(async()=>window.dispatchEvent(new dom.window.MouseEvent('pointerup')))
 assert.equal(Number(columnHandle.getAttribute('aria-valuenow')),oldWidth+60);
 await act(async()=>columnHandle.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Home',bubbles:true})));
 assert.equal(Number(columnHandle.getAttribute('aria-valuenow')),oldWidth);
+const {lapDayCot}=await import('../trang-web/src/ChinhDoRongCot.tsx');assert.equal(Math.round(lapDayCot([70,70],500).reduce((a,b)=>a+b,36)),500);assert.equal(lapDayCot([300,300],400).reduce((a,b)=>a+b,36),636);
+const heightHandle=document.querySelector('[aria-label="Chiều cao bảng"]')!;const oldHeight=Number(heightHandle.getAttribute('aria-valuenow'));await act(async()=>heightHandle.dispatchEvent(new dom.window.MouseEvent('pointerdown',{bubbles:true,clientY:100,buttons:1})));await act(async()=>window.dispatchEvent(new dom.window.MouseEvent('pointermove',{clientY:180,buttons:1})));await act(async()=>window.dispatchEvent(new dom.window.MouseEvent('pointerup')));assert.equal(Number(heightHandle.getAttribute('aria-valuenow')),oldHeight+80);await act(async()=>heightHandle.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Home',bubbles:true})));
+
 const firstKind=document.querySelector('.stc-sheet [aria-label="Thu hoặc chi"]') as HTMLSelectElement;
 await act(async()=>{firstKind.value='Chi';firstKind.dispatchEvent(new dom.window.Event('change',{bubbles:true}))});
 assert.equal((document.querySelector('.stc-sheet [aria-label="Số tiền thu chi"]') as HTMLInputElement).value,'-300.000');
@@ -586,6 +589,17 @@ await click([...document.querySelectorAll('.lp-calendar-month')][0].querySelecto
 await click([...document.querySelectorAll('.lp-calendar-month')][0].querySelectorAll('button')[11]);await wait();
 assert.ok(uiRequests.some(u=>u.includes('/thu-chi?')&&u.includes('tu_ngay=2028-02-10')&&u.includes('den_ngay=2028-02-12')));
 assert.equal(document.querySelectorAll('.stc-period-total .lp-range-button').length,1);assert.equal(document.querySelectorAll('.stc-period-stats>span').length,3);
+
+const chartGroup=document.querySelector('[aria-label="Nhóm biểu đồ"]') as HTMLSelectElement;await act(async()=>{chartGroup.value='chi_nhanh';chartGroup.dispatchEvent(new dom.window.Event('change',{bubbles:true}))});assert.match(document.querySelector('.stc-chart-legend')!.textContent!,/Chi nhánh kiểm thử/);
+const chartMetric=document.querySelector('[aria-label="Hiển thị thu hoặc chi"]') as HTMLSelectElement;await act(async()=>{chartMetric.value='chi';chartMetric.dispatchEvent(new dom.window.Event('change',{bubbles:true}))});assert.equal(document.querySelectorAll('svg[data-chart="cot"] rect').length,1);
+await click(document.querySelector('[aria-label="Hiện biểu đồ đường"]'));assert.ok(document.querySelector('svg[data-chart="duong"]'));await click(document.querySelector('[aria-label="Hiện biểu đồ đường"]'));assert.equal(document.querySelector('svg[data-chart="duong"]'),null);
+await click([...document.querySelectorAll('.stc-object-heading button')].find(e=>e.textContent?.includes('Tạo đối tượng'))!);await edit(document.querySelector('[aria-label="Tên đối tượng biểu đồ"]') as HTMLInputElement,'Nhóm so sánh thử');await click(document.querySelector('.stc-object-options input'));await submit(document.querySelector('.stc-object-form'));await wait();assert.match(document.querySelector('.stc-object-list')!.textContent!,/Nhóm so sánh thử/);
+await act(async()=>{chartGroup.value='doi_tuong';chartGroup.dispatchEvent(new dom.window.Event('change',{bubbles:true}))});assert.match(document.querySelector('.stc-chart-legend')!.textContent!,/Nhóm so sánh thử/);
+await click(document.querySelector('.stc-charts .lp-range-button'));await edit(document.querySelector('[aria-label="Chọn nhanh tháng"]') as HTMLInputElement,'2027-01');await click([...document.querySelectorAll('.lp-range-portal button')].find(e=>e.textContent==='Chọn tháng')!);await wait();assert.ok(uiRequests.some(u=>u.includes('/thu-chi?')&&u.includes('tu_ngay=2027-01-01')));assert.match(document.querySelector('.stc-compact-toolbar .lp-range-button')!.textContent!,/10\/02\/2028/);
+const {nhomThuChi,cacNgay}=await import('../trang-web/src/bieu-do-thu-chi.ts');
+const grouped=nhomThuChi([{id:'a',ngay:'2028-02-01',homestay_id:'b1',phong_id:'p1',ten:'A',ghi_chu:'',so_tien:100},{id:'b',ngay:'2028-02-01',homestay_id:'b1',phong_id:'p1',ten:'B',ghi_chu:'',so_tien:-40},{id:'c',ngay:'2028-02-02',homestay_id:null,phong_id:null,ten:'Khác',ghi_chu:'',so_tien:10}] as any,'chi_nhanh',[{id:'b1',ten_homestay:'Một'},{id:'b2',ten_homestay:'Hai'}],[],[]);
+assert.deepEqual(grouped.map(g=>[g.key,g.thu,g.chi]),[['b1',100,40],['b2',0,0],['chung',10,0]]);assert.equal(cacNgay('2028-02-01','2028-02-29').length,29);
+console.log('PASS UI biểu đồ: cơ cấu chi nhánh, chỉ chi, ẩn/hiện đường, tạo đối tượng và lịch độc lập bảng.');
 console.log('PASS UI thu chi: chọn cả hàng/bỏ chọn bằng icon, kéo rộng cột, tháng nhuận/chọn ngày giữ nguyên, dòng mới dùng ngày hiện tại và tổng thu/chi tách tiền tồn.');
 assert.match(document.querySelector('.bc-page')!.textContent!,/Tiền đã thu/);assert.match(document.querySelector('.bc-page')!.textContent!,/Theo thanh toán/);assert.match(document.querySelector('.bc-page')!.textContent!,/Đánh giá trong kỳ/);
 await act(async()=>root.unmount());root=createRoot(document.getElementById('root')!);

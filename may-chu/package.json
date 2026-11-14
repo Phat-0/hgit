@@ -30,7 +30,8 @@
     "db:chat-bo-cuc": "node --use-system-ca scripts/chat-bo-cuc.mjs",
     "db:quan-tri-mo-rong": "node --use-system-ca scripts/quan-tri-mo-rong.mjs",
     "db:lich-don-trang-thai": "node --use-system-ca scripts/lich-don-trang-thai.mjs",
-    "db:so-thu-chi": "node --use-system-ca scripts/so-thu-chi.mjs"
+    "db:so-thu-chi": "node --use-system-ca scripts/so-thu-chi.mjs",
+    "db:bieu-do-thu-chi": "node --use-system-ca scripts/bieu-do-thu-chi.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",

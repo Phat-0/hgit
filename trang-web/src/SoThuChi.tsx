@@ -84,6 +84,7 @@ export default function SoThuChi({
       initial?.den_ngay || ngayCuoiThang(ngayVN().slice(0, 7)),
     ),
     [data, setData] = useState<Data | null>(null),
+    [chartData, setChartData] = useState<Data | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [query, setQuery] = useState(""),
@@ -94,10 +95,49 @@ export default function SoThuChi({
     [selectedIds, setSelectedIds] = useState<Set<string>>(new Set()),
     [sumStart, setSumStart] = useState(""),
     [sumEnd, setSumEnd] = useState("");
-  const { widths, handle } = useDoRongCot();
+  const { widths, handle, frame } = useDoRongCot();
   const anchorId = useRef("");
   const dragging = useRef(false),
     seq = useRef(0);
+  const [tableHeight, setTableHeight] = useState(() => {
+    try {
+      const n = Number(localStorage.getItem("so-thu-chi:chieu-cao"));
+      return n >= 220 && n <= 1000 ? n : 360;
+    } catch {
+      return 360;
+    }
+  });
+  const heightDrag = useRef<{ y: number; height: number } | null>(null);
+  useEffect(() => {
+    const move = (e: PointerEvent) => {
+      if (heightDrag.current)
+        setTableHeight(
+          Math.max(
+            220,
+            Math.min(
+              1000,
+              heightDrag.current.height + e.clientY - heightDrag.current.y,
+            ),
+          ),
+        );
+    };
+    const stop = () => {
+      heightDrag.current = null;
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", stop);
+    window.addEventListener("blur", stop);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("blur", stop);
+    };
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem("so-thu-chi:chieu-cao", String(tableHeight));
+    } catch {}
+  }, [tableHeight]);
   const month = start.slice(0, 7);
   const load = useCallback(async () => {
     const n = ++seq.current;
@@ -108,6 +148,7 @@ export default function SoThuChi({
       );
       if (n !== seq.current) return;
       setData(d);
+      setChartData(d);
       setOpening(Number(d.tien_ton.so_tien));
       setSelectedIds(new Set());
       setError("");
@@ -155,13 +196,12 @@ export default function SoThuChi({
   const hasDraft = Object.keys(draft).length > 0;
   const displayRows = draft.moi ? [...visible, draft.moi] : visible;
   const selectedRows = displayRows.filter((r) => selectedIds.has(r.id));
-  const selected = tongDong(selectedRows);
   const dateStats = tongDong(
     rows.filter(
       (r) => (!sumStart || r.ngay >= sumStart) && (!sumEnd || r.ngay <= sumEnd),
     ),
   );
-  const filteredSum = tongDong(visible).tong;
+
   let running =
     Number(data?.tien_ton.so_tien || 0) + Number(data?.truoc_ky || 0);
   const balances = new Map<string, number>();
@@ -731,7 +771,11 @@ export default function SoThuChi({
             )}
           </div>
         </div>
-        <div className="stc-sheet-scroll">
+        <div
+          className="stc-sheet-scroll"
+          ref={frame}
+          style={{ height: tableHeight }}
+        >
           <table
             className="stc-sheet"
             style={{
@@ -795,20 +839,36 @@ export default function SoThuChi({
                 </tr>
               )}
             </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={3}>
-                  Tổng dòng đang hiển thị {hasDraft ? "(bản nháp)" : ""}
-                </td>
-                <td>{vnd(filteredSum)}</td>
-                <td colSpan={5}>
-                  {visible.length} dòng · Tiền tồn được quản lý riêng theo tháng
-                </td>
-              </tr>
-            </tfoot>
           </table>
         </div>
         <div className="stc-table-footer">
+          <span
+            className="stc-height-resize"
+            role="separator"
+            tabIndex={0}
+            aria-orientation="horizontal"
+            aria-label="Chiều cao bảng"
+            aria-valuenow={tableHeight}
+            aria-valuemin={220}
+            aria-valuemax={1000}
+            title="Kéo để chỉnh chiều cao bảng"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              heightDrag.current = { y: e.clientY, height: tableHeight };
+            }}
+            onKeyDown={(e) => {
+              if (!["ArrowUp", "ArrowDown", "Home"].includes(e.key)) return;
+              e.preventDefault();
+              setTableHeight((n) =>
+                e.key === "Home"
+                  ? 360
+                  : Math.max(
+                      220,
+                      Math.min(1000, n + (e.key === "ArrowDown" ? 20 : -20)),
+                    ),
+              );
+            }}
+          />
           <button
             className="stc-add-row"
             aria-label="Thêm dòng thu chi"
@@ -831,9 +891,7 @@ export default function SoThuChi({
             >
               ⊠
             </button>
-            <strong>
-              Đã chọn {selectedRows.length} hàng · {vnd(selected.tong)}
-            </strong>
+            <strong>Đã chọn {selectedRows.length} hàng</strong>
           </div>
           <div className="stc-period-total">
             <RangePicker
@@ -862,11 +920,14 @@ export default function SoThuChi({
           </div>
         </div>
       </section>
-      {data && (
+      {chartData && (
         <BieuDoThuChi
-          rows={data.dong}
-          branches={data.chi_nhanh}
-          rooms={data.phong}
+          token={token}
+          start={start}
+          end={end}
+          rows={chartData.dong}
+          branches={chartData.chi_nhanh}
+          rooms={chartData.phong}
         />
       )}
       <details className="stc-howto">

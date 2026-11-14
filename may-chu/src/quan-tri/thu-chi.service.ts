@@ -1,3 +1,4 @@
+import { docDoiTuong } from './doi-tuong-bieu-do.js';
 import {
   BadRequestException,
   ConflictException,
@@ -63,7 +64,7 @@ export class ThuChiService {
     try {
       await c.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
       const rows = await c.query(
-        'SELECT t.*,t.ngay::text AS ngay,h.ten_homestay,p.ten_phong,(SELECT count(*)::int FROM public.chung_tu_thu_chi f WHERE f.thu_chi_id=t.id) AS so_chung_tu,(SELECT coalesce(jsonb_agg(jsonb_build_object(\'id\',f.id,\'ten_tep\',f.ten_tep) ORDER BY f.ngay_tao,f.id),\'[]\'::jsonb) FROM public.chung_tu_thu_chi f WHERE f.thu_chi_id=t.id) AS chung_tu FROM public.so_thu_chi t LEFT JOIN public.homestay h ON h.id=t.homestay_id LEFT JOIN public.phong p ON p.id=t.phong_id WHERE t.ngay BETWEEN $1::date AND $2::date ORDER BY t.ngay,t.ngay_tao,t.id LIMIT 5001',
+        "SELECT t.*,t.ngay::text AS ngay,h.ten_homestay,p.ten_phong,(SELECT count(*)::int FROM public.chung_tu_thu_chi f WHERE f.thu_chi_id=t.id) AS so_chung_tu,(SELECT coalesce(jsonb_agg(jsonb_build_object('id',f.id,'ten_tep',f.ten_tep) ORDER BY f.ngay_tao,f.id),'[]'::jsonb) FROM public.chung_tu_thu_chi f WHERE f.thu_chi_id=t.id) AS chung_tu FROM public.so_thu_chi t LEFT JOIN public.homestay h ON h.id=t.homestay_id LEFT JOIN public.phong p ON p.id=t.phong_id WHERE t.ngay BETWEEN $1::date AND $2::date ORDER BY t.ngay,t.ngay_tao,t.id LIMIT 5001",
         [start, end],
       );
       if (rows.rowCount! > 5000)
@@ -382,6 +383,75 @@ export class ThuChiService {
       await this.audit(c, uid, id, 'xoa_chung_tu', r.rows[0], null);
       await c.query('COMMIT');
       return { ok: true };
+    } catch (e) {
+      await c.query('ROLLBACK');
+      throw e;
+    } finally {
+      await c.end();
+    }
+  }
+  async chartSettings(uid: string) {
+    await this.allow(uid);
+    const c = await this.db();
+    try {
+      return (
+        (
+          await c.query(
+            'SELECT doi_tuong,phien_ban FROM public.cau_hinh_bieu_do_thu_chi WHERE nguoi_dung_id=$1',
+            [uid],
+          )
+        ).rows[0] || { doi_tuong: [], phien_ban: 0 }
+      );
+    } finally {
+      await c.end();
+    }
+  }
+  async saveChartSettings(uid: string, body: Record<string, unknown>) {
+    await this.allow(uid);
+    const objects = docDoiTuong(body?.doi_tuong),
+      version = Number(body?.phien_ban);
+    if (!Number.isInteger(version) || version < 0)
+      throw new BadRequestException('Phiên bản không hợp lệ');
+    const c = await this.db();
+    try {
+      await c.query('BEGIN');
+      await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
+        'doi-tuong-bieu-do:' + uid,
+      ]);
+      const old = await c.query(
+        'SELECT * FROM public.cau_hinh_bieu_do_thu_chi WHERE nguoi_dung_id=$1 FOR UPDATE',
+        [uid],
+      );
+      if ((old.rows[0]?.phien_ban || 0) !== version)
+        throw new ConflictException(
+          'Nhóm so sánh đã được sửa ở máy khác. Hãy tải lại trước khi lưu',
+        );
+      for (const o of objects) {
+        if (o.loai === 'khoan_khac') continue;
+        const table = o.loai === 'phong' ? 'public.phong' : 'public.homestay';
+        const r = await c.query(
+          'SELECT id FROM ' + table + ' WHERE id=ANY($1::uuid[]) FOR SHARE',
+          [o.ids],
+        );
+        if (r.rowCount !== o.ids.length)
+          throw new BadRequestException(
+            'Có phòng hoặc chi nhánh không còn tồn tại',
+          );
+      }
+      const r = await c.query(
+        'INSERT INTO public.cau_hinh_bieu_do_thu_chi(nguoi_dung_id,doi_tuong) VALUES($1,$2::jsonb) ON CONFLICT(nguoi_dung_id) DO UPDATE SET doi_tuong=$2::jsonb,phien_ban=cau_hinh_bieu_do_thu_chi.phien_ban+1,ngay_cap_nhat=now() RETURNING doi_tuong,phien_ban',
+        [uid, JSON.stringify(objects)],
+      );
+      await this.audit(
+        c,
+        uid,
+        null,
+        'nhom_so_sanh',
+        old.rows[0] || null,
+        r.rows[0],
+      );
+      await c.query('COMMIT');
+      return r.rows[0];
     } catch (e) {
       await c.query('ROLLBACK');
       throw e;

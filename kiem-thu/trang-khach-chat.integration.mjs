@@ -1121,4 +1121,16 @@ const sampleSql=fs.readFileSync(root+'/co-so-du-lieu/du-lieu-mau/so-thu-chi-2026
 await db.exec(sampleSql);const firstSamples=Number((await db.query("SELECT count(*) AS n FROM public.so_thu_chi WHERE ghi_chu LIKE '%mau-so-thu-chi-20261113-v1%'")).rows[0].n);assert.equal(firstSamples,2*Math.min(5,Number((await db.query('SELECT count(*) AS n FROM public.phong')).rows[0].n))+4);
 await db.exec(sampleSql);assert.equal(Number((await db.query("SELECT count(*) AS n FROM public.so_thu_chi WHERE ghi_chu LIKE '%mau-so-thu-chi-20261113-v1%'")).rows[0].n),firstSamples);
 console.log('PASS Dữ liệu mẫu: 14 khoản phòng và khoản chung có nhãn rõ ràng, chạy lại không nhân đôi.');
+
+await db.exec(fs.readFileSync(root+'/co-so-du-lieu/migrations/20261114123000_doi_tuong_bieu_do_thu_chi.sql','utf8'));
+await assert.rejects(()=>ledger.chartSettings(uid),/chưa được cấp quyền/);
+const chartObject={id:randomUUID(),ten:'Đối tượng chi nhánh',mau:'#abcdef',loai:'chi_nhanh',ids:[branch],tu_khoa:''};
+const chartConfig=await ledger.saveChartSettings(admin,{doi_tuong:[chartObject],phien_ban:0});assert.equal(chartConfig.phien_ban,1);assert.equal((await ledger.chartSettings(admin)).doi_tuong[0].ten,chartObject.ten);
+await assert.rejects(()=>ledger.saveChartSettings(admin,{doi_tuong:[],phien_ban:0}),/máy khác/);
+await assert.rejects(()=>ledger.saveChartSettings(admin,{doi_tuong:[{...chartObject,loai:'phong',ids:[randomUUID()]}],phien_ban:1}),/không còn tồn tại/);
+await rolesService.save(admin,reportRole,{ten:'Kiểm thử báo cáo',trang:['bao-cao']});assert.deepEqual((await ledger.chartSettings(other)).doi_tuong,[]);
+const changedChart=await ledger.saveChartSettings(admin,{doi_tuong:[{...chartObject,ten:'Đã sửa',loai:'phong',ids:[room]}],phien_ban:1});assert.equal(changedChart.phien_ban,2);
+assert.deepEqual((await ledger.saveChartSettings(admin,{doi_tuong:[],phien_ban:2})).doi_tuong,[]);
+await db.exec('SET ROLE authenticated');await assert.rejects(()=>db.query('SELECT * FROM public.cau_hinh_bieu_do_thu_chi'),/permission denied/);await db.exec('RESET ROLE');
+console.log('PASS Đối tượng biểu đồ: tạo/sửa/xóa, tài khoản riêng, quyền báo cáo, kiểm tra phạm vi, phiên bản chống ghi đè và RLS.');
 await db.close();
