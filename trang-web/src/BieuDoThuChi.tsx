@@ -5,10 +5,9 @@ import { taiTep, csvThuChi, xlsxThuChi } from "./xuat-so-thu-chi";
 import {
   cacNgay,
   nhomThuChi,
-  type DoiTuongBieuDo,
+  mauNhom,
   type TuyChonBieuDo,
 } from "./bieu-do-thu-chi";
-import DoiTuongBieuDoPanel from "./DoiTuongBieuDo";
 import type { DongThuChi } from "./so-thu-chi";
 const readColor = (key: string, fallback: string) => {
   try {
@@ -38,14 +37,12 @@ export default function BieuDoThuChi({
     [source, setSource] = useState<DongThuChi[]>(rows),
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
-    [branch, setBranch] = useState(""),
-    [room, setRoom] = useState(""),
-    [group, setGroup] = useState("tong"),
+    [selected, setSelected] = useState<string[]>(["tong"]),
+    [hidden, setHidden] = useState<string[]>([]),
     [metric, setMetric] = useState("ca_hai"),
-    [sort, setSort] = useState("ten"),
+    [sort, setSort] = useState("ngay"),
     [percent, setPercent] = useState(false),
     [showLine, setShowLine] = useState(false),
-    [objects, setObjects] = useState<DoiTuongBieuDo[]>([]),
     [income, setIncome] = useState(() =>
       readColor("thu-chi:mau-thu", "#42b69a"),
     ),
@@ -83,35 +80,32 @@ export default function BieuDoThuChi({
       live = false;
     };
   }, [token, chartStart, chartEnd, rows, start, end]);
-  const filtered = useMemo(
-    () =>
-      source.filter(
-        (r) =>
-          (!branch || r.homestay_id === branch) &&
-          (!room || r.phong_id === room),
-      ),
-    [source, branch, room],
-  );
+  const choices = useMemo(() => [
+    { key: "tong", label: "Toàn hệ thống", mau: mauNhom[0] },
+    ...branches.map((b, i) => ({ key: "cn:" + b.id, label: b.ten_homestay || "Chi nhánh", mau: mauNhom[i % mauNhom.length] })),
+    ...rooms.map((r, i) => ({ key: "p:" + r.id, label: (branches.find(b => b.id === r.homestay_id)?.ten_homestay || "") + " · " + r.ten_phong, mau: mauNhom[i % mauNhom.length] })),
+  ], [branches, rooms]);
+  const activeKeys = selected.filter(key => !hidden.includes(key));
+  const matches = (r: DongThuChi, key: string) => key === "tong" ||
+    key === "cn:" + r.homestay_id || key === "p:" + r.phong_id;
+  const filtered = source.filter(r => activeKeys.some(key => matches(r, key)));
   const groups = useMemo(() => {
-    const value = (n: { thu: number; chi: number }) =>
-      metric === "thu" ? n.thu : metric === "chi" ? n.chi : n.thu + n.chi;
-    return nhomThuChi(
-      filtered,
-      group,
-      branches.filter((b) => !branch || b.id === branch),
-      rooms.filter(
-        (p) =>
-          (!branch || p.homestay_id === branch) && (!room || p.id === room),
-      ),
-      objects,
-    ).sort((a, b) =>
-      sort === "lon"
-        ? value(b) - value(a)
-        : sort === "be"
-          ? value(a) - value(b)
-          : a.label.localeCompare(b.label, "vi"),
-    );
-  }, [filtered, group, branches, rooms, objects, sort, metric, branch, room]);
+    if (sort === "ngay") {
+      return cacNgay(chartStart, chartEnd).map(day => {
+        const chosen = filtered.filter(r => r.ngay === day);
+        const total = nhomThuChi(chosen, "tong", [], [], [])[0];
+        return { ...total, key: day, label: day.slice(8) + "/" + day.slice(5, 7) };
+      }).filter(() => activeKeys.length > 0);
+    }
+    return choices.filter(c => activeKeys.includes(c.key)).map(c => ({
+      ...nhomThuChi(source.filter(r => matches(r, c.key)), "tong", [], [], [])[0], ...c,
+    })).sort((a, b) => (sort === "za" ? -1 : 1) * a.label.localeCompare(b.label, "vi", { numeric: true }));
+  }, [source, selected, hidden, choices, sort, chartStart, chartEnd]);
+  const group = sort === "ngay" || activeKeys.length !== 1 || activeKeys[0] !== "tong" ? "chon" : "tong";
+  function toggleChoice(key: string) {
+    setSelected(old => old.includes(key) ? old.filter(x => x !== key) : key === "tong" ? [key] : [...old.filter(x => x !== "tong"), key]);
+    setHidden(old => old.filter(x => x !== key));
+  }
   const series = (
     metric === "thu" ? ["thu"] : metric === "chi" ? ["chi"] : ["thu", "chi"]
   ) as ("thu" | "chi")[];
@@ -148,7 +142,6 @@ export default function BieuDoThuChi({
     () => cacNgay(chartStart, chartEnd),
     [chartStart, chartEnd],
   );
-  const lineWidth = Math.max(660, days.length * 28);
   const lineSeries = useMemo(
     () =>
       groups
@@ -182,15 +175,7 @@ export default function BieuDoThuChi({
         }),
     [groups, metric, group, income, expense, days],
   );
-  const lineMax = lineSeries.reduce(
-    (m, s) => s.values.reduce((a, b) => Math.max(a, b), m),
-    1,
-  );
-  const duplicated =
-    group === "doi_tuong" &&
-    filtered.some(
-      (r) => groups.filter((g) => g.rows.some((x) => x.id === r.id)).length > 1,
-    );
+  const duplicated = sort !== "ngay" && filtered.some(r => activeKeys.filter(key => matches(r, key)).length > 1);
   function saveColor(key: string, value: string, set: (s: string) => void) {
     set(value);
     try {
@@ -316,62 +301,28 @@ export default function BieuDoThuChi({
               setChartEnd(b);
             }}
           />
-          <select
-            aria-label="Nhóm biểu đồ"
-            value={group}
-            onChange={(e) => setGroup(e.target.value)}
-          >
-            <option value="tong">Tổng thu chi</option>
-            <option value="chi_nhanh">Giữa các chi nhánh</option>
-            <option value="phong">Giữa các phòng</option>
-            <option value="doi_tuong">Đối tượng tùy chỉnh</option>
-          </select>
-          <select
-            aria-label="Hiển thị thu hoặc chi"
-            value={metric}
-            onChange={(e) => setMetric(e.target.value)}
-          >
-            <option value="ca_hai">Thu và chi</option>
-            <option value="thu">Chỉ thu</option>
-            <option value="chi">Chỉ chi</option>
-          </select>
-          <select
-            aria-label="Chi nhánh biểu đồ"
-            value={branch}
-            onChange={(e) => {
-              setBranch(e.target.value);
-              setRoom("");
-            }}
-          >
-            <option value="">Tất cả chi nhánh</option>
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.ten_homestay}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Phòng biểu đồ"
-            value={room}
-            onChange={(e) => setRoom(e.target.value)}
-          >
-            <option value="">Tất cả phòng</option>
-            {rooms
-              .filter((p) => !branch || p.homestay_id === branch)
-              .map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.ten_phong}
-                </option>
-              ))}
-          </select>
+          <details className="stc-check-picker">
+            <summary>Chi nhánh ({selected.filter(k => k.startsWith("cn:")).length})</summary>
+            <div role="group" aria-label="Chọn chi nhánh biểu đồ">
+              <label><input type="checkbox" checked={selected.includes("tong")} onChange={() => toggleChoice("tong")} />Toàn hệ thống</label>
+              {branches.map(b => <label key={b.id}><input type="checkbox" checked={selected.includes("cn:" + b.id)} onChange={() => toggleChoice("cn:" + b.id)} />{b.ten_homestay}</label>)}
+            </div>
+          </details>
+          <details className="stc-check-picker">
+            <summary>Phòng ({selected.filter(k => k.startsWith("p:")).length})</summary>
+            <div role="group" aria-label="Chọn phòng biểu đồ">
+              {rooms.map(r => <label key={r.id}><input type="checkbox" checked={selected.includes("p:" + r.id)} onChange={() => toggleChoice("p:" + r.id)} />{choices.find(c => c.key === "p:" + r.id)?.label}</label>)}
+              {!rooms.length && <span>Chưa có phòng.</span>}
+            </div>
+          </details>
           <select
             aria-label="Sắp xếp biểu đồ"
             value={sort}
             onChange={(e) => setSort(e.target.value)}
           >
-            <option value="ten">Tên đối tượng</option>
-            <option value="lon">Lớn → bé</option>
-            <option value="be">Bé → lớn</option>
+            <option value="ngay">Theo ngày</option>
+            <option value="az">A–Z</option>
+            <option value="za">Z–A</option>
           </select>
           <label>
             <input
@@ -384,13 +335,22 @@ export default function BieuDoThuChi({
           </label>
           <label>
             <input
-              aria-label="Hiện biểu đồ đường"
+              aria-label="Vẽ thêm đường trên biểu đồ cột"
               type="checkbox"
               checked={showLine}
               onChange={(e) => setShowLine(e.target.checked)}
             />
-            Biểu đồ đường
+            Thêm đường
           </label>
+          <select
+            aria-label="Hiển thị thu hoặc chi"
+            value={metric}
+            onChange={(e) => setMetric(e.target.value)}
+          >
+            <option value="ca_hai">Thu và chi</option>
+            <option value="thu">Chỉ thu</option>
+            <option value="chi">Chỉ chi</option>
+          </select>
           <label>
             Thu
             <input
@@ -428,12 +388,15 @@ export default function BieuDoThuChi({
           </select>
         </div>
       </header>
-      <DoiTuongBieuDoPanel
-        token={token}
-        branches={branches}
-        rooms={rooms}
-        onChanged={setObjects}
-      />
+      <div className="stc-selected-objects" role="group" aria-label="Đối tượng đã chọn">
+        {choices.filter(c => selected.includes(c.key)).map(c => <div className="stc-object-chip" key={c.key}>
+          <button type="button" aria-pressed={!hidden.includes(c.key)} onClick={() => setHidden(old => old.includes(c.key) ? old.filter(k => k !== c.key) : [...old, c.key])}>
+            <i style={{ background: c.mau }} />{c.label}
+          </button>
+          <button type="button" className="stc-chip-remove" aria-label={"Bỏ " + c.label} onClick={() => { setSelected(old => old.filter(k => k !== c.key)); setHidden(old => old.filter(k => k !== c.key)); }}>×</button>
+        </div>)}
+        {!selected.length && <small>Chọn chi nhánh hoặc phòng để hiển thị biểu đồ.</small>}
+      </div>
       {error && <p role="alert">{error}</p>}
       {loading && <p role="status">Đang tải biểu đồ theo khoảng ngày riêng…</p>}
       {duplicated && (
@@ -520,6 +483,12 @@ export default function BieuDoThuChi({
                   </text>
                 </g>
               ))}
+              {showLine && series.map((k, j) => (
+                <g key={"line-" + k} className="stc-column-line">
+                  <polyline points={groups.map((g, i) => `${124 + i * 176 + j * 58},${260 - (g[k] / max) * 170}`).join(" ")} fill="none" stroke={k === "thu" ? income : expense} strokeWidth="2.5" strokeDasharray={k === "chi" ? "6 4" : undefined} />
+                  {groups.map((g, i) => <circle key={g.key} cx={124 + i * 176 + j * 58} cy={260 - (g[k] / max) * 170} r="4" fill="white" stroke={k === "thu" ? income : expense} strokeWidth="2"><title>{g.label + " · " + k + ": " + text(g[k])}</title></circle>)}
+                </g>
+              ))}
             </svg>
           </div>
           {!filtered.length && !loading && (
@@ -602,104 +571,7 @@ export default function BieuDoThuChi({
             ))}
           </div>
         </figure>
-        {showLine && (
-          <figure className="stc-line-figure">
-            <figcaption>Diễn biến theo ngày · {modeName}</figcaption>
-            <div className="stc-svg-scroll">
-              <svg
-                data-chart="duong"
-                width={lineWidth}
-                height="320"
-                role="img"
-                aria-label="Biểu đồ đường theo ngày"
-              >
-                <text x="20" y="24">
-                  Diễn biến {modeName.toLocaleLowerCase("vi")} theo ngày
-                </text>
-                {[0, 0.5, 1].map((t) => (
-                  <g key={t}>
-                    <line
-                      x1="60"
-                      x2={lineWidth - 20}
-                      y1={260 - t * 170}
-                      y2={260 - t * 170}
-                      stroke="#e9e0ef"
-                    />
-                    <text
-                      x="55"
-                      y={264 - t * 170}
-                      fontSize="9"
-                      textAnchor="end"
-                    >
-                      {percent
-                        ? text(lineMax * t)
-                        : ((lineMax * t) / 1000).toLocaleString("vi-VN", {
-                            maximumFractionDigits: 0,
-                          }) + "k"}
-                    </text>
-                  </g>
-                ))}
-                {lineSeries.map((s) => (
-                  <g key={s.key}>
-                    <polyline
-                      points={s.values
-                        .map(
-                          (n, i) =>
-                            `${70 + (i * (lineWidth - 100)) / Math.max(1, days.length - 1)},${260 - (n / lineMax) * 170}`,
-                        )
-                        .join(" ")}
-                      fill="none"
-                      stroke={s.color}
-                      strokeWidth="2"
-                      strokeDasharray={s.dashed ? "6 4" : undefined}
-                    />
-                    {s.values.map((n, i) => (
-                      <circle
-                        key={i}
-                        cx={
-                          70 +
-                          (i * (lineWidth - 100)) / Math.max(1, days.length - 1)
-                        }
-                        cy={260 - (n / lineMax) * 170}
-                        r="3"
-                        fill={s.color}
-                      >
-                        <title>
-                          {days[i] + " · " + s.label + ": " + vnd(n)}
-                        </title>
-                      </circle>
-                    ))}
-                  </g>
-                ))}
-                {days.map((d, i) =>
-                  i % Math.max(1, Math.ceil(days.length / 12)) === 0 ? (
-                    <text
-                      key={d}
-                      x={
-                        70 +
-                        (i * (lineWidth - 100)) / Math.max(1, days.length - 1)
-                      }
-                      y="286"
-                      textAnchor="middle"
-                      fontSize="10"
-                    >
-                      {d.slice(8) + "/" + d.slice(5, 7)}
-                    </text>
-                  ) : null,
-                )}
-              </svg>
-            </div>
-            <div className="stc-chart-legend stc-line-legend">
-              {lineSeries.map((s) => (
-                <span key={s.key}>
-                  <i style={{ background: s.color }} />
-                  {s.label}
-                  {s.dashed ? " (nét đứt)" : ""}
-                </span>
-              ))}
-            </div>
-          </figure>
-        )}
+
       </div>
       <p className="stc-chart-note">
         Lịch biểu đồ độc lập với lịch bảng. Chi dùng trị tuyệt đối để so sánh; %
@@ -708,3 +580,4 @@ export default function BieuDoThuChi({
     </section>
   );
 }
+

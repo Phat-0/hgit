@@ -470,12 +470,18 @@ export default function SoThuChi({
         </td>
         {getCell(
           0,
-          <input
-            type="date"
-            aria-label="Ngày thu chi"
-            value={row.ngay}
-            onChange={(e) => patch(row, { ngay: e.target.value })}
-          />,
+          <label className="stc-date-cell" title={row.ngay.split("-").reverse().join("/")}>
+            <span aria-hidden="true">{row.ngay.slice(8, 10)}/{row.ngay.slice(5, 7)}</span>
+            <input
+              type="date"
+              required
+              aria-label="Ngày thu chi"
+              value={row.ngay}
+              onChange={(e) => {
+                if (e.target.value) patch(row, { ngay: e.target.value });
+              }}
+            />
+          </label>,
         )}
         {getCell(
           1,
@@ -950,3 +956,4 @@ export default function SoThuChi({
     </section>
   );
 }
+
