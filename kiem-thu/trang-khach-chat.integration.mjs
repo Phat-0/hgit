@@ -1148,5 +1148,7 @@ assert.equal(stats.don.reduce((s,r)=>s+r.dat,0),expectedOrders.rows[0].dat);
 assert.equal(stats.don.reduce((s,r)=>s+r.huy,0),expectedOrders.rows[0].huy);
 assert.ok(stats.don.every(r=>!('ten_khach' in r)&&!('so_dien_thoai' in r)));
 assert.deepEqual((await db.query('SELECT (SELECT count(*) FROM public.so_thu_chi) AS ledger,(SELECT count(*) FROM public.nhat_ky_thu_chi) AS audit')).rows,countBeforeStats.rows);
+const expectedMinutes=await db.query(`SELECT coalesce(sum(extract(hour FROM nhan_phong_luc AT TIME ZONE 'Asia/Ho_Chi_Minh')*60+extract(minute FROM nhan_phong_luc AT TIME ZONE 'Asia/Ho_Chi_Minh')) FILTER(WHERE trang_thai IN ('Đã xác nhận','Đã nhận phòng','Đã trả phòng')),0) AS minutes FROM public.dat_phong WHERE ngay_tao >= '2026-11-01'::date AT TIME ZONE 'Asia/Ho_Chi_Minh' AND ngay_tao < '2027-01-01'::date AT TIME ZONE 'Asia/Ho_Chi_Minh'`);
+assert.equal(stats.don.reduce((s,r)=>s+Number(r.phut_bat_dau),0),Number(expectedMinutes.rows[0].minutes));
 console.log('PASS Thống kê: quyền backend, ngày và giới hạn khoảng, tổng nguồn thu/chi và đơn đặt/hủy, tiền tồn, không trả thông tin khách, không ghi DB.');
 await db.close();

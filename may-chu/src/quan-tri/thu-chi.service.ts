@@ -415,7 +415,8 @@ export class ThuChiService {
         count(*) FILTER(WHERE trang_thai IN ('Đã xác nhận','Đã nhận phòng','Đã trả phòng'))::int AS dat,
         count(*) FILTER(WHERE trang_thai='Đã hủy')::int AS huy,
         coalesce(sum(tong_tien) FILTER(WHERE trang_thai IN ('Đã xác nhận','Đã nhận phòng','Đã trả phòng')),0) AS gia,
-        coalesce(sum(greatest(extract(epoch FROM (tra_phong_luc-nhan_phong_luc))/3600,0)) FILTER(WHERE trang_thai IN ('Đã xác nhận','Đã nhận phòng','Đã trả phòng')),0) AS gio_o
+        coalesce(sum(greatest(extract(epoch FROM (tra_phong_luc-nhan_phong_luc))/3600,0)) FILTER(WHERE trang_thai IN ('Đã xác nhận','Đã nhận phòng','Đã trả phòng')),0) AS gio_o,
+        coalesce(sum(extract(hour FROM nhan_phong_luc AT TIME ZONE 'Asia/Ho_Chi_Minh')*60+extract(minute FROM nhan_phong_luc AT TIME ZONE 'Asia/Ho_Chi_Minh')) FILTER(WHERE trang_thai IN ('Đã xác nhận','Đã nhận phòng','Đã trả phòng')),0) AS phut_bat_dau
         FROM public.dat_phong
         WHERE ngay_tao >= $1::date AT TIME ZONE 'Asia/Ho_Chi_Minh'
           AND ngay_tao < ($2::date+1) AT TIME ZONE 'Asia/Ho_Chi_Minh'

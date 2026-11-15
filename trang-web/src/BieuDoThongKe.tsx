@@ -5,7 +5,9 @@ export default function BieuDoThongKe({
   title,
   unit,
   points,
+  comparisonOnly = false,
 }: {
+  comparisonOnly?: boolean;
   title: string;
   unit: string;
   points: { id: string; ten: string; value: number | null }[];
@@ -20,11 +22,12 @@ export default function BieuDoThongKe({
         !hidden.includes(p.id) && !removed.includes(p.id) && p.value !== null,
     ),
     sum = data.reduce((s, p) => s + Math.abs(p.value!), 0);
-  const value = (n: number) => (percent ? (sum ? (n / sum) * 100 : 0) : n);
+  const usePercent = percent && !comparisonOnly;
+  const value = (n: number) => (usePercent ? (sum ? (n / sum) * 100 : 0) : n);
   const low = Math.min(0, ...data.map((p) => value(p.value!))),
     high = Math.max(1, ...data.map((p) => value(p.value!)));
   const y = (n: number) => 240 - ((value(n) - low) / (high - low)) * 170;
-  const txt = (n: number) => hienSo(value(n)) + (percent ? "%" : " " + unit);
+  const txt = (n: number) => hienSo(value(n)) + (usePercent ? "%" : " " + unit);
   const width = Math.max(620, data.length * 130 + 90),
     colors = ["#42b69a", "#b16bd4", "#df9750", "#6398db", "#d26994"];
   let offset = 0;
@@ -74,7 +77,8 @@ export default function BieuDoThongKe({
             <label>
               <input
                 type="checkbox"
-                checked={percent}
+                checked={usePercent}
+                disabled={comparisonOnly}
                 onChange={(e) => setPercent(e.target.checked)}
               />
               Hiện %
@@ -144,7 +148,7 @@ export default function BieuDoThongKe({
       </div>
       <div className="stc-chart-grid" ref={ref}>
         <figure>
-          <figcaption>{percent ? "Tỷ trọng (%)" : unit}</figcaption>
+          <figcaption>{usePercent ? "Tỷ trọng (%)" : unit}</figcaption>
           <div className="stc-svg-scroll">
             <svg
               width={width}
@@ -205,7 +209,12 @@ export default function BieuDoThongKe({
         </figure>
         <figure>
           <figcaption>Tỷ trọng các đối tượng</figcaption>
-          {data.some((p) => p.value! < 0) ? (
+          {comparisonOnly ? (
+            <p>
+              Các đối tượng được chọn có dữ liệu bao gồm nhau. Dùng biểu đồ cột
+              để so sánh, hoặc bỏ tổng/chi nhánh bao gồm phòng để xem tỷ trọng.
+            </p>
+          ) : data.some((p) => p.value! < 0) ? (
             <p>Không tính tỷ trọng hình tròn cho giá trị âm.</p>
           ) : (
             <svg

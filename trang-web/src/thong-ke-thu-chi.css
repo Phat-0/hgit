@@ -364,3 +364,162 @@
     margin-left: 0;
   }
 }
+/* Đối tượng hỗn hợp, phòng xổ theo chi nhánh và chọn từng hàng. */
+.tk-scope-picker > div {
+  width: 310px;
+  max-height: 340px;
+}
+.tk-scope-picker > div > details,
+.tk-scope-picker .tk-room-branch {
+  position: static;
+  min-width: 0;
+}
+.tk-scope-picker details > summary {
+  border: 0;
+  background: #f7f1fc;
+  padding: 7px;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: normal;
+}
+.tk-scope-picker details > div {
+  position: static;
+  width: auto;
+  max-width: none;
+  max-height: none;
+  box-shadow: none;
+  border: 0;
+  display: grid;
+  gap: 8px;
+  padding: 9px 7px;
+}
+.tk-scope-picker label {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.tk-add-column > summary {
+  font-size: 19px;
+  padding: 4px 9px;
+  line-height: 20px;
+}
+.tk-add-column > div > button {
+  text-align: left;
+  border: 0;
+  background: white;
+  padding: 7px;
+  font-size: 11px;
+}
+.tk-add-column > div > button:hover {
+  background: #f2e8fb;
+}
+.tk-page .tk-editor-compact {
+  align-items: center;
+  border: 0;
+  padding: 10px;
+  background: #f8f3fc;
+}
+.tk-editor-compact > select {
+  max-width: 235px;
+  min-height: 31px;
+}
+.tk-editor-compact .tk-weekdays {
+  width: auto;
+}
+.tk-sheet .tk-row-check {
+  position: sticky;
+  left: 0;
+  min-width: 36px;
+  width: 36px;
+  padding: 7px;
+  text-align: center;
+  z-index: 3;
+  background: #faf7fd;
+}
+.tk-sheet thead .tk-row-check {
+  z-index: 6;
+  background: #eee5f7;
+}
+.tk-sheet th.tk-name {
+  left: 36px;
+}
+.tk-sheet input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #9566bd;
+  cursor: pointer;
+}
+.tk-sheet tr[aria-selected="true"] > :is(td, th) {
+  background: #f0e4fa;
+}
+.tk-sheet .tk-name small {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  color: #9275a5;
+  margin-top: 4px;
+}
+.tk-peak-time {
+  display: block;
+  font-size: 10px;
+  margin-top: 5px;
+  color: #7e5998;
+  white-space: nowrap;
+}
+.tk-chart-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 8px;
+  border-top: 1px solid #eee5f7;
+  padding-top: 12px;
+}
+.tk-chart-controls > span {
+  font-size: 11px;
+  color: #8c749d;
+}
+.tk-chart-controls > button {
+  font-size: 11px;
+  padding: 7px 12px;
+}
+.tk-chart-controls > button[aria-pressed="true"] {
+  background: #9566bd;
+  color: white;
+}
+.tk-chart-controls .stc-check-picker > div {
+  width: 290px;
+  max-height: 245px;
+}
+.tk-chart-controls .stc-check-picker label {
+  white-space: normal;
+  font-size: 11px;
+}
+.tk-empty-chart {
+  font-size: 11px;
+  color: #8c749d;
+}
+.tk-scope-picker details > summary::after {
+  content: "▾";
+  float: right;
+  margin-left: 8px;
+  color: #9677ac;
+}
+@media (max-width: 650px) {
+  .tk-toolbar,
+  .tk-chart-controls {
+    position: relative;
+  }
+  .tk-page .tk-scope-picker,
+  .tk-page .tk-chart-controls > .stc-check-picker {
+    position: static;
+  }
+  .tk-page .tk-scope-picker > div,
+  .tk-page .tk-chart-controls > .stc-check-picker > div {
+    left: 0 !important;
+    right: 0 !important;
+    top: calc(100% + 5px);
+    width: auto !important;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}

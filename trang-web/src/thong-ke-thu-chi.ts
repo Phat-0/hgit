@@ -14,7 +14,7 @@ export type CotThongKe = {
   den: string;
   thu: number[];
   loaiDat: string[];
-  gio: number[];
+  khungGio?: boolean;
 };
 export type DuLieuThongKe = {
   chi_nhanh: { id: string; ten_homestay: string }[];
@@ -36,6 +36,7 @@ export type DuLieuThongKe = {
     huy: number;
     gia: string | number;
     gio_o: string | number;
+    phut_bat_dau?: string | number;
   }[];
   tien_ton: { thang: string; so_tien: string | number }[];
   truoc_thang: {
@@ -51,9 +52,8 @@ export const CHI_SO = [
   ["dat", "Số lượt phòng đặt", "lượt"],
   ["huy", "Số lượt hủy", "lượt"],
   ["gia_don", "Giá đơn", "đ"],
-  ["thoi_gian", "Thời gian lưu trú", "giờ"],
+  ["thoi_gian", "TB thời gian lưu trú", "giờ"],
   ["loai_dat", "Lượt theo loại đặt", "lượt"],
-  ["khung_gio", "Lượt theo khung giờ", "lượt"],
 ] as const;
 export const THU = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 export const thuCuaNgay = (d: string) =>
@@ -66,7 +66,7 @@ const congNgay = (d: string, n: number) =>
 export const dauTuan = (d: string) => congNgay(d, -thuCuaNgay(d));
 export function ngayCuaCot(c: CotThongKe, tu: string, den: string) {
   return cacNgay(c.lichRieng ? c.tu : tu, c.lichRieng ? c.den : den).filter(
-    (d) => c.thu.includes(thuCuaNgay(d)),
+    (d) => c.chia !== "ngay" || c.thu.includes(thuCuaNgay(d)),
   );
 }
 export function nhomNgay(c: CotThongKe, tu: string, den: string) {
@@ -120,8 +120,7 @@ export function tinhGiaTri(
       (r) =>
         khop(r, p) &&
         dates.has(r.ngay) &&
-        (!c.loaiDat.length || c.loaiDat.includes(r.hinh_thuc_dat)) &&
-        (!c.gio.length || c.gio.includes(Number(r.gio))),
+        (!c.loaiDat.length || c.loaiDat.includes(r.hinh_thuc_dat)),
     );
   if (c.chiSo === "so_du") {
     const closing = (d: string) => {
@@ -154,6 +153,29 @@ export function tinhGiaTri(
     }
     return closing(days[days.length - 1]);
   }
+  // Thời gian lưu trú luôn là trung bình mỗi lượt đặt của loại đã chọn.
+  // TB ngày/tuần là trung bình các mức TB theo ngày/tuần có đơn, không chia giờ tổng cho ngày trống.
+  if (c.chiSo === "thoi_gian") {
+    const buckets = new Map<string, { hours: number; count: number }>();
+    for (const r of orders) {
+      const key =
+        c.cachTinh === "tb_ngay"
+          ? r.ngay
+          : c.cachTinh === "tb_tuan"
+            ? dauTuan(r.ngay)
+            : "tong";
+      const b = buckets.get(key) || { hours: 0, count: 0 };
+      b.hours += Number(r.gio_o);
+      b.count += Number(r.dat);
+      buckets.set(key, b);
+    }
+    const means = [...buckets.values()]
+      .filter((b) => b.count > 0)
+      .map((b) => b.hours / b.count);
+    return means.length
+      ? means.reduce((s, n) => s + n, 0) / means.length
+      : null;
+  }
   let total = 0;
   if (c.chiSo === "thu" || c.chiSo === "chi")
     total = flows
@@ -179,9 +201,7 @@ export function tinhGiaTri(
       ? days.length
       : c.cachTinh === "tb_tuan"
         ? new Set(days.map(dauTuan)).size
-        : c.cachTinh === "tb_don"
-          ? orders.reduce((s, r) => s + Number(r.dat), 0)
-          : 1;
+        : 1;
   return divisor ? total / divisor : null;
 }
 export function tenCot(c: CotThongKe) {
@@ -193,12 +213,72 @@ export function tenCot(c: CotThongKe) {
       ? "TB/ngày"
       : c.cachTinh === "tb_tuan"
         ? "TB/tuần"
-        : c.cachTinh === "tb_don"
-          ? "TB/đơn"
-          : c.chiSo === "so_du"
-            ? "Cuối kỳ"
+        : c.chiSo === "so_du"
+          ? "Cuối kỳ"
+          : c.chiSo === "thoi_gian"
+            ? "Chung"
             : "Tổng")
   );
 }
 export const hienSo = (n: number | null) =>
   n === null ? "—" : n.toLocaleString("vi-VN", { maximumFractionDigits: 2 });
+
+export function khungGioPhoBien(
+  data: DuLieuThongKe,
+  p: PhamVi,
+  c: CotThongKe,
+  days: string[],
+) {
+  if (!c.khungGio || c.loaiDat.length !== 1 || c.loaiDat[0] !== "Theo giờ")
+    return null;
+  const dates = new Set(days),
+    byHour = new Map<
+      number,
+      { count: number; minutes: number; hours: number }
+    >();
+  for (const r of data.don) {
+    if (
+      !khop(r, p) ||
+      !dates.has(r.ngay) ||
+      r.hinh_thuc_dat !== "Theo giờ" ||
+      Number(r.dat) <= 0
+    )
+      continue;
+    const b = byHour.get(Number(r.gio)) || { count: 0, minutes: 0, hours: 0 };
+    b.count += Number(r.dat);
+    b.minutes +=
+      r.phut_bat_dau === undefined
+        ? Number(r.gio) * 60 * Number(r.dat)
+        : Number(r.phut_bat_dau);
+    b.hours += Number(r.gio_o);
+    byHour.set(Number(r.gio), b);
+  }
+  const peak = [...byHour.entries()].sort(
+    (a, b) => b[1].count - a[1].count || a[0] - b[0],
+  )[0];
+  if (!peak) return null;
+  const b = peak[1],
+    start = b.minutes / b.count,
+    end = start + (b.hours / b.count) * 60;
+  const time = (n: number) => {
+    const min = ((Math.round(n) % 1440) + 1440) % 1440;
+    return (
+      String(Math.floor(min / 60)).padStart(2, "0") +
+      ":" +
+      String(min % 60).padStart(2, "0")
+    );
+  };
+  return {
+    count: b.count,
+    from: time(start),
+    to: time(end),
+    days:
+      Math.floor(Math.round(end) / 1440) - Math.floor(Math.round(start) / 1440),
+    hour: peak[0],
+  };
+}
+export function chuKhungGio(k: ReturnType<typeof khungGioPhoBien>) {
+  return k
+    ? `${k.from}–${k.to}${k.days ? ` (+${k.days} ngày)` : ""} · ${k.count} lượt`
+    : "—";
+}

@@ -25,7 +25,10 @@ export function RangePicker({
 }: Props) {
   const [open, setOpen] = useState(false),
     [first, setFirst] = useState<string | null>(null),
-    [month, setMonth] = useState(start.slice(0, 7));
+    [month, setMonth] = useState(
+      start.slice(0, 7) ||
+        new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 7),
+    );
   const [position, setPosition] = useState<{
     top: number;
     left: number;
@@ -158,7 +161,10 @@ export function RangePicker({
           setPosition(null);
           setOpen((v) => !v);
           setFirst(null);
-          setMonth(start.slice(0, 7));
+          setMonth(
+            start.slice(0, 7) ||
+              new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 7),
+          );
         }}
         aria-expanded={open}
         aria-haspopup="dialog"
