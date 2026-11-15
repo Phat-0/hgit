@@ -1133,4 +1133,20 @@ const changedChart=await ledger.saveChartSettings(admin,{doi_tuong:[{...chartObj
 assert.deepEqual((await ledger.saveChartSettings(admin,{doi_tuong:[],phien_ban:2})).doi_tuong,[]);
 await db.exec('SET ROLE authenticated');await assert.rejects(()=>db.query('SELECT * FROM public.cau_hinh_bieu_do_thu_chi'),/permission denied/);await db.exec('RESET ROLE');
 console.log('PASS Đối tượng biểu đồ: tạo/sửa/xóa, tài khoản riêng, quyền báo cáo, kiểm tra phạm vi, phiên bản chống ghi đè và RLS.');
+
+await assert.rejects(()=>ledger.statistics(uid,'2026-11-01','2026-11-30'),/chưa được cấp quyền/);
+await assert.rejects(()=>ledger.statistics(admin,'2026-02-30','2026-03-01'),/Ngày không hợp lệ/);
+await assert.rejects(()=>ledger.statistics(admin,'2026-01-01','2028-01-01'),/367 ngày/);
+const countBeforeStats=await db.query('SELECT (SELECT count(*) FROM public.so_thu_chi) AS ledger,(SELECT count(*) FROM public.nhat_ky_thu_chi) AS audit');
+const stats=await ledger.statistics(admin,'2026-11-01','2026-12-31');
+const expectedStats=await db.query(`SELECT coalesce(sum(greatest(so_tien,0)),0) AS thu,coalesce(sum(greatest(-so_tien,0)),0) AS chi FROM public.so_thu_chi WHERE ngay BETWEEN '2026-11-01' AND '2026-12-31'`);
+assert.equal(stats.dong.reduce((s,r)=>s+Number(r.thu),0),Number(expectedStats.rows[0].thu));
+assert.equal(stats.dong.reduce((s,r)=>s+Number(r.chi),0),Number(expectedStats.rows[0].chi));
+assert.ok(stats.tien_ton.some(r=>r.thang==='2026-11-01'&&Number(r.so_tien)===1000000));
+const expectedOrders=await db.query(`SELECT count(*) FILTER(WHERE trang_thai IN ('Đã xác nhận','Đã nhận phòng','Đã trả phòng'))::int AS dat,count(*) FILTER(WHERE trang_thai='Đã hủy')::int AS huy FROM public.dat_phong WHERE ngay_tao >= '2026-11-01'::date AT TIME ZONE 'Asia/Ho_Chi_Minh' AND ngay_tao < '2027-01-01'::date AT TIME ZONE 'Asia/Ho_Chi_Minh'`);
+assert.equal(stats.don.reduce((s,r)=>s+r.dat,0),expectedOrders.rows[0].dat);
+assert.equal(stats.don.reduce((s,r)=>s+r.huy,0),expectedOrders.rows[0].huy);
+assert.ok(stats.don.every(r=>!('ten_khach' in r)&&!('so_dien_thoai' in r)));
+assert.deepEqual((await db.query('SELECT (SELECT count(*) FROM public.so_thu_chi) AS ledger,(SELECT count(*) FROM public.nhat_ky_thu_chi) AS audit')).rows,countBeforeStats.rows);
+console.log('PASS Thống kê: quyền backend, ngày và giới hạn khoảng, tổng nguồn thu/chi và đơn đặt/hủy, tiền tồn, không trả thông tin khách, không ghi DB.');
 await db.close();

@@ -390,6 +390,74 @@ export class ThuChiService {
       await c.end();
     }
   }
+  // Chỉ đọc và tổng hợp dữ liệu nguồn; không lưu bảng/cột hay kết quả thống kê.
+  async statistics(uid: string, start: string, end: string) {
+    await this.allow(uid);
+    ngayThuChi(start);
+    ngayThuChi(end);
+    if (start > end || Date.parse(end) - Date.parse(start) > 366 * 86400000)
+      throw new BadRequestException('Khoảng thống kê tối đa 367 ngày');
+    const c = await this.db();
+    try {
+      await c.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+      const args = [start, end];
+      const ledger = await c.query(
+        `SELECT ngay::text,homestay_id,phong_id,
+        coalesce(sum(greatest(so_tien,0)),0) AS thu,coalesce(sum(greatest(-so_tien,0)),0) AS chi
+        FROM public.so_thu_chi WHERE ngay >= date_trunc('month',$1::date)::date AND ngay <= $2::date
+        GROUP BY ngay,homestay_id,phong_id ORDER BY ngay LIMIT 50001`,
+        args,
+      );
+      const orders = await c.query(
+        `SELECT (ngay_tao AT TIME ZONE 'Asia/Ho_Chi_Minh')::date::text AS ngay,
+        homestay_id,phong_id,hinh_thuc_dat,
+        extract(hour FROM nhan_phong_luc AT TIME ZONE 'Asia/Ho_Chi_Minh')::int AS gio,
+        count(*) FILTER(WHERE trang_thai IN ('Đã xác nhận','Đã nhận phòng','Đã trả phòng'))::int AS dat,
+        count(*) FILTER(WHERE trang_thai='Đã hủy')::int AS huy,
+        coalesce(sum(tong_tien) FILTER(WHERE trang_thai IN ('Đã xác nhận','Đã nhận phòng','Đã trả phòng')),0) AS gia,
+        coalesce(sum(greatest(extract(epoch FROM (tra_phong_luc-nhan_phong_luc))/3600,0)) FILTER(WHERE trang_thai IN ('Đã xác nhận','Đã nhận phòng','Đã trả phòng')),0) AS gio_o
+        FROM public.dat_phong
+        WHERE ngay_tao >= $1::date AT TIME ZONE 'Asia/Ho_Chi_Minh'
+          AND ngay_tao < ($2::date+1) AT TIME ZONE 'Asia/Ho_Chi_Minh'
+        GROUP BY 1,2,3,4,5 ORDER BY 1 LIMIT 50001`,
+        args,
+      );
+      if (ledger.rows.length > 50000 || orders.rows.length > 50000)
+        throw new BadRequestException(
+          'Dữ liệu lớn; hãy thu hẹp khoảng thống kê để nhận đầy đủ số liệu',
+        );
+      const opening = await c.query(
+        `SELECT thang::text,so_tien FROM public.tien_ton_thang
+        WHERE thang BETWEEN date_trunc('month',$1::date)::date AND $2::date ORDER BY thang`,
+        args,
+      );
+      const before = await c.query(
+        `SELECT homestay_id,phong_id,sum(so_tien) AS so_tien FROM public.so_thu_chi
+        WHERE ngay < date_trunc('month',$1::date)::date GROUP BY homestay_id,phong_id`,
+        [start],
+      );
+      const branches = await c.query(
+        'SELECT id,ten_homestay FROM public.homestay ORDER BY ten_homestay',
+      );
+      const rooms = await c.query(
+        'SELECT id,homestay_id,ten_phong FROM public.phong ORDER BY ten_phong',
+      );
+      await c.query('COMMIT');
+      return {
+        dong: ledger.rows,
+        don: orders.rows,
+        tien_ton: opening.rows,
+        truoc_thang: before.rows,
+        chi_nhanh: branches.rows,
+        phong: rooms.rows,
+      };
+    } catch (e) {
+      await c.query('ROLLBACK');
+      throw e;
+    } finally {
+      await c.end();
+    }
+  }
   async chartSettings(uid: string) {
     await this.allow(uid);
     const c = await this.db();

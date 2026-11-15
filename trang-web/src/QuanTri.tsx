@@ -114,11 +114,15 @@ export default function QuanTri() {
     don_id?: string;
   }>({});
   const [navRevision, setNavRevision] = useState(0);
+  function choPhepRoiTrang() {
+    return window.dispatchEvent(new Event("homestay:truoc-chuyen-trang", { cancelable: true }));
+  }
   function go(page: string, filter: typeof linked = {}) {
     if (!permissions.includes(page)) {
       setThongBao("Bạn chưa được cấp quyền vào mục này");
       return;
     }
+    if (!choPhepRoiTrang()) return;
     setLinked(filter);
     setNavRevision((v) => v + 1);
     setMuc(page as Muc);
@@ -258,6 +262,7 @@ export default function QuanTri() {
     }
   }
   function thoat() {
+    if (!choPhepRoiTrang()) return;
     clearSaved();
     setToken("");
     setPermissions([]);
@@ -432,6 +437,7 @@ export default function QuanTri() {
                   <button
                     role="menuitem"
                     onClick={() => {
+                      if (!choPhepRoiTrang()) return;
                       setMuc("thong-tin");
                       setHoSoMo(false);
                     }}

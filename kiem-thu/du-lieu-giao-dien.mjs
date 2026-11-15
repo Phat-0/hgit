@@ -21,6 +21,7 @@ export async function duLieuGiaoDien(page){
  else if(path.endsWith('/toi'))data={duoc_phep:true,quan_tri_he_thong:true,trang:pages};
  else if(path.endsWith('/tong-quan-moi'))data={...report,tong_homestay:2,tong_phong:10,tong_dat_phong:20,tong_nguoi_dung:30,tong_danh_gia:6,sao_trung_binh:"4.5",danh_gia_tuan:2,chenh_lech_hom_qua:'200000',danh_gia_moi:[review]};
  else if(path.endsWith('/thu-chi/bieu-do')){if(method==='PUT'){const body=route.request().postDataJSON?.()||{};chartSettings={doi_tuong:body.doi_tuong||[],phien_ban:chartSettings.phien_ban+1}}data=chartSettings;}
+ else if(path.endsWith('/thu-chi/thong-ke'))data={dong:[{ngay:today,homestay_id:branch,phong_id:room,thu:300000,chi:50000}],don:[{ngay:today,homestay_id:branch,phong_id:room,hinh_thuc_dat:'Theo giờ',gio:9,dat:2,huy:1,gia:400000,gio_o:6}],tien_ton:[{thang:month+'-01',so_tien:1000000}],truoc_thang:[],chi_nhanh:branches,phong:rooms};
  else if(path.endsWith('/thu-chi'))data={dong:[{id:'88888888-8888-4888-8888-888888888888',ngay:today,ten:'Thu kiểm thử',so_tien:'300000',loai:'Thu',homestay_id:branch,phong_id:room,ghi_chu:'',mau:'#ffffff',phien_ban:1},{id:'99999999-9999-4999-8999-999999999999',ngay:today,ten:'Chi kiểm thử',so_tien:'-50000',loai:'Chi',homestay_id:branch,phong_id:room,ghi_chu:'',mau:'#ffffff',phien_ban:1}],tien_ton:{thang:month+'-01',so_tien:'1000000',phien_ban:1},tong_thang:{thu:'300000',chi:'-50000'},truoc_ky:'0',chi_nhanh:branches,phong:rooms};
  else if(path.endsWith('/chung-tu'))data=[];
  else if(path.endsWith('/bao-cao'))data=report;

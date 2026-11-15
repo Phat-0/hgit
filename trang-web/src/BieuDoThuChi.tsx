@@ -39,7 +39,8 @@ export default function BieuDoThuChi({
     [error, setError] = useState(""),
     [selected, setSelected] = useState<string[]>(["tong"]),
     [hidden, setHidden] = useState<string[]>([]),
-    [metric, setMetric] = useState("ca_hai"),
+    [metric, setMetric] = useState("thu"),
+    [scope, setScope] = useState("chi_nhanh"),
     [sort, setSort] = useState("ngay"),
     [percent, setPercent] = useState(false),
     [showLine, setShowLine] = useState(false),
@@ -80,31 +81,87 @@ export default function BieuDoThuChi({
       live = false;
     };
   }, [token, chartStart, chartEnd, rows, start, end]);
-  const choices = useMemo(() => [
-    { key: "tong", label: "Toàn hệ thống", mau: mauNhom[0] },
-    ...branches.map((b, i) => ({ key: "cn:" + b.id, label: b.ten_homestay || "Chi nhánh", mau: mauNhom[i % mauNhom.length] })),
-    ...rooms.map((r, i) => ({ key: "p:" + r.id, label: (branches.find(b => b.id === r.homestay_id)?.ten_homestay || "") + " · " + r.ten_phong, mau: mauNhom[i % mauNhom.length] })),
-  ], [branches, rooms]);
-  const activeKeys = selected.filter(key => !hidden.includes(key));
-  const matches = (r: DongThuChi, key: string) => key === "tong" ||
-    key === "cn:" + r.homestay_id || key === "p:" + r.phong_id;
-  const filtered = source.filter(r => activeKeys.some(key => matches(r, key)));
+  const choices = useMemo(
+    () => [
+      { key: "tong", label: "Toàn hệ thống", mau: mauNhom[0] },
+      ...branches.map((b, i) => ({
+        key: "cn:" + b.id,
+        label: b.ten_homestay || "Chi nhánh",
+        mau: mauNhom[i % mauNhom.length],
+      })),
+      ...rooms.map((r, i) => ({
+        key: "p:" + r.id,
+        label:
+          (branches.find((b) => b.id === r.homestay_id)?.ten_homestay || "") +
+          " · " +
+          r.ten_phong,
+        mau: mauNhom[i % mauNhom.length],
+      })),
+    ],
+    [branches, rooms],
+  );
+  const activeKeys = selected.filter((key) => !hidden.includes(key));
+  const matches = (r: DongThuChi, key: string) =>
+    key === "tong" ||
+    key === "cn:" + r.homestay_id ||
+    key === "p:" + r.phong_id;
+  const filtered = source.filter((r) =>
+    activeKeys.some((key) => matches(r, key)),
+  );
   const groups = useMemo(() => {
     if (sort === "ngay") {
-      return cacNgay(chartStart, chartEnd).map(day => {
-        const chosen = filtered.filter(r => r.ngay === day);
-        const total = nhomThuChi(chosen, "tong", [], [], [])[0];
-        return { ...total, key: day, label: day.slice(8) + "/" + day.slice(5, 7) };
-      }).filter(() => activeKeys.length > 0);
+      return cacNgay(chartStart, chartEnd)
+        .map((day) => {
+          const chosen = filtered.filter((r) => r.ngay === day);
+          const total = nhomThuChi(chosen, "tong", [], [], [])[0];
+          return {
+            ...total,
+            key: day,
+            label: day.slice(8) + "/" + day.slice(5, 7),
+          };
+        })
+        .filter(() => activeKeys.length > 0);
     }
-    return choices.filter(c => activeKeys.includes(c.key)).map(c => ({
-      ...nhomThuChi(source.filter(r => matches(r, c.key)), "tong", [], [], [])[0], ...c,
-    })).sort((a, b) => (sort === "za" ? -1 : 1) * a.label.localeCompare(b.label, "vi", { numeric: true }));
+    return choices
+      .filter((c) => activeKeys.includes(c.key))
+      .map((c) => ({
+        ...nhomThuChi(
+          source.filter((r) => matches(r, c.key)),
+          "tong",
+          [],
+          [],
+          [],
+        )[0],
+        ...c,
+      }))
+      .sort(
+        (a, b) =>
+          (sort === "za" ? -1 : 1) *
+          a.label.localeCompare(b.label, "vi", { numeric: true }),
+      );
   }, [source, selected, hidden, choices, sort, chartStart, chartEnd]);
-  const group = sort === "ngay" || activeKeys.length !== 1 || activeKeys[0] !== "tong" ? "chon" : "tong";
+  const group =
+    sort === "ngay" || activeKeys.length !== 1 || activeKeys[0] !== "tong"
+      ? "chon"
+      : "tong";
   function toggleChoice(key: string) {
-    setSelected(old => old.includes(key) ? old.filter(x => x !== key) : key === "tong" ? [key] : [...old.filter(x => x !== "tong"), key]);
-    setHidden(old => old.filter(x => x !== key));
+    const nextScope = key.startsWith("p:") ? "phong" : "chi_nhanh";
+    setScope(nextScope);
+    setSelected((old) =>
+      old.includes(key)
+        ? old.filter((x) => x !== key)
+        : key === "tong"
+          ? [key]
+          : [
+              ...old.filter(
+                (x) =>
+                  x !== "tong" &&
+                  x.startsWith(nextScope === "phong" ? "p:" : "cn:"),
+              ),
+              key,
+            ],
+    );
+    setHidden((old) => old.filter((x) => x !== key));
   }
   const series = (
     metric === "thu" ? ["thu"] : metric === "chi" ? ["chi"] : ["thu", "chi"]
@@ -121,20 +178,19 @@ export default function BieuDoThuChi({
       percent ? (sum ? ((n / sum) * 100).toFixed(1) : "0") + "%" : vnd(n),
     modeName =
       metric === "thu" ? "Thu" : metric === "chi" ? "Chi" : "Thu / chi";
-  const pie =
-    group === "tong"
-      ? series.map((k) => ({
-          key: k,
-          label: k === "thu" ? "Thu" : "Chi",
-          money: groups[0]?.[k] || 0,
-          color: k === "thu" ? income : expense,
-        }))
-      : groups.map((g) => ({
-          key: g.key,
-          label: g.label,
-          money: series.reduce((s, k) => s + g[k], 0),
-          color: g.mau,
-        }));
+  const pie = (["thu", "chi"] as const).map((k) => ({
+    key: k,
+    label: k === "thu" ? "Thu" : "Chi",
+    money: filtered.reduce(
+      (sum, r) =>
+        sum +
+        (k === "thu"
+          ? Math.max(0, Number(r.so_tien))
+          : Math.max(0, -Number(r.so_tien))),
+      0,
+    ),
+    color: k === "thu" ? income : expense,
+  }));
   const pieTotal = pie.reduce((s, p) => s + p.money, 0),
     circ = 2 * Math.PI * 70;
   let offset = 0;
@@ -175,7 +231,11 @@ export default function BieuDoThuChi({
         }),
     [groups, metric, group, income, expense, days],
   );
-  const duplicated = sort !== "ngay" && filtered.some(r => activeKeys.filter(key => matches(r, key)).length > 1);
+  const duplicated =
+    sort !== "ngay" &&
+    filtered.some(
+      (r) => activeKeys.filter((key) => matches(r, key)).length > 1,
+    );
   function saveColor(key: string, value: string, set: (s: string) => void) {
     set(value);
     try {
@@ -234,7 +294,10 @@ export default function BieuDoThuChi({
             svg.dataset.chart === "tron"
               ? pie.map((p) => ({
                   label: p.label,
-                  value: text(p.money),
+                  value: percent
+                    ? (pieTotal ? (p.money / pieTotal) * 100 : 0).toFixed(1) +
+                      "%"
+                    : vnd(p.money),
                   color: p.color,
                 }))
               : svg.dataset.chart === "duong"
@@ -301,20 +364,65 @@ export default function BieuDoThuChi({
               setChartEnd(b);
             }}
           />
-          <details className="stc-check-picker">
-            <summary>Chi nhánh ({selected.filter(k => k.startsWith("cn:")).length})</summary>
-            <div role="group" aria-label="Chọn chi nhánh biểu đồ">
-              <label><input type="checkbox" checked={selected.includes("tong")} onChange={() => toggleChoice("tong")} />Toàn hệ thống</label>
-              {branches.map(b => <label key={b.id}><input type="checkbox" checked={selected.includes("cn:" + b.id)} onChange={() => toggleChoice("cn:" + b.id)} />{b.ten_homestay}</label>)}
-            </div>
-          </details>
-          <details className="stc-check-picker">
-            <summary>Phòng ({selected.filter(k => k.startsWith("p:")).length})</summary>
-            <div role="group" aria-label="Chọn phòng biểu đồ">
-              {rooms.map(r => <label key={r.id}><input type="checkbox" checked={selected.includes("p:" + r.id)} onChange={() => toggleChoice("p:" + r.id)} />{choices.find(c => c.key === "p:" + r.id)?.label}</label>)}
-              {!rooms.length && <span>Chưa có phòng.</span>}
-            </div>
-          </details>
+          <select
+            aria-label="Loại đối tượng biểu đồ"
+            value={scope}
+            onChange={(e) => {
+              setScope(e.target.value);
+              setSelected([]);
+              setHidden([]);
+            }}
+          >
+            <option value="chi_nhanh">Chi nhánh</option>
+            <option value="phong">Phòng</option>
+          </select>
+          {scope === "chi_nhanh" && (
+            <details className="stc-check-picker">
+              <summary>
+                Chi nhánh ({selected.filter((k) => k.startsWith("cn:")).length})
+              </summary>
+              <div role="group" aria-label="Chọn chi nhánh biểu đồ">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={selected.includes("tong")}
+                    onChange={() => toggleChoice("tong")}
+                  />
+                  Toàn hệ thống
+                </label>
+                {branches.map((b) => (
+                  <label key={b.id}>
+                    <input
+                      type="checkbox"
+                      checked={selected.includes("cn:" + b.id)}
+                      onChange={() => toggleChoice("cn:" + b.id)}
+                    />
+                    {b.ten_homestay}
+                  </label>
+                ))}
+              </div>
+            </details>
+          )}
+          {scope === "phong" && (
+            <details className="stc-check-picker">
+              <summary>
+                Phòng ({selected.filter((k) => k.startsWith("p:")).length})
+              </summary>
+              <div role="group" aria-label="Chọn phòng biểu đồ">
+                {rooms.map((r) => (
+                  <label key={r.id}>
+                    <input
+                      type="checkbox"
+                      checked={selected.includes("p:" + r.id)}
+                      onChange={() => toggleChoice("p:" + r.id)}
+                    />
+                    {choices.find((c) => c.key === "p:" + r.id)?.label}
+                  </label>
+                ))}
+                {!rooms.length && <span>Chưa có phòng.</span>}
+              </div>
+            </details>
+          )}
           <select
             aria-label="Sắp xếp biểu đồ"
             value={sort}
@@ -324,78 +432,115 @@ export default function BieuDoThuChi({
             <option value="az">A–Z</option>
             <option value="za">Z–A</option>
           </select>
-          <label>
-            <input
-              aria-label="Hiện phần trăm biểu đồ"
-              type="checkbox"
-              checked={percent}
-              onChange={(e) => setPercent(e.target.checked)}
-            />
-            Hiện %
-          </label>
-          <label>
-            <input
-              aria-label="Vẽ thêm đường trên biểu đồ cột"
-              type="checkbox"
-              checked={showLine}
-              onChange={(e) => setShowLine(e.target.checked)}
-            />
-            Thêm đường
-          </label>
           <select
             aria-label="Hiển thị thu hoặc chi"
             value={metric}
             onChange={(e) => setMetric(e.target.value)}
           >
-            <option value="ca_hai">Thu và chi</option>
             <option value="thu">Chỉ thu</option>
             <option value="chi">Chỉ chi</option>
           </select>
-          <label>
-            Thu
-            <input
-              type="color"
-              aria-label="Màu biểu đồ thu"
-              value={income}
-              onChange={(e) =>
-                saveColor("thu-chi:mau-thu", e.target.value, setIncome)
-              }
-            />
-          </label>
-          <label>
-            Chi
-            <input
-              type="color"
-              aria-label="Màu biểu đồ chi"
-              value={expense}
-              onChange={(e) =>
-                saveColor("thu-chi:mau-chi", e.target.value, setExpense)
-              }
-            />
-          </label>
-          <select
-            aria-label="Xuất biểu đồ"
-            value=""
-            onChange={(e) => exportChart(e.target.value)}
-            disabled={loading || !!error}
-          >
-            <option value="" disabled>
-              ↗ Xuất biểu đồ
-            </option>
-            <option value="svg">SVG · các biểu đồ đang hiện</option>
-            <option value="csv">CSV · đối tượng</option>
-            <option value="xlsx">Excel · đối tượng và ngày</option>
-          </select>
+          <details className="stc-check-picker stc-chart-menu">
+            <summary aria-label="Tùy chọn biểu đồ" title="Tùy chọn biểu đồ">
+              ☰
+            </summary>
+            <div>
+              <label>
+                <input
+                  aria-label="Hiện phần trăm biểu đồ"
+                  type="checkbox"
+                  checked={percent}
+                  onChange={(e) => setPercent(e.target.checked)}
+                />
+                Hiện %
+              </label>
+              <label>
+                <input
+                  aria-label="Vẽ thêm đường trên biểu đồ cột"
+                  type="checkbox"
+                  checked={showLine}
+                  onChange={(e) => setShowLine(e.target.checked)}
+                />
+                Thêm đường
+              </label>
+              <label>
+                Thu
+                <input
+                  type="color"
+                  aria-label="Màu biểu đồ thu"
+                  value={income}
+                  onChange={(e) =>
+                    saveColor("thu-chi:mau-thu", e.target.value, setIncome)
+                  }
+                />
+              </label>
+              <label>
+                Chi
+                <input
+                  type="color"
+                  aria-label="Màu biểu đồ chi"
+                  value={expense}
+                  onChange={(e) =>
+                    saveColor("thu-chi:mau-chi", e.target.value, setExpense)
+                  }
+                />
+              </label>
+              <select
+                aria-label="Xuất biểu đồ"
+                value=""
+                onChange={(e) => exportChart(e.target.value)}
+                disabled={loading || !!error}
+              >
+                <option value="" disabled>
+                  ↗ Xuất biểu đồ
+                </option>
+                <option value="svg">SVG · các biểu đồ đang hiện</option>
+                <option value="csv">CSV · đối tượng</option>
+                <option value="xlsx">Excel · đối tượng và ngày</option>
+              </select>{" "}
+            </div>
+          </details>
         </div>
       </header>
-      <div className="stc-selected-objects" role="group" aria-label="Đối tượng đã chọn">
-        {choices.filter(c => selected.includes(c.key)).map(c => <div className="stc-object-chip" key={c.key}>
-          <button type="button" aria-pressed={!hidden.includes(c.key)} onClick={() => setHidden(old => old.includes(c.key) ? old.filter(k => k !== c.key) : [...old, c.key])}>
-            <i style={{ background: c.mau }} />{c.label}
-          </button>
-          <button type="button" className="stc-chip-remove" aria-label={"Bỏ " + c.label} onClick={() => { setSelected(old => old.filter(k => k !== c.key)); setHidden(old => old.filter(k => k !== c.key)); }}>×</button>
-        </div>)}
-        {!selected.length && <small>Chọn chi nhánh hoặc phòng để hiển thị biểu đồ.</small>}
+      <div
+        className="stc-selected-objects"
+        role="group"
+        aria-label="Đối tượng đã chọn"
+      >
+        {choices
+          .filter((c) => selected.includes(c.key))
+          .map((c) => (
+            <div className="stc-object-chip" key={c.key}>
+              <button
+                type="button"
+                aria-pressed={!hidden.includes(c.key)}
+                onClick={() =>
+                  setHidden((old) =>
+                    old.includes(c.key)
+                      ? old.filter((k) => k !== c.key)
+                      : [...old, c.key],
+                  )
+                }
+              >
+                <i style={{ background: c.mau }} />
+                {c.label}
+              </button>
+              <button
+                type="button"
+                className="stc-chip-remove"
+                aria-label={"Bỏ " + c.label}
+                onClick={() => {
+                  setSelected((old) => old.filter((k) => k !== c.key));
+                  setHidden((old) => old.filter((k) => k !== c.key));
+                }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        {!selected.length && (
+          <small>Chọn chi nhánh hoặc phòng để hiển thị biểu đồ.</small>
+        )}
       </div>
       {error && <p role="alert">{error}</p>}
       {loading && <p role="status">Đang tải biểu đồ theo khoảng ngày riêng…</p>}
@@ -483,12 +628,36 @@ export default function BieuDoThuChi({
                   </text>
                 </g>
               ))}
-              {showLine && series.map((k, j) => (
-                <g key={"line-" + k} className="stc-column-line">
-                  <polyline points={groups.map((g, i) => `${124 + i * 176 + j * 58},${260 - (g[k] / max) * 170}`).join(" ")} fill="none" stroke={k === "thu" ? income : expense} strokeWidth="2.5" strokeDasharray={k === "chi" ? "6 4" : undefined} />
-                  {groups.map((g, i) => <circle key={g.key} cx={124 + i * 176 + j * 58} cy={260 - (g[k] / max) * 170} r="4" fill="white" stroke={k === "thu" ? income : expense} strokeWidth="2"><title>{g.label + " · " + k + ": " + text(g[k])}</title></circle>)}
-                </g>
-              ))}
+              {showLine &&
+                series.map((k, j) => (
+                  <g key={"line-" + k} className="stc-column-line">
+                    <polyline
+                      points={groups
+                        .map(
+                          (g, i) =>
+                            `${124 + i * 176 + j * 58},${260 - (g[k] / max) * 170}`,
+                        )
+                        .join(" ")}
+                      fill="none"
+                      stroke={k === "thu" ? income : expense}
+                      strokeWidth="2.5"
+                      strokeDasharray={k === "chi" ? "6 4" : undefined}
+                    />
+                    {groups.map((g, i) => (
+                      <circle
+                        key={g.key}
+                        cx={124 + i * 176 + j * 58}
+                        cy={260 - (g[k] / max) * 170}
+                        r="4"
+                        fill="white"
+                        stroke={k === "thu" ? income : expense}
+                        strokeWidth="2"
+                      >
+                        <title>{g.label + " · " + k + ": " + text(g[k])}</title>
+                      </circle>
+                    ))}
+                  </g>
+                ))}
             </svg>
           </div>
           {!filtered.length && !loading && (
@@ -496,23 +665,17 @@ export default function BieuDoThuChi({
           )}
         </figure>
         <figure>
-          <figcaption>
-            {group === "tong"
-              ? "Cơ cấu thu / chi"
-              : modeName + " giữa các đối tượng"}
-          </figcaption>
+          <figcaption>Giữa thu và chi</figcaption>
           <svg
             data-chart="tron"
             width="380"
             height="270"
             viewBox="0 0 380 270"
             role="img"
-            aria-label="Biểu đồ tròn theo đối tượng"
+            aria-label="Biểu đồ tròn giữa thu và chi"
           >
             <text x="15" y="24" fontSize="14">
-              {group === "tong"
-                ? "Cơ cấu thu / chi"
-                : modeName + " theo đối tượng"}
+              Giữa thu và chi
             </text>
             <circle
               cx="190"
@@ -552,26 +715,34 @@ export default function BieuDoThuChi({
                   </circle>
                 );
               })}
-            <text x="190" y="154" textAnchor="middle" fontSize="13">
-              {percent ? (pieTotal ? "100%" : "0%") : vnd(pieTotal)}
+            <text
+              x="190"
+              y="143"
+              textAnchor="middle"
+              fontSize="12"
+              fill={income}
+            >
+              Thu{" "}
+              {percent
+                ? (pieTotal ? (pie[0].money / pieTotal) * 100 : 0).toFixed(1) +
+                  "%"
+                : vnd(pie[0].money)}
+            </text>
+            <text
+              x="190"
+              y="164"
+              textAnchor="middle"
+              fontSize="12"
+              fill={expense}
+            >
+              Chi{" "}
+              {percent
+                ? (pieTotal ? (pie[1].money / pieTotal) * 100 : 0).toFixed(1) +
+                  "%"
+                : vnd(pie[1].money)}
             </text>
           </svg>
-          <div className="stc-chart-legend">
-            {pie.map((p) => (
-              <span key={p.key}>
-                <i style={{ background: p.color }} />
-                <span>{p.label}</span>
-                <b>
-                  {percent
-                    ? (pieTotal ? (p.money / pieTotal) * 100 : 0).toFixed(1) +
-                      "%"
-                    : vnd(p.money)}
-                </b>
-              </span>
-            ))}
-          </div>
         </figure>
-
       </div>
       <p className="stc-chart-note">
         Lịch biểu đồ độc lập với lịch bảng. Chi dùng trị tuyệt đối để so sánh; %
@@ -580,4 +751,3 @@ export default function BieuDoThuChi({
     </section>
   );
 }
-
