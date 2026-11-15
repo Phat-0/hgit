@@ -432,74 +432,76 @@ export default function BieuDoThuChi({
             <option value="az">A–Z</option>
             <option value="za">Z–A</option>
           </select>
-          <select
-            aria-label="Hiển thị thu hoặc chi"
-            value={metric}
-            onChange={(e) => setMetric(e.target.value)}
-          >
-            <option value="thu">Chỉ thu</option>
-            <option value="chi">Chỉ chi</option>
-          </select>
-          <details className="stc-check-picker stc-chart-menu">
-            <summary aria-label="Tùy chọn biểu đồ" title="Tùy chọn biểu đồ">
-              ☰
-            </summary>
-            <div>
-              <label>
-                <input
-                  aria-label="Hiện phần trăm biểu đồ"
-                  type="checkbox"
-                  checked={percent}
-                  onChange={(e) => setPercent(e.target.checked)}
-                />
-                Hiện %
-              </label>
-              <label>
-                <input
-                  aria-label="Vẽ thêm đường trên biểu đồ cột"
-                  type="checkbox"
-                  checked={showLine}
-                  onChange={(e) => setShowLine(e.target.checked)}
-                />
-                Thêm đường
-              </label>
-              <label>
-                Thu
-                <input
-                  type="color"
-                  aria-label="Màu biểu đồ thu"
-                  value={income}
-                  onChange={(e) =>
-                    saveColor("thu-chi:mau-thu", e.target.value, setIncome)
-                  }
-                />
-              </label>
-              <label>
-                Chi
-                <input
-                  type="color"
-                  aria-label="Màu biểu đồ chi"
-                  value={expense}
-                  onChange={(e) =>
-                    saveColor("thu-chi:mau-chi", e.target.value, setExpense)
-                  }
-                />
-              </label>
-              <select
-                aria-label="Xuất biểu đồ"
-                value=""
-                onChange={(e) => exportChart(e.target.value)}
-                disabled={loading || !!error}
-              >
-                <option value="" disabled>
-                  ↗ Xuất biểu đồ
-                </option>
-                <option value="svg">SVG · các biểu đồ đang hiện</option>
-                <option value="csv">CSV · đối tượng</option>
-                <option value="xlsx">Excel · đối tượng và ngày</option>
-              </select>{" "}
-            </div>
-          </details>
+          <div className="stc-chart-actions">
+            <select
+              aria-label="Hiển thị thu hoặc chi"
+              value={metric}
+              onChange={(e) => setMetric(e.target.value)}
+            >
+              <option value="thu">Chỉ thu</option>
+              <option value="chi">Chỉ chi</option>
+            </select>
+            <details className="stc-check-picker stc-chart-menu">
+              <summary aria-label="Tùy chọn biểu đồ" title="Tùy chọn biểu đồ">
+                ☰
+              </summary>
+              <div>
+                <label>
+                  <input
+                    aria-label="Hiện phần trăm biểu đồ"
+                    type="checkbox"
+                    checked={percent}
+                    onChange={(e) => setPercent(e.target.checked)}
+                  />
+                  Hiện %
+                </label>
+                <label>
+                  <input
+                    aria-label="Vẽ thêm đường trên biểu đồ cột"
+                    type="checkbox"
+                    checked={showLine}
+                    onChange={(e) => setShowLine(e.target.checked)}
+                  />
+                  Thêm đường
+                </label>
+                <label>
+                  Thu
+                  <input
+                    type="color"
+                    aria-label="Màu biểu đồ thu"
+                    value={income}
+                    onChange={(e) =>
+                      saveColor("thu-chi:mau-thu", e.target.value, setIncome)
+                    }
+                  />
+                </label>
+                <label>
+                  Chi
+                  <input
+                    type="color"
+                    aria-label="Màu biểu đồ chi"
+                    value={expense}
+                    onChange={(e) =>
+                      saveColor("thu-chi:mau-chi", e.target.value, setExpense)
+                    }
+                  />
+                </label>
+                <select
+                  aria-label="Xuất biểu đồ"
+                  value=""
+                  onChange={(e) => exportChart(e.target.value)}
+                  disabled={loading || !!error}
+                >
+                  <option value="" disabled>
+                    ↗ Xuất biểu đồ
+                  </option>
+                  <option value="svg">SVG · các biểu đồ đang hiện</option>
+                  <option value="csv">CSV · đối tượng</option>
+                  <option value="xlsx">Excel · đối tượng và ngày</option>
+                </select>{" "}
+              </div>
+            </details>
+          </div>
         </div>
       </header>
       <div

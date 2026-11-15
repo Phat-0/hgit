@@ -73,9 +73,11 @@ function NhapSoTien({
 export default function SoThuChi({
   token,
   initial,
+  renderAnalysis,
 }: {
   token: string;
   initial?: { tu_ngay?: string; den_ngay?: string };
+  renderAnalysis?: (chart: ReactNode) => ReactNode;
 }) {
   const [start, setStart] = useState(
       initial?.tu_ngay || ngayVN().slice(0, 7) + "-01",
@@ -470,8 +472,13 @@ export default function SoThuChi({
         </td>
         {getCell(
           0,
-          <label className="stc-date-cell" title={row.ngay.split("-").reverse().join("/")}>
-            <span aria-hidden="true">{row.ngay.slice(8, 10)}/{row.ngay.slice(5, 7)}</span>
+          <label
+            className="stc-date-cell"
+            title={row.ngay.split("-").reverse().join("/")}
+          >
+            <span aria-hidden="true">
+              {row.ngay.slice(8, 10)}/{row.ngay.slice(5, 7)}
+            </span>
             <input
               type="date"
               required
@@ -926,16 +933,31 @@ export default function SoThuChi({
           </div>
         </div>
       </section>
-      {chartData && (
-        <BieuDoThuChi
-          token={token}
-          start={start}
-          end={end}
-          rows={chartData.dong}
-          branches={chartData.chi_nhanh}
-          rooms={chartData.phong}
-        />
-      )}
+      {renderAnalysis
+        ? renderAnalysis(
+            chartData ? (
+              <BieuDoThuChi
+                token={token}
+                start={start}
+                end={end}
+                rows={chartData.dong}
+                branches={chartData.chi_nhanh}
+                rooms={chartData.phong}
+              />
+            ) : (
+              <p role="status">Đang tải dữ liệu thu chi…</p>
+            ),
+          )
+        : chartData && (
+            <BieuDoThuChi
+              token={token}
+              start={start}
+              end={end}
+              rows={chartData.dong}
+              branches={chartData.chi_nhanh}
+              rooms={chartData.phong}
+            />
+          )}
       <details className="stc-howto">
         <summary>Quy tắc tính số dư và dữ liệu xuất</summary>
         <p>
@@ -956,4 +978,3 @@ export default function SoThuChi({
     </section>
   );
 }
-

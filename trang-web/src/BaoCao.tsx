@@ -34,55 +34,66 @@ export default function BaoCao(props: {
   }, [dirty]);
   return (
     <div className="bc-page">
-      <div
-        className="stc-report-tabs"
-        role="tablist"
-        aria-label="Thu chi và thống kê"
-      >
-        <button
-          role="tab"
-          id="tab-thu-chi"
-          aria-controls="panel-thu-chi"
-          aria-selected={tab === "thu-chi"}
-          onClick={() => setTab("thu-chi")}
-        >
-          Thu chi
-        </button>
-        <button
-          role="tab"
-          id="tab-thong-ke"
-          aria-controls="panel-thong-ke"
-          aria-selected={tab === "thong-ke"}
-          onClick={() => {
-            setVisited(true);
-            setTab("thong-ke");
-          }}
-        >
-          Thống kê
-        </button>
-      </div>
-      <div
-        id="panel-thu-chi"
-        role="tabpanel"
-        aria-labelledby="tab-thu-chi"
-        hidden={tab !== "thu-chi"}
-      >
-        <SoThuChi token={props.token} initial={props.initial} />
-      </div>
-      <div
-        id="panel-thong-ke"
-        role="tabpanel"
-        aria-labelledby="tab-thong-ke"
-        hidden={tab !== "thong-ke"}
-      >
-        {visited && (
-          <ThongKeThuChi
-            token={props.token}
-            initial={props.initial}
-            onDirtyChange={setDirty}
-          />
+      <SoThuChi
+        token={props.token}
+        initial={props.initial}
+        renderAnalysis={(chart) => (
+          <section
+            className="stc-analysis-block"
+            aria-label="Phân tích thu chi và thống kê"
+          >
+            <div
+              className="stc-report-tabs"
+              role="tablist"
+              aria-label="Thu chi và thống kê"
+            >
+              <button
+                role="tab"
+                id="tab-thu-chi"
+                aria-controls="panel-thu-chi"
+                aria-selected={tab === "thu-chi"}
+                onClick={() => setTab("thu-chi")}
+              >
+                Thu chi
+              </button>
+              <button
+                role="tab"
+                id="tab-thong-ke"
+                aria-controls="panel-thong-ke"
+                aria-selected={tab === "thong-ke"}
+                onClick={() => {
+                  setVisited(true);
+                  setTab("thong-ke");
+                }}
+              >
+                Thống kê
+              </button>
+            </div>
+            <div
+              id="panel-thu-chi"
+              role="tabpanel"
+              aria-labelledby="tab-thu-chi"
+              hidden={tab !== "thu-chi"}
+            >
+              {chart}
+            </div>
+            <div
+              id="panel-thong-ke"
+              role="tabpanel"
+              aria-labelledby="tab-thong-ke"
+              hidden={tab !== "thong-ke"}
+            >
+              {visited && (
+                <ThongKeThuChi
+                  token={props.token}
+                  initial={props.initial}
+                  onDirtyChange={setDirty}
+                />
+              )}
+            </div>
+          </section>
         )}
-      </div>
+      />
     </div>
   );
 }
