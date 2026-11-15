@@ -1,3 +1,4 @@
+import { useLuaChonNoi } from "./lua-chon-noi";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RangePicker } from "./RangePicker";
 import { quanTriApi, vnd } from "./bao-cao-api";
@@ -32,6 +33,7 @@ export default function BieuDoThuChi({
   branches: TuyChonBieuDo[];
   rooms: TuyChonBieuDo[];
 }) {
+  useLuaChonNoi();
   const [chartStart, setChartStart] = useState(start),
     [chartEnd, setChartEnd] = useState(end),
     [source, setSource] = useState<DongThuChi[]>(rows),

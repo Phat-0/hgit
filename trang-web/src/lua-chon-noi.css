@@ -1,0 +1,152 @@
+/* Top-layer panels stay inside the viewport and above tables/scrolling cards. */
+html body [data-lua-chon].lua-chon-noi {
+  box-sizing: border-box !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px !important;
+  padding: 12px !important;
+  border: 1px solid #ddcce9 !important;
+  border-radius: 12px !important;
+  background: #fff !important;
+  color: #513762 !important;
+  box-shadow: 0 12px 40px #48265926 !important;
+  overflow: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  white-space: normal !important;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  z-index: 20000;
+}
+html body .lua-chon-noi::backdrop {
+  background: transparent;
+  pointer-events: none;
+}
+html body .lua-chon-noi label {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  min-height: 34px;
+  padding: 7px 8px !important;
+  margin: 0 !important;
+  box-sizing: border-box;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  text-overflow: clip !important;
+  overflow: visible !important;
+  line-height: 1.5 !important;
+  font-size: 12px !important;
+  font-weight: 400;
+  border-radius: 7px;
+  color: #513762 !important;
+}
+html body .lua-chon-noi label:has(input:checked) {
+  background: #f0e5fa;
+}
+html body .lua-chon-noi label:hover {
+  background: #f7f2fb;
+}
+html body .lua-chon-noi input[type="checkbox"] {
+  flex: 0 0 14px !important;
+  width: 14px !important;
+  height: 14px !important;
+  margin: 2px 0 0 !important;
+  padding: 0 !important;
+  accent-color: #9566bd;
+}
+html body .lua-chon-noi label :is(span, strong) {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+html body .lua-chon-noi :is(select, button) {
+  font: inherit !important;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  color: #614077;
+  background: #fff;
+  border: 1px solid #e3d7ec;
+  border-radius: 7px;
+  padding: 7px 9px;
+  min-height: 32px;
+  cursor: pointer;
+}
+html body .lua-chon-noi > select {
+  width: 100% !important;
+}
+html body .lua-chon-noi > label:has(input[type="color"]) {
+  align-items: center !important;
+  justify-content: space-between;
+}
+html body .lua-chon-noi.lua-chon-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+html body .lua-chon-noi.lua-chon-them {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+html body .lua-chon-noi.lua-chon-them > button {
+  text-align: left;
+  white-space: normal;
+  line-height: 1.5;
+}
+html body .lua-chon-noi.lua-chon-rong > details {
+  grid-column: 1/-1;
+  position: static !important;
+  min-width: 0;
+}
+html body .lua-chon-noi.lua-chon-rong details > summary {
+  padding: 8px 10px;
+  min-height: 34px;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 7px;
+  background: #f6f0fb;
+  white-space: normal;
+  cursor: pointer;
+  font-size: 12px;
+  color: #674780;
+}
+html body .lua-chon-noi.lua-chon-rong details > div {
+  position: static !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: auto !important;
+  max-width: none !important;
+  max-height: none !important;
+  padding: 8px 0 !important;
+  gap: 8px !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: white;
+}
+html body .lua-chon-noi.lua-chon-rong > details > div:has(> details) {
+  grid-template-columns: minmax(0, 1fr);
+}
+html body .lua-chon-noi.lua-chon-rong .tk-room-branch {
+  position: static !important;
+  min-width: 0;
+}
+@media (max-width: 700px) {
+  html body .lua-chon-noi.lua-chon-grid,
+  html body .lua-chon-noi.lua-chon-rong details > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  html body .lua-chon-noi.lua-chon-rong > details > div:has(> details) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+@media (max-width: 340px) {
+  html body .lua-chon-noi.lua-chon-grid,
+  html body .lua-chon-noi.lua-chon-rong details > div,
+  html body .lua-chon-noi.lua-chon-them {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}

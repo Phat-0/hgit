@@ -1,3 +1,4 @@
+import { useLuaChonNoi, useBamNgoai } from "./lua-chon-noi";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RangePicker } from "./RangePicker";
 import { ngayVN, quanTriApi } from "./bao-cao-api";
@@ -52,6 +53,7 @@ export default function ThongKeThuChi({
   initial?: { tu_ngay?: string; den_ngay?: string };
   onDirtyChange: (dirty: boolean) => void;
 }) {
+  useLuaChonNoi();
   const [tu, setTu] = useState(
       initial?.tu_ngay || ngayVN().slice(0, 7) + "-01",
     ),
@@ -73,6 +75,11 @@ export default function ThongKeThuChi({
     [chartKeys, setChartKeys] = useState<string[]>([]),
     [saved, setSaved] = useState(false);
   const dragging = useRef("");
+  useBamNgoai(
+    !!editing,
+    ".tk-column-editor,.tk-column-list,.tk-add-column,.lp-range-portal",
+    () => setEditing(null),
+  );
   const mark = () => {
     setSaved(false);
     onDirtyChange(true);

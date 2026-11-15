@@ -1,3 +1,4 @@
+import { useBamNgoai } from "./lua-chon-noi";
 import {tenTrangThai,phongGoc,chuTrenMau,hienThiMacDinh} from './ThietLapTrangThai';
 import NhapTien from './NhapTien';
 import AnhPhongNoi from './AnhPhongNoi';
@@ -24,6 +25,7 @@ export default function PhongPage({token}:{token:string}){
  const [filter,setFilter]=useState(''),[query,setQuery]=useState(''),[branch,setBranch]=useState(''),[status,setStatus]=useState('');
  const [loading,setLoading]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState('');
  const [modal,setModal]=useState<'create'|'edit'|'view'|'delete'|null>(null),[selected,setSelected]=useState<Room|null>(null),[form,setForm]=useState<Form>(empty),[menu,setMenu]=useState<string|null>(null);
+ useBamNgoai(!!menu,".cn-menu-wrap",()=>setMenu(null));
  const load=useCallback(async(silent=false)=>{if(!silent)setLoading(true);setError('');try{const p=new URLSearchParams({tim:query,homestay_id:branch,trang_thai:status,trang:String(page),gioi_han:'10'});setData(await api<Page>(token,'?'+p));}catch(e){setError(e instanceof Error?e.message:'Không tải được phòng');}finally{setLoading(false);}},[token,query,branch,status,page]);
  useEffect(()=>{void load();const timer=window.setInterval(()=>{if(!document.hidden)void load(true)},30000);return()=>window.clearInterval(timer)},[load]);
  useEffect(()=>{void api<Options>(token,'/tuy-chon').then(setOptions).catch(e=>setError(e instanceof Error?e.message:'Không tải được lựa chọn'));},[token]);

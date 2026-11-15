@@ -1,3 +1,4 @@
+import { useBamNgoai } from "./lua-chon-noi";
 import { useCallback, useEffect, useState } from 'react';
 import diaGioi from './du-lieu/don-vi-hanh-chinh.json';
 import OpenStreetMapPin from './OpenStreetMapPin.js';
@@ -26,6 +27,7 @@ export default function ChiNhanhPage({token}:{token:string}){
  const [error,setError]=useState('');const [success,setSuccess]=useState('');
  const [modal,setModal]=useState<'create'|'edit'|'view'|'delete'|null>(null);
  const [menuId,setMenuId]=useState<string|null>(null);
+ useBamNgoai(!!menuId,".cn-menu-wrap",()=>setMenuId(null));
  const [selected,setSelected]=useState<ChiNhanh|null>(null);const [form,setForm]=useState<Input>(blank);
  const load=useCallback(async()=>{
   setLoading(true);setError('');

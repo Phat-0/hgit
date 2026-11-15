@@ -21,3 +21,10 @@
 .qt-layout :is(.dp-dialog-head,.cn-dialog-header,.nv-dialog > header) button {
   color: #572b78; background: #efe4f7;
 }
+/* The off-canvas breakpoint must match the full-width workspace breakpoint. */
+@media(max-width:900px){
+ .qt-layout .qt-sidebar:not(.qt-sidebar-open){transform:translateX(-105%)!important;visibility:hidden!important;pointer-events:none!important}
+ .qt-layout .qt-sidebar.qt-sidebar-open{transform:translateX(0)!important;visibility:visible!important;pointer-events:auto!important}
+ .qt-layout .qt-mobile-menu{display:inline-flex!important;align-items:center;justify-content:center;min-width:34px;min-height:34px;padding:5px;border-radius:7px}
+ .qt-layout>.qt-overlay{display:block!important;position:fixed;inset:0;z-index:99!important;background:#24113766;border:0;border-radius:0}
+}

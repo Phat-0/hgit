@@ -1,3 +1,4 @@
+import { useLuaChonNoi } from "./lua-chon-noi";
 import { useRef, useState } from "react";
 import { csvThuChi, taiTep, xlsxThuChi } from "./xuat-so-thu-chi";
 import { hienSo } from "./thong-ke-thu-chi";
@@ -12,6 +13,7 @@ export default function BieuDoThongKe({
   unit: string;
   points: { id: string; ten: string; value: number | null }[];
 }) {
+  useLuaChonNoi();
   const [percent, setPercent] = useState(false),
     [line, setLine] = useState(false),
     [hidden, setHidden] = useState<string[]>([]),

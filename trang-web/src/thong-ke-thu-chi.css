@@ -523,3 +523,159 @@
     box-sizing: border-box;
   }
 }
+/* Consistent control height and spacing across the two report sections. */
+.tk-page :is(.tk-toolbar, .tk-column-editor, .tk-chart-controls) {
+  gap: 8px;
+  align-items: center;
+}
+.tk-page :is(.tk-toolbar, .tk-column-editor, .tk-chart-controls) > button,
+.tk-page :is(.tk-toolbar, .tk-chart-controls) > .stc-check-picker > summary {
+  box-sizing: border-box;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  font-size: 12px;
+  line-height: 18px;
+}
+.tk-page
+  :is(.tk-toolbar, .tk-column-editor, .tk-chart-controls)
+  .lp-range-control
+  .lp-range-button {
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 6px 9px !important;
+  font-size: 11px !important;
+}
+.tk-page .tk-add-column > summary,
+.tk-page .stc-chart-menu > summary {
+  min-width: 34px;
+  width: 34px;
+  padding: 5px;
+  font-size: 18px;
+}
+.tk-page .tk-column-editor {
+  padding: 12px !important;
+  gap: 8px !important;
+  border: 1px solid #e8dced !important;
+}
+.tk-page .tk-column-editor > select {
+  flex: 1 1 160px;
+  max-width: 240px;
+  height: 32px;
+  padding: 6px 9px;
+  font-size: 12px;
+  box-sizing: border-box;
+}
+.tk-page .tk-column-editor > .tk-weekdays {
+  width: 100%;
+  padding: 3px 0;
+}
+.tk-page .tk-weekdays label {
+  min-height: 28px;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 4px;
+}
+.tk-page .tk-column-list {
+  gap: 8px;
+  margin: 12px 0;
+}
+.tk-page .tk-column-list > div {
+  border: 1px solid #dfd0e9;
+  border-radius: 8px;
+  background: #faf7fd;
+  overflow: visible;
+  align-items: stretch;
+  max-width: 100%;
+}
+.tk-page .tk-column-list > div > button {
+  border: 0 !important;
+  box-shadow: none !important;
+  min-height: 32px;
+  padding: 6px 9px;
+  font-size: 11px;
+  line-height: 18px;
+  background: transparent;
+  border-radius: 7px;
+}
+.tk-page .tk-column-list > div > button:first-child {
+  white-space: normal;
+  text-align: left;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.tk-page .tk-column-list > div > button:last-child {
+  border-left: 1px solid #e5d8ed !important;
+  border-radius: 0 7px 7px 0;
+}
+.tk-page .tk-column-list > div > button[aria-pressed="true"] {
+  background: #ebdcf6;
+}
+.tk-page .tk-sheet .tk-name > div {
+  gap: 8px;
+  align-items: center;
+}
+.tk-page .tk-chart-controls {
+  margin: 14px 0 8px;
+  padding-top: 12px;
+}
+@media (max-width: 600px) {
+  .tk-page .tk-column-editor > select {
+    max-width: none;
+    flex-basis: calc(50% - 8px);
+    width: calc(50% - 8px);
+  }
+  .tk-page .tk-heading {
+    gap: 8px;
+  }
+  .tk-page .tk-toolbar > span {
+    flex-basis: 100%;
+  }
+  .tk-page .tk-column-list > div {
+    flex: 0 1 auto;
+  }
+}
+/* Align the ledger and Thu chi chart toolbars with the statistics controls. */
+.bc-page .stc-page .stc-compact-toolbar {
+  align-items: center;
+  gap: 8px;
+}
+.bc-page .stc-page .stc-compact-toolbar .stc-search,
+.bc-page .stc-page .stc-header-actions > button,
+.bc-page .stc-page .stc-header-actions > select {
+  height: 32px;
+  min-height: 32px;
+  box-sizing: border-box;
+  padding: 6px 9px;
+  line-height: 18px;
+}
+.bc-page .stc-page .stc-compact-toolbar .lp-range-button,
+.stc-analysis-block .stc-charts .stc-tools .lp-range-button {
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 6px 9px !important;
+  box-sizing: border-box !important;
+}
+.stc-analysis-block .stc-charts .stc-tools {
+  gap: 8px !important;
+  align-items: center;
+}
+.stc-analysis-block .stc-charts .stc-tools > select,
+.stc-analysis-block .stc-charts .stc-chart-actions > select,
+.stc-analysis-block .stc-charts .stc-check-picker > summary {
+  height: 32px;
+  min-height: 32px;
+  box-sizing: border-box;
+  padding: 6px 9px;
+  line-height: 18px;
+  display: inline-flex;
+  align-items: center;
+}
+.stc-analysis-block .stc-charts .stc-chart-menu > summary {
+  width: 34px;
+  min-width: 34px;
+  justify-content: center;
+  padding: 5px;
+}

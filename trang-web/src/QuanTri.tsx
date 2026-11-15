@@ -1,3 +1,4 @@
+import { useBamNgoai } from "./lua-chon-noi";
 import TongQuan from "./TongQuan";
 import BaoCao from "./BaoCao";
 import DanhGia from "./DanhGia";
@@ -136,6 +137,9 @@ export default function QuanTri() {
   const [hoSoMo, setHoSoMo] = useState(false);
   const [timMo, setTimMo] = useState(false);
   const [tim, setTim] = useState("");
+  useBamNgoai(menuMo, ".qt-sidebar,.qt-mobile-menu", () => setMenuMo(false));
+  useBamNgoai(hoSoMo, ".qt-profile-wrap", () => setHoSoMo(false));
+  useBamNgoai(timMo, ".qt-header-search-group", () => { setTimMo(false); setTim(""); });
   useEffect(() => {
     let active = true;
     const saved = stored();
