@@ -11,7 +11,15 @@ export default function BieuDoThongKe({
   comparisonOnly?: boolean;
   title: string;
   unit: string;
-  points: { id: string; ten: string; value: number | null; unit?: string }[];
+  points: {
+    id: string;
+    ten: string;
+    value: number | null;
+    unit?: string;
+    calc?: string;
+    category?: string;
+    branch?: string;
+  }[];
 }) {
   useLuaChonNoi();
   const [percent, setPercent] = useState(false),
@@ -131,40 +139,85 @@ export default function BieuDoThongKe({
         </details>
       </header>
       <div className="stc-selected-objects">
-        {points
-          .filter((p) => !removed.includes(p.id))
-          .map((p) => (
-            <div
-              className="stc-object-chip"
-              key={p.id}
-              style={{
-                background: colors[points.indexOf(p) % colors.length] + "35",
-                borderColor: colors[points.indexOf(p) % colors.length],
-              }}
-            >
-              <button
-                type="button"
-                aria-pressed={!hidden.includes(p.id)}
-                onClick={() =>
-                  setHidden((old) =>
-                    old.includes(p.id)
-                      ? old.filter((x) => x !== p.id)
-                      : [...old, p.id],
-                  )
-                }
-              >
-                {p.ten}
-              </button>
-              <button
-                type="button"
-                className="stc-chip-remove"
-                aria-label={"Bỏ khỏi biểu đồ " + p.ten}
-                onClick={() => setRemoved((old) => [...old, p.id])}
-              >
-                ×
-              </button>
-            </div>
-          ))}
+        {[...new Set(points.map((p) => p.calc || "Tổng"))].map((calc) => (
+          <section className="tk-chart-calc-group" key={calc}>
+            <h4>{calc}</h4>
+            {[
+              ...new Set(
+                points
+                  .filter((p) => (p.calc || "Tổng") === calc)
+                  .map((p) => p.category || "Tổng"),
+              ),
+            ].map((category) => (
+              <div className="tk-chart-category" key={category}>
+                <h5>{category}</h5>
+                {[
+                  ...new Set(
+                    points
+                      .filter(
+                        (p) =>
+                          (p.calc || "Tổng") === calc &&
+                          (p.category || "Tổng") === category,
+                      )
+                      .map((p) => p.branch || ""),
+                  ),
+                ].map((branch) => (
+                  <div className="tk-chart-branch" key={branch}>
+                    {branch && <h6>{branch}</h6>}
+                    <div>
+                      {points
+                        .filter(
+                          (p) =>
+                            !removed.includes(p.id) &&
+                            (p.calc || "Tổng") === calc &&
+                            (p.category || "Tổng") === category &&
+                            (p.branch || "") === branch,
+                        )
+                        .map((p) => (
+                          <div
+                            className="stc-object-chip"
+                            key={p.id}
+                            style={{
+                              background:
+                                colors[points.indexOf(p) % colors.length] +
+                                "65",
+                              borderColor:
+                                colors[points.indexOf(p) % colors.length],
+                            }}
+                          >
+                            <button
+                              type="button"
+                              title={p.ten}
+                              aria-pressed={!hidden.includes(p.id)}
+                              onClick={() =>
+                                setHidden((old) =>
+                                  old.includes(p.id)
+                                    ? old.filter((x) => x !== p.id)
+                                    : [...old, p.id],
+                                )
+                              }
+                            >
+                              {p.ten}
+                            </button>
+                            <button
+                              type="button"
+                              className="stc-chip-remove"
+                              aria-label={"Bỏ khỏi biểu đồ " + p.ten}
+                              onClick={() =>
+                                setRemoved((old) => [...old, p.id])
+                              }
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </section>
+        ))}
         {removed.length > 0 && (
           <button
             type="button"

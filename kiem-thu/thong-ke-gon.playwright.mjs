@@ -39,7 +39,7 @@ export async function kiemTraThongKeGon(page) {
   await page.mouse.click(4, 4);
   const cells = page.locator(".tk-sheet tbody tr td:nth-child(3)");
   await cells.last().scrollIntoViewIfNeeded();
-  await cells.first().click({trial:true});
+  await cells.first().click({ trial: true });
   const a = await cells.first().boundingBox(),
     b = await cells.last().boundingBox();
   await page.mouse.move(a.x + 15, a.y + a.height / 2);
@@ -54,15 +54,32 @@ export async function kiemTraThongKeGon(page) {
     (await page.evaluate(() => getSelection()?.toString())) === "",
     "Không chọn ký tự",
   );
+  await cells.first().click();
+  check(
+    (await page.locator(".tk-sheet tr[aria-selected=true]").count()) === 2,
+    "Bấm lại bỏ chọn",
+  );
+  await cells.first().click();
+  check(
+    (await page.locator(".tk-sheet tr[aria-selected=true]").count()) === 3,
+    "Bấm chọn lại",
+  );
+  await page.getByLabel("Chọn tất cả hàng thống kê", { exact: true }).uncheck();
+  await cells.first().click();
+  await cells.last().click({ modifiers: ["Shift"] });
+  check(
+    (await page.locator(".tk-sheet tr[aria-selected=true]").count()) === 3,
+    "Shift chọn khoảng ba hàng",
+  );
   await page
-    .locator(".tk-column-list>div")
+    .locator(".tk-value-chip")
     .first()
     .locator("button")
     .first()
     .click();
   const editor = page.locator(".tk-column-editor");
   check(
-    (await editor.locator(".lp-range-button").count()) === 2,
+    (await editor.locator(".lp-range-button").count()) === 1,
     "Giá trị chung có lịch riêng và thêm khoảng",
   );
   await editor.locator(".lp-range-button").first().click();
@@ -84,7 +101,9 @@ export async function kiemTraThongKeGon(page) {
     .first()
     .getByRole("button", { name: "2", exact: true })
     .click();
-  await editor.getByRole("button", { name: "＋ Khoảng", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Thêm khoảng lịch", exact: true })
+    .click();
   await page
     .locator(".lp-calendar-month")
     .first()
@@ -96,9 +115,13 @@ export async function kiemTraThongKeGon(page) {
     .getByRole("button", { name: "11", exact: true })
     .click();
   check(
-    (await editor.getByLabel(/^Bỏ khoảng ngày/).count()) === 2,
+    (await page
+      .locator(".lp-range-portal")
+      .getByLabel(/^Bỏ khoảng ngày/)
+      .count()) === 2,
     "Hai khoảng riêng",
   );
+  await page.locator(".lp-range-close").click();
   await editor.getByLabel("Chia cột thống kê").selectOption("ngay");
   // Theo ngày kế thừa lịch chung; xóa thứ để xác nhận hàng ngày được ẩn.
   check(
@@ -115,6 +138,11 @@ export async function kiemTraThongKeGon(page) {
   await page.getByLabel("Chọn tất cả hàng thống kê", { exact: true }).uncheck();
   await page.getByLabel("Chọn hàng P101", { exact: true }).check();
   await page.locator(".tk-values-picker>summary").click();
+  await page
+    .locator(".tk-values-picker>div>.tk-calc-options")
+    .first()
+    .locator(":scope>summary")
+    .click();
   await page.locator(".tk-metric-dates>summary").nth(1).click();
   const dateGrid = page
     .locator(".tk-metric-dates")
@@ -257,5 +285,97 @@ export async function kiemTraThuChiGon(page) {
     series: 2,
     sort: "desc",
     softColors: true,
+  };
+}
+export async function kiemTraNhomGiaTri(page) {
+  const check = (v, m) => {
+    if (!v) throw Error(m);
+  };
+  for (const group of ["Trung bình ngày", "Trung bình tuần"]) {
+    await page.getByLabel("Thêm cột thống kê", { exact: true }).click();
+    const option = page
+      .locator(".tk-add-column .tk-calc-options")
+      .filter({
+        has: page
+          .locator("summary")
+          .filter({ hasText: new RegExp("^" + group + "$") }),
+      });
+    await option.locator(":scope>summary").click();
+    await option.getByRole("button", { name: "Thu", exact: true }).click();
+    check(
+      (await page.getByLabel("Cách tính cột", { exact: true }).inputValue()) ===
+        (group === "Trung bình ngày" ? "tb_ngay" : "tb_tuan"),
+      "Thêm giá trị đúng cách tính",
+    );
+    await page
+      .locator(".tk-column-editor")
+      .getByRole("button", { name: "Xong", exact: true })
+      .click();
+  }
+  check(
+    (await page.locator(".tk-calc-group").count()) === 3,
+    "Ba nhóm ô giá trị",
+  );
+  check(
+    !(await page.locator(".tk-column-list").innerText()).includes("⚙"),
+    "Chỉ nút ×",
+  );
+  await page.locator(".tk-values-picker>summary").click();
+  for (const group of ["Trung bình ngày", "Trung bình tuần"]) {
+    const options = page
+      .locator(".tk-values-picker>div>.tk-calc-options")
+      .filter({
+        has: page
+          .locator(":scope>summary")
+          .filter({ hasText: new RegExp("^" + group + "$") }),
+      });
+    await options.locator(":scope>summary").click();
+    await options.locator(".tk-metric-dates>summary").click();
+    await options.locator(".tk-date-options input").first().check();
+  }
+  await page.mouse.click(4, 4);
+  check(
+    (await page.locator(".tk-chart-calc-group").count()) === 3,
+    "Biểu đồ nhóm ba cách tính",
+  );
+  check(
+    (await page.locator(".tk-chart-category h5").allTextContents()).every(
+      (x) => x === "Phòng",
+    ),
+    "Phân loại phòng trong cách tính",
+  );
+  check(
+    (await page.locator(".tk-chart-branch h6").allTextContents()).every(
+      (x) => x === "Chi nhánh kiểm thử trung tâm",
+    ),
+    "Phòng nhóm tiếp theo chi nhánh",
+  );
+  const chip = page.locator(".tk-value-chip").first();
+  await chip.locator("button").first().click();
+  await page.locator(".tk-column-editor .lp-range-button").click();
+  const month = await page
+      .getByRole("button", { name: "Chọn tháng", exact: true })
+      .boundingBox(),
+    add = await page
+      .getByRole("button", { name: "Thêm khoảng lịch", exact: true })
+      .boundingBox(),
+    close = await page.locator(".lp-range-close").boundingBox();
+  check(month.height <= 28, "Nút chọn tháng nhỏ");
+  check(Math.abs(add.y - close.y) < 2, "Nút + cùng hàng Đóng");
+  check(
+    (await page.locator(".lp-range-chip").count()) === 2,
+    "Khoảng nằm trong lịch",
+  );
+  await page.locator(".lp-range-close").click();
+  await page
+    .locator(".tk-column-editor")
+    .getByRole("button", { name: "Xong", exact: true })
+    .click();
+  return {
+    groups: 3,
+    chartGroups: 3,
+    roomBranchNesting: true,
+    monthHeight: month.height,
+    plusBesideClose: true,
   };
 }

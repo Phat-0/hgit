@@ -466,7 +466,7 @@ export default function BieuDoThuChi({
                       checked={selected.includes("cn:" + b.id)}
                       onChange={() => toggleChoice("cn:" + b.id)}
                     />
-                    {b.ten_homestay}
+                    <span title={b.ten_homestay}>{b.ten_homestay}</span>
                   </label>
                 ))}
               </div>
@@ -504,7 +504,9 @@ export default function BieuDoThuChi({
                               checked={selected.includes("p:" + r.id)}
                               onChange={() => toggleChoice("p:" + r.id)}
                             />
-                            {r.ma_phong || r.ten_phong}
+                            <span title={r.ma_phong || r.ten_phong}>
+                              {r.ma_phong || r.ten_phong}
+                            </span>
                           </label>
                         ))}
                     </div>

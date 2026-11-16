@@ -22,6 +22,11 @@ import {
 } from "./thong-ke-thu-chi";
 import BieuDoThongKe from "./BieuDoThongKe";
 import "./thong-ke-thu-chi.css";
+const CALCS = [
+  { id: "tong", ten: "Tổng", mau: "#e5d9f2" },
+  { id: "tb_ngay", ten: "Trung bình ngày", mau: "#d8eee5" },
+  { id: "tb_tuan", ten: "Trung bình tuần", mau: "#f5e7d2" },
+];
 const allDays = [0, 1, 2, 3, 4, 5, 6];
 const roomMetric = (key: string) => !["thu", "chi", "so_du"].includes(key);
 type Row = PhamVi & { key: string; branch?: string };
@@ -78,6 +83,7 @@ export default function ThongKeThuChi({
     [chartKeys, setChartKeys] = useState<string[]>([]),
     [saved, setSaved] = useState(false);
   const dragging = useRef("");
+  const rowAnchor = useRef<string | null>(null);
   const selection = useRef<{
     start: number;
     base: string[];
@@ -296,6 +302,7 @@ export default function ThongKeThuChi({
     mark();
   }
   function toggleRow(key: string) {
+    rowAnchor.current = key;
     setSelectedRows((old) =>
       old.includes(key) ? old.filter((k) => k !== key) : [...old, key],
     );
@@ -316,8 +323,8 @@ export default function ThongKeThuChi({
     setRowOrder(ids);
     mark();
   }
-  function addColumn(metric: string) {
-    const c = newColumn(metric, tu, den);
+  function addColumn(metric: string, cachTinh = "tong") {
+    const c = { ...newColumn(metric, tu, den), cachTinh };
     setColumns((old) => [...old, c]);
     setEditing(c.id);
     mark();
@@ -443,7 +450,7 @@ export default function ThongKeThuChi({
         checked={chosenScopes.includes(p.key)}
         onChange={() => toggleScope(p.key)}
       />
-      {p.ten}
+      <span title={p.ten}>{p.ten}</span>
     </label>
   );
   return (
@@ -509,18 +516,27 @@ export default function ThongKeThuChi({
               ＋
             </summary>
             <div>
-              {CHI_SO.map((m) => (
-                <button
-                  type="button"
-                  key={m[0]}
-                  disabled={columns.length >= 20}
-                  onClick={(e) => {
-                    addColumn(m[0]);
-                    e.currentTarget.closest("details")?.removeAttribute("open");
-                  }}
-                >
-                  {m[1]}
-                </button>
+              {CALCS.map((group) => (
+                <details key={group.id} className="tk-calc-options">
+                  <summary>{group.ten}</summary>
+                  <div>
+                    {CHI_SO.map((m) => (
+                      <button
+                        type="button"
+                        key={m[0]}
+                        disabled={columns.length >= 20}
+                        onClick={(e) => {
+                          addColumn(m[0], group.id);
+                          e.currentTarget
+                            .closest(".tk-add-column")
+                            ?.removeAttribute("open");
+                        }}
+                      >
+                        {m[1]}
+                      </button>
+                    ))}
+                  </div>
+                </details>
               ))}
             </div>
           </details>
@@ -578,27 +594,47 @@ export default function ThongKeThuChi({
         {error && <p role="alert">{error}</p>}
         {loading && <p role="status">Đang tổng hợp dữ liệu…</p>}
         <div className="tk-column-list" aria-label="Các cột thống kê">
-          {columns.map((c) => (
-            <div key={c.id}>
-              <button
-                type="button"
-                aria-pressed={editing === c.id}
-                onClick={() => setEditing(editing === c.id ? null : c.id)}
-              >
-                {tenCot(c)} ⚙
-              </button>
-              <button
-                type="button"
-                aria-label={"Bỏ cột " + tenCot(c)}
-                onClick={() => {
-                  setColumns((old) => old.filter((x) => x.id !== c.id));
-                  if (editing === c.id) setEditing(null);
-                  mark();
-                }}
-              >
-                ×
-              </button>
-            </div>
+          {CALCS.filter((group) =>
+            columns.some((c) => c.cachTinh === group.id),
+          ).map((group) => (
+            <section className="tk-calc-group" key={group.id}>
+              <h4>{group.ten}</h4>
+              <div>
+                {columns
+                  .filter((c) => c.cachTinh === group.id)
+                  .map((c) => (
+                    <div
+                      className="tk-value-chip"
+                      key={c.id}
+                      style={{ background: group.mau }}
+                    >
+                      <button
+                        type="button"
+                        title={tenCot(c)}
+                        aria-pressed={editing === c.id}
+                        onClick={() =>
+                          setEditing(editing === c.id ? null : c.id)
+                        }
+                      >
+                        {CHI_SO.find((m) => m[0] === c.chiSo)?.[1]}
+                        {c.loaiDat.length ? " · " + c.loaiDat.join(", ") : ""}
+                      </button>
+                      <button
+                        type="button"
+                        className="tk-value-remove"
+                        aria-label={"Bỏ cột " + tenCot(c)}
+                        onClick={() => {
+                          setColumns((old) => old.filter((x) => x.id !== c.id));
+                          if (editing === c.id) setEditing(null);
+                          mark();
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            </section>
           ))}
         </div>
         {current && (
@@ -839,27 +875,62 @@ export default function ThongKeThuChi({
                       )
                         return;
                       e.preventDefault();
-                      const start = rows.findIndex((r) => r.key === p.key);
-                      const base = e.ctrlKey || e.metaKey ? selectedRows : [];
-                      selection.current = { start, base, add: true };
-                      setSelectedRows([...new Set([...base, p.key])]);
+                      const index = rows.findIndex((r) => r.key === p.key);
+                      if (e.shiftKey && rowAnchor.current) {
+                        const ai = rows.findIndex(
+                          (r) => r.key === rowAnchor.current,
+                        );
+                        const range = rows
+                          .slice(
+                            Math.min(ai < 0 ? index : ai, index),
+                            Math.max(ai < 0 ? index : ai, index) + 1,
+                          )
+                          .map((r) => r.key);
+                        setSelectedRows(
+                          e.ctrlKey || e.metaKey
+                            ? [...new Set([...selectedRows, ...range])]
+                            : range,
+                        );
+                        selection.current = null;
+                      } else {
+                        rowAnchor.current = p.key;
+                        const add = !selectedRows.includes(p.key);
+                        selection.current = {
+                          start: index,
+                          base: selectedRows.filter((k) => k !== p.key),
+                          add,
+                        };
+                        setSelectedRows((old) =>
+                          add
+                            ? [...old, p.key]
+                            : old.filter((k) => k !== p.key),
+                        );
+                      }
                       mark();
                     }}
+
                     onPointerEnter={() => {
                       const s = selection.current;
                       if (!s) return;
                       const i = rows.findIndex((r) => r.key === p.key);
-                      setSelectedRows([
-                        ...new Set([
-                          ...s.base,
-                          ...rows
-                            .slice(
-                              Math.min(s.start, i),
-                              Math.max(s.start, i) + 1,
-                            )
-                            .map((r) => r.key),
-                        ]),
-                      ]);
+                      const interval = rows
+                        .slice(Math.min(s.start, i), Math.max(s.start, i) + 1)
+                        .map((r) => r.key);
+                      setSelectedRows(
+                        s.add
+                          ? [
+                              ...new Set([
+                                ...s.base,
+                                ...rows
+                                  .slice(
+                                    Math.min(s.start, i),
+                                    Math.max(s.start, i) + 1,
+                                  )
+                                  .map((r) => r.key),
+                              ]),
+                            ]
+                          : s.base.filter((k) => !interval.includes(k)),
+                      );
                     }}
 
                     onDragOver={(e) => e.preventDefault()}
@@ -874,7 +945,24 @@ export default function ThongKeThuChi({
                         type="checkbox"
                         aria-label={"Chọn hàng " + p.ten}
                         checked={selectedRows.includes(p.key)}
-                        onChange={() => toggleRow(p.key)}
+                        onChange={() => {}}
+                        onClick={(e) => {
+                          if (e.shiftKey && rowAnchor.current) {
+                            const ai = rows.findIndex(
+                                (r) => r.key === rowAnchor.current,
+                              ),
+                              bi = rows.findIndex((r) => r.key === p.key);
+                            setSelectedRows(
+                              rows
+                                .slice(
+                                  Math.min(ai < 0 ? bi : ai, bi),
+                                  Math.max(ai < 0 ? bi : ai, bi) + 1,
+                                )
+                                .map((r) => r.key),
+                            );
+                            mark();
+                          } else toggleRow(p.key);
+                        }}
                       />
                     </td>
                     <th
@@ -938,46 +1026,104 @@ export default function ThongKeThuChi({
           aria-label="Thiết lập biểu đồ thống kê"
         >
           <span>Đã chọn {chartRows.length} hàng</span>
-          <details className="stc-check-picker">
+          <details className="stc-check-picker tk-scope-picker">
             <summary>Đối tượng biểu đồ ({chartRows.length})</summary>
             <div>
-              {rows.map((p) => (
-                <label key={p.key}>
-                  <input
-                    type="checkbox"
-                    checked={selectedRows.includes(p.key)}
-                    onChange={() => toggleRow(p.key)}
-                  />
-                  {p.ten}
-                </label>
+              {[
+                {
+                  ten: "Tổng",
+                  items: rows.filter(
+                    (p) => p.loai === "tong" || p.loai === "tong_phong",
+                  ),
+                },
+                {
+                  ten: "Chi nhánh",
+                  items: rows.filter((p) => p.loai === "chi_nhanh"),
+                },
+              ].map((group) => (
+                <details key={group.ten}>
+                  <summary>{group.ten}</summary>
+                  <div>
+                    {group.items.map((p) => (
+                      <label key={p.key}>
+                        <input
+                          type="checkbox"
+                          checked={selectedRows.includes(p.key)}
+                          onChange={() => toggleRow(p.key)}
+                        />
+                        {p.ten}
+                      </label>
+                    ))}
+                  </div>
+                </details>
               ))}
+              <details>
+                <summary>Phòng</summary>
+                <div>
+                  {data?.chi_nhanh.map((b) => (
+                    <details className="tk-room-branch" key={b.id}>
+                      <summary>{b.ten_homestay}</summary>
+                      <div>
+                        {rows
+                          .filter(
+                            (p) => p.loai === "phong" && p.branch === b.id,
+                          )
+                          .map((p) => (
+                            <label key={p.key}>
+                              <input
+                                type="checkbox"
+                                checked={selectedRows.includes(p.key)}
+                                onChange={() => toggleRow(p.key)}
+                              />
+                              {p.ten}
+                            </label>
+                          ))}
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              </details>
             </div>
           </details>
           <details className="stc-check-picker tk-scope-picker tk-values-picker">
             <summary>Giá trị biểu đồ ({chartLeaves.length})</summary>
             <div>
-              {expanded.map((g) => (
-                <details key={g.config.id} className="tk-metric-dates">
-                  <summary>{tenCot(g.config)}</summary>
-                  <div className="tk-date-options">
-                    {chartOptions
-                      .filter((l) => l.c.id === g.config.id && l.b.ngay.length)
-                      .map((l) => (
-                        <label key={l.key}>
-                          <input
-                            type="checkbox"
-                            checked={chartKeys.includes(l.key)}
-                            onChange={(e) => {
-                              setChartKeys((old) =>
-                                e.target.checked
-                                  ? [...old, l.key]
-                                  : old.filter((k) => k !== l.key),
-                              );
-                              mark();
-                            }}
-                          />
-                          {l.b.ten}
-                        </label>
+              {CALCS.map((group) => (
+                <details className="tk-calc-options" key={group.id}>
+                  <summary>{group.ten}</summary>
+                  <div>
+                    {expanded
+                      .filter((g) => g.config.cachTinh === group.id)
+                      .map((g) => (
+                        <details key={g.config.id} className="tk-metric-dates">
+                          <summary>
+                            {CHI_SO.find((m) => m[0] === g.config.chiSo)?.[1]}
+                          </summary>
+                          <div className="tk-date-options">
+                            {chartOptions
+                              .filter(
+                                (l) =>
+                                  l.c.id === g.config.id && l.b.ngay.length,
+                              )
+                              .map((l) => (
+                                <label key={l.key}>
+                                  <input
+                                    type="checkbox"
+                                    checked={chartKeys.includes(l.key)}
+                                    onChange={(e) => {
+                                      setChartKeys((old) =>
+                                        e.target.checked
+                                          ? [...old, l.key]
+                                          : old.filter((k) => k !== l.key),
+                                      );
+                                      mark();
+                                    }}
+                                  />
+                                  {l.b.ten}
+                                </label>
+                              ))}
+                          </div>
+                        </details>
                       ))}
                   </div>
                 </details>
@@ -1071,6 +1217,18 @@ export default function ThongKeThuChi({
             points={chartLeaves.flatMap((l) =>
               chartRows.map((p) => ({
                 id: l.key + ":" + p.key,
+                calc: CALCS.find((g) => g.id === l.c.cachTinh)?.ten || "Tổng",
+                category:
+                  p.loai === "phong"
+                    ? "Phòng"
+                    : p.loai === "chi_nhanh"
+                      ? "Chi nhánh"
+                      : "Tổng",
+                branch:
+                  p.loai === "phong"
+                    ? data.chi_nhanh.find((b) => b.id === p.branch)
+                        ?.ten_homestay
+                    : undefined,
                 unit: CHI_SO.find((m) => m[0] === l.c.chiSo)?.[2] || "",
                 ten:
                   p.ten +

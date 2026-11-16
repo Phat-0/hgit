@@ -11,6 +11,8 @@ type Props = {
   quickMonth?: boolean;
   disabled?: boolean;
   placeholder?: string;
+  ranges?: { tu: string; den: string }[];
+  onRangesChange?: (ranges: { tu: string; den: string }[]) => void;
 };
 export function RangePicker({
   start,
@@ -22,6 +24,8 @@ export function RangePicker({
   quickMonth = false,
   disabled = false,
   placeholder,
+  ranges,
+  onRangesChange,
 }: Props) {
   const [open, setOpen] = useState(false),
     [first, setFirst] = useState<string | null>(null),
@@ -29,6 +33,19 @@ export function RangePicker({
       start.slice(0, 7) ||
         new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 7),
     );
+  const [activeRange, setActiveRange] = useState(0);
+  const commitRange = (tu: string, den: string) => {
+    if (onRangesChange) {
+      const next = [...(ranges || [])];
+      next[activeRange] = { tu, den };
+      onRangesChange(next);
+      setFirst(null);
+    } else {
+      onChange(tu, den);
+      close();
+      anchor.current?.focus();
+    }
+  };
   const [position, setPosition] = useState<{
     top: number;
     left: number;
@@ -135,15 +152,18 @@ export function RangePicker({
                   (!!minDate && d < minDate) || (!!maxDate && d > maxDate)
                 }
                 className={
-                  (d >= start && d <= end ? "lp-in-range " : "") +
-                  (d === first ? "lp-first" : "")
+                  ((
+                    onRangesChange
+                      ? (ranges || []).some((r) => d >= r.tu && d <= r.den)
+                      : d >= start && d <= end
+                  )
+                    ? "lp-in-range "
+                    : "") + (d === first ? "lp-first" : "")
                 }
                 onClick={() => {
                   if (!first) setFirst(d);
                   else {
-                    onChange(d < first ? d : first, d > first ? d : first);
-                    close();
-                    anchor.current?.focus();
+                    commitRange(d < first ? d : first, d > first ? d : first);
                   }
                 }}
               >
@@ -171,6 +191,7 @@ export function RangePicker({
           setPosition(null);
           setOpen((v) => !v);
           setFirst(null);
+          setActiveRange(0);
           setMonth(
             start.slice(0, 7) ||
               new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 7),
@@ -267,34 +288,87 @@ export function RangePicker({
                     )
                       .toISOString()
                       .slice(0, 10);
-                    onChange(
+                    commitRange(
                       minDate && minDate > month + "-01"
                         ? minDate
                         : month + "-01",
                       maxDate && maxDate < last ? maxDate : last,
                     );
-                    close();
-                    anchor.current?.focus();
                   }}
                 >
                   Chọn tháng
                 </button>
               </div>
             )}
+            {onRangesChange && (
+              <div className="lp-range-choices" aria-label="Các khoảng đã chọn">
+                {(ranges || []).map((r, i) => (
+                  <div
+                    key={i}
+                    className="lp-range-chip"
+                    data-active={activeRange === i}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveRange(i);
+                        setFirst(null);
+                        setMonth(r.tu.slice(0, 7));
+                      }}
+                    >
+                      {fmt(r.tu)}–{fmt(r.den)}
+                    </button>
+                    <button
+                      type="button"
+                      className="lp-range-remove"
+                      aria-label={"Bỏ khoảng ngày " + (i + 1)}
+                      onClick={() => {
+                        onRangesChange(
+                          (ranges || []).filter((_, j) => j !== i),
+                        );
+                        setActiveRange(0);
+                        setFirst(null);
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                {activeRange === (ranges?.length || 0) && (
+                  <small>Chọn khoảng mới trên lịch</small>
+                )}
+              </div>
+            )}
             <div className="lp-calendar-pair">
               {renderMonth(month)}
               {renderMonth(shift(month, 1))}
             </div>
-            <button
-              type="button"
-              className="lp-range-close"
-              onClick={() => {
-                close();
-                anchor.current?.focus();
-              }}
-            >
-              Đóng
-            </button>
+            <div className="lp-range-footer">
+              {onRangesChange && (
+                <button
+                  type="button"
+                  className="lp-range-add"
+                  aria-label="Thêm khoảng lịch"
+                  disabled={(ranges?.length || 0) >= 12 || !ranges?.length}
+                  onClick={() => {
+                    setActiveRange(ranges?.length || 0);
+                    setFirst(null);
+                  }}
+                >
+                  ＋
+                </button>
+              )}
+              <button
+                type="button"
+                className="lp-range-close"
+                onClick={() => {
+                  close();
+                  anchor.current?.focus();
+                }}
+              >
+                Đóng
+              </button>
+            </div>
           </div>,
           document.body,
         )}
