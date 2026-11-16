@@ -24,12 +24,13 @@ import {
   type DuLieuThongKe,
   type PhamVi,
 } from "./thong-ke-thu-chi";
-import BieuDoThongKe from "./BieuDoThongKe";
+import { createPortal } from "react-dom";
 import "./thong-ke-thu-chi.css";
 const CALCS = [
   { id: "tong", ten: "Tổng", mau: "#e5d9f2" },
   { id: "tb_ngay", ten: "Trung bình ngày", mau: "#d8eee5" },
   { id: "tb_tuan", ten: "Trung bình tuần", mau: "#f5e7d2" },
+  { id: "tb_thang", ten: "Trung bình tháng", mau: "#dfeaf6" },
 ];
 const allDays = [0, 1, 2, 3, 4, 5, 6];
 const roomMetric = (key: string) => !["thu", "chi", "so_du"].includes(key);
@@ -75,7 +76,53 @@ export default function ThongKeThuChi({
     );
   const [sampleMode, setSampleMode] = useState(false);
   const sampleYear = Number(ngayVN().slice(0, 4));
-  const chartSetupRef = useRef<HTMLDetailsElement>(null);
+  const [chartDialogOpen, setChartDialogOpen] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const [draftDates, setDraftDates] = useState<
+    Record<string, { tu: string; den: string }[]>
+  >({});
+  const [primaryEnabled, setPrimaryEnabled] = useState(false);
+  const [primaryGraph, setPrimaryGraph] = useState<KhungBieuDo | null>(null);
+  useEffect(() => {
+    if (!chartDialogOpen) return;
+    const root = document.getElementById("root");
+    const beforeInert = root?.inert;
+    const overflow = document.body.style.overflow;
+    const focused = document.activeElement as HTMLElement | null;
+    document.body.style.overflow = "hidden";
+    if (root) root.inert = true;
+    dialogRef.current?.querySelector<HTMLElement>("button")?.focus();
+    const key = (e: KeyboardEvent) => {
+      if (document.querySelector(".lp-range-portal")) return;
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setChartDialogOpen(false);
+      }
+      if (e.key === "Tab") {
+        const nodes = [
+          ...(dialogRef.current?.querySelectorAll<HTMLElement>(
+            'button:not(:disabled),select,input,[tabindex="0"]',
+          ) || []),
+        ].filter((n) => n.getClientRects().length);
+        const first = nodes[0],
+          last = nodes.at(-1);
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", key);
+    return () => {
+      document.body.style.overflow = overflow;
+      if (root) root.inert = beforeInert || false;
+      document.removeEventListener("keydown", key);
+      if (focused?.isConnected) focused.focus();
+    };
+  }, [chartDialogOpen]);
   const [draftRows, setDraftRows] = useState<string[]>([]),
     [draftKeys, setDraftKeys] = useState<string[]>([]),
     [draftType, setDraftType] = useState<"bar" | "pie">("bar"),
@@ -85,12 +132,6 @@ export default function ThongKeThuChi({
     { tu: string; den: string }[]
   >([]);
   const [cards, setCards] = useState<KhungBieuDo[]>([]);
-  const [primaryPie, setPrimaryPie] = useState<{
-    ranges: { tu: string; den: string }[];
-    customCalendar: boolean;
-    group: string;
-    metricId: string;
-  }>({ ranges: [], customCalendar: false, group: "ngay", metricId: "" });
   const [columns, setColumns] = useState<CotThongKe[]>(() =>
     ["thu", "chi", "so_du", "dat", "huy"].map((m) => newColumn(m, tu, den)),
   );
@@ -381,14 +422,6 @@ export default function ThongKeThuChi({
   const headerRows = hasSubheaders ? 2 : 1;
   const tooLarge = leaves.length > 500 || leaves.length * rows.length > 50000;
   const chartRows = rows.filter((p) => selectedRows.includes(p.key));
-  const comparisonOnly =
-    chartRows.length > 1 &&
-    (chartRows.some((p) => p.loai === "tong" || p.loai === "tong_phong") ||
-      chartRows.some(
-        (p) =>
-          p.loai === "chi_nhanh" &&
-          chartRows.some((r) => r.loai === "phong" && r.branch === p.id),
-      ));
   const chartOptions = allExpanded.flatMap((g) =>
     g.bins
       .filter((b) => b.ngay.length)
@@ -399,6 +432,7 @@ export default function ThongKeThuChi({
       })),
   );
   function fromTable(key?: string) {
+    setPrimaryGraph(null);
     setChart(true);
     setChartKeys(key ? [key] : leaves.map((l) => l.key));
   }
@@ -416,7 +450,7 @@ export default function ThongKeThuChi({
     const pickedLeaves = chartOptions.filter(
         (l) => valueKeys.includes(l.key) && l.b.ngay.length,
       ),
-      pickedRows = rows.filter((p) => rowKeys.includes(p.key));
+      pickedRows = scopes.filter((p) => rowKeys.includes(p.key));
     return {
       id,
       type,
@@ -438,57 +472,80 @@ export default function ThongKeThuChi({
       customCalendar: false,
     };
   }
-  const livePie = specFromSelection("pie", "primary-pie");
-  const primaryMetric = livePie.columns.some(
-    (c) => c.id === primaryPie.metricId,
-  )
-    ? primaryPie.metricId
-    : livePie.metricId;
-  const primaryPieSpec = {
-    ...livePie,
-    ...primaryPie,
-    metricId: primaryMetric,
-    ranges: primaryPie.customCalendar
-      ? primaryPie.ranges
-      : gopNgayThanhKhoang(
-          livePie.bins
-            .filter((b) => b.columnId === primaryMetric)
-            .flatMap((b) => b.ngay),
-        ),
-  };
   function openChartSetup(type: "bar" | "pie" = primaryType, create = false) {
+    const keys = chartKeys.length
+      ? [...chartKeys]
+      : leaves.filter((l) => l.b.ngay.length).map((l) => l.key);
     setDraftRows([...selectedRows]);
-    setDraftKeys(
-      chartKeys.length
-        ? [...chartKeys]
-        : leaves.filter((l) => l.b.ngay.length).map((l) => l.key),
+    setDraftKeys(keys);
+    setDraftDates(
+      Object.fromEntries(
+        columns.map((c) => [
+          c.id,
+          gopNgayThanhKhoang(
+            chartOptions
+              .filter((l) => l.c.id === c.id && keys.includes(l.key))
+              .flatMap((l) => l.b.ngay),
+          ),
+        ]),
+      ),
     );
     setDraftType(type);
     setCreatingChart(create);
-    if (chartSetupRef.current) chartSetupRef.current.open = true;
+    setChartDialogOpen(true);
   }
   function applyChartSetup() {
-    if (creatingChart)
-      setCards((old) => [
-        ...old,
-        specFromSelection(draftType, crypto.randomUUID(), draftRows, draftKeys),
-      ]);
+    let spec = specFromSelection(
+      draftType,
+      creatingChart ? crypto.randomUUID() : "primary-chart",
+      draftRows,
+      draftKeys,
+    );
+    const cols = spec.columns.map((c) => {
+      const r =
+        draftDates[c.id] ||
+        gopNgayThanhKhoang(
+          spec.bins.filter((b) => b.columnId === c.id).flatMap((b) => b.ngay),
+        );
+      return {
+        ...c,
+        lichRieng: true,
+        khoang: r,
+        tu: r.map((x) => x.tu).sort()[0] || "",
+        den:
+          r
+            .map((x) => x.den)
+            .sort()
+            .at(-1) || "",
+      };
+    });
+    spec = {
+      ...spec,
+      columns: cols,
+      bins: cols.flatMap((c) =>
+        nhomNgay(c, "", "").map((b) => ({ columnId: c.id, ...b })),
+      ),
+      ranges: gopNgayThanhKhoang(
+        cols
+          .filter((c) => draftType === "bar" || c.id === spec.metricId)
+          .flatMap((c) => nhomNgay(c, "", "").flatMap((b) => b.ngay)),
+      ),
+    };
+    if (creatingChart) setCards((old) => [...old, spec]);
     else {
+      setPrimaryEnabled(true);
+      setPrimaryGraph(spec);
       setSelectedRows(draftRows);
       setChartKeys(draftKeys);
       setPrimaryType(draftType);
     }
     setChart(true);
-    if (chartSetupRef.current) chartSetupRef.current.open = false;
+    setChartDialogOpen(false);
     mark();
   }
   function loadSample() {
-    setPrimaryPie({
-      ranges: [],
-      customCalendar: false,
-      group: "ngay",
-      metricId: "",
-    });
+    setPrimaryEnabled(false);
+    setPrimaryGraph(null);
     setPrimaryType("bar");
     setEditing(null);
     setRowOrder([]);
@@ -515,12 +572,8 @@ export default function ThongKeThuChi({
     mark();
   }
   function leaveSample() {
-    setPrimaryPie({
-      ranges: [],
-      customCalendar: false,
-      group: "ngay",
-      metricId: "",
-    });
+    setPrimaryEnabled(false);
+    setPrimaryGraph(null);
     setPrimaryType("bar");
     setEditing(null);
     setRowOrder([]);
@@ -673,7 +726,7 @@ export default function ThongKeThuChi({
             lich_chung: commonRanges,
             du_lieu_mau: sampleMode,
             bieu_do_them: cards,
-            bieu_do_tron: primaryPie,
+            bieu_do_chinh: primaryEnabled ? primaryGraph : null,
             bang: table,
             xuat_luc: new Date().toISOString(),
           },
@@ -716,120 +769,13 @@ export default function ThongKeThuChi({
           </span>
         </header>
         <div className="tk-toolbar">
-          <details
-            className="stc-check-picker tk-scope-picker tk-chart-setup"
-            ref={chartSetupRef}
+          <button
+            type="button"
+            aria-label="Thiết lập biểu đồ"
+            onClick={() => openChartSetup()}
           >
-            <summary
-              aria-label="Thiết lập biểu đồ"
-              onClick={(e) => {
-                e.preventDefault();
-                if (chartSetupRef.current?.open)
-                  chartSetupRef.current.open = false;
-                else openChartSetup();
-              }}
-            >
-              Giá trị biểu đồ
-            </summary>
-            <div>
-              <header>
-                <strong>
-                  {creatingChart ? "Tạo biểu đồ" : "Thiết lập biểu đồ"}
-                </strong>
-                <select
-                  aria-label="Kiểu biểu đồ"
-                  value={draftType}
-                  onChange={(e) =>
-                    setDraftType(e.target.value as "bar" | "pie")
-                  }
-                >
-                  <option value="bar">Cột</option>
-                  <option value="pie">Tròn</option>
-                </select>
-              </header>
-              <div className="tk-chart-setup-grid">
-                <section aria-label="Chọn đối tượng tạo biểu đồ">
-                  <h4>Đối tượng</h4>
-                  <div>
-                    {rows.map((p) => (
-                      <label key={p.key}>
-                        <input
-                          type="checkbox"
-                          checked={draftRows.includes(p.key)}
-                          onChange={(e) =>
-                            setDraftRows((old) =>
-                              e.target.checked
-                                ? [...old, p.key]
-                                : old.filter((k) => k !== p.key),
-                            )
-                          }
-                        />
-                        <span title={p.ten}>{p.ten}</span>
-                      </label>
-                    ))}
-                  </div>
-                </section>
-                <section aria-label="Chọn giá trị tạo biểu đồ">
-                  <h4>Giá trị</h4>
-                  {columns.map((c) => {
-                    const opts = chartOptions.filter(
-                        (l) => l.c.id === c.id && l.b.ngay.length,
-                      ),
-                      keys = opts.map((l) => l.key);
-                    return (
-                      <div className="tk-chart-setup-value" key={c.id}>
-                        <label>
-                          <input
-                            type="checkbox"
-                            checked={
-                              !!keys.length &&
-                              keys.every((k) => draftKeys.includes(k))
-                            }
-                            onChange={(e) =>
-                              setDraftKeys((old) =>
-                                e.target.checked
-                                  ? [...new Set([...old, ...keys])]
-                                  : old.filter((k) => !keys.includes(k)),
-                              )
-                            }
-                          />
-                          <span>{tenCot(c)}</span>
-                        </label>
-                        {opts.length > 1 && (
-                          <div>
-                            {opts.map((l) => (
-                              <label key={l.key}>
-                                <input
-                                  type="checkbox"
-                                  checked={draftKeys.includes(l.key)}
-                                  onChange={(e) =>
-                                    setDraftKeys((old) =>
-                                      e.target.checked
-                                        ? [...old, l.key]
-                                        : old.filter((k) => k !== l.key),
-                                    )
-                                  }
-                                />
-                                {l.b.ten}
-                              </label>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </section>
-              </div>
-              <button
-                type="button"
-                className="tk-chart-apply"
-                disabled={!draftRows.length || !draftKeys.length}
-                onClick={applyChartSetup}
-              >
-                {creatingChart ? "Tạo biểu đồ" : "Áp dụng"}
-              </button>
-            </div>
-          </details>
+            Giá trị biểu đồ
+          </button>
           <RangePicker
             compact
             quickMonth
@@ -858,20 +804,6 @@ export default function ThongKeThuChi({
               mark();
             }}
           />
-          <button
-            type="button"
-            aria-label="Thêm biểu đồ cột"
-            onClick={() => openChartSetup("bar", true)}
-          >
-            ＋ Cột
-          </button>
-          <button
-            type="button"
-            aria-label="Thêm biểu đồ tròn"
-            onClick={() => openChartSetup("pie", true)}
-          >
-            ＋ Tròn
-          </button>
           <button type="button" onClick={sampleMode ? leaveSample : loadSample}>
             {sampleMode ? "Dữ liệu thật" : "10 dòng mẫu T10–T11"}
           </button>
@@ -1119,11 +1051,20 @@ export default function ThongKeThuChi({
               aria-label="Cách tính cột"
               title="Cách tính"
               value={current.cachTinh}
-              onChange={(e) => patch(current.id, { cachTinh: e.target.value })}
+              onChange={(e) =>
+                patch(current.id, {
+                  cachTinh: e.target.value,
+                  chia:
+                    e.target.value !== "tong" && current.chia === "ngay"
+                      ? "chung"
+                      : current.chia,
+                })
+              }
             >
               <option value="tong">Tổng</option>
               <option value="tb_ngay">Trung bình ngày</option>
               <option value="tb_tuan">Trung bình tuần</option>
+              <option value="tb_thang">Trung bình tháng</option>
             </select>
             <select
               aria-label="Chia cột thống kê"
@@ -1138,7 +1079,9 @@ export default function ThongKeThuChi({
               }}
             >
               <option value="chung">Chung</option>
-              <option value="ngay">Theo ngày</option>
+              {current.cachTinh === "tong" && (
+                <option value="ngay">Theo ngày</option>
+              )}
               <option value="tuan">Theo tuần</option>
               <option value="thang">Theo tháng</option>
             </select>
@@ -1161,7 +1104,7 @@ export default function ThongKeThuChi({
                 })
               }
             />
-            {current.chia === "ngay" && (
+            {current.cachTinh === "tong" && current.chia === "ngay" && (
               <div className="tk-weekdays">
                 {THU.map((t, i) => (
                   <label key={t}>
@@ -1455,98 +1398,42 @@ export default function ThongKeThuChi({
             </table>
           </div>
         )}
+        <div className="tk-bottom-create">
+          <button
+            type="button"
+            aria-label="Thêm biểu đồ cột"
+            onClick={() => openChartSetup("bar", true)}
+          >
+            ＋ Biểu đồ cột
+          </button>
+          <button
+            type="button"
+            aria-label="Thêm biểu đồ tròn"
+            onClick={() => openChartSetup("pie", true)}
+          >
+            ＋ Biểu đồ tròn
+          </button>
+        </div>
       </section>
       {chart &&
+        primaryEnabled &&
         data &&
         !tooLarge &&
-        chartRows.length > 0 &&
-        chartLeaves.length > 0 && (
-          <div className="tk-primary-chart-pair">
-            {primaryType === "bar" && (
-              <BieuDoThongKe
-                variant="bar"
-                comparisonOnly={
-                  comparisonOnly ||
-                  chartLeaves.some(
-                    (l) =>
-                      l.c.cachTinh !== "tong" ||
-                      ["so_du", "thoi_gian"].includes(l.c.chiSo),
-                  ) ||
-                  new Set(chartLeaves.map((l) => l.c.chiSo)).size > 1 ||
-                  chartLeaves.some((a, i) =>
-                    chartLeaves.some(
-                      (b, j) =>
-                        j > i &&
-                        a.c.chiSo === b.c.chiSo &&
-                        a.b.ngay.some((d) => b.b.ngay.includes(d)),
-                    ),
-                  )
-                }
-                pieReason="Biểu đồ tròn cần cùng chỉ số, các phần cộng được và không trùng nhau. Chọn tổng thu, tổng chi hoặc số lượt; không cộng trực tiếp số trung bình và số dư."
-                title="Biểu đồ thống kê"
-                unit={
-                  new Set(
-                    chartLeaves.map(
-                      (l) => CHI_SO.find((m) => m[0] === l.c.chiSo)?.[2],
-                    ),
-                  ).size === 1
-                    ? CHI_SO.find(
-                        (m) => m[0] === chartLeaves[0].c.chiSo,
-                      )?.[2] || ""
-                    : "nhiều đơn vị"
-                }
-                points={chartLeaves.flatMap((l) =>
-                  chartRows.map((p) => ({
-                    id: l.key + ":" + p.key,
-                    calc:
-                      CALCS.find((g) => g.id === l.c.cachTinh)?.ten || "Tổng",
-                    category:
-                      p.loai === "phong"
-                        ? "Phòng"
-                        : p.loai === "chi_nhanh"
-                          ? "Chi nhánh"
-                          : "Tổng",
-                    branch:
-                      p.loai === "phong"
-                        ? data.chi_nhanh.find((b) => b.id === p.branch)
-                            ?.ten_homestay
-                        : undefined,
-                    unit: CHI_SO.find((m) => m[0] === l.c.chiSo)?.[2] || "",
-                    ten:
-                      p.ten +
-                      " · " +
-                      tenCot(l.c) +
-                      (l.b.key !== "chung" ? " · " + l.b.ten : ""),
-                    value: tinhGiaTri(
-                      data,
-                      p,
-                      l.c,
-                      l.b.ngay.filter((d) => d >= chartTu && d <= chartDen),
-                    ),
-                  })),
-                )}
-              />
-            )}
-            {primaryType === "pie" && (
-              <BieuDoBoSung
-                demo={sampleMode}
-                spec={primaryPieSpec}
-                onChange={(spec) => {
-                  setPrimaryPie({
-                    ranges: spec.ranges,
-                    customCalendar: spec.customCalendar,
-                    group: spec.group,
-                    metricId: spec.metricId,
-                  });
-                  mark();
-                }}
-                token={token}
-                data={data}
-                dataStart={from}
-                dataEnd={to}
-              />
-            )}
-          </div>
+        (primaryGraph || (chartRows.length > 0 && chartLeaves.length > 0)) && (
+          <BieuDoBoSung
+            spec={
+              primaryGraph || specFromSelection(primaryType, "primary-chart")
+            }
+            demo={sampleMode}
+            onChange={(spec) => {
+              setPrimaryGraph(spec);
+              mark();
+            }}
+            token={token}
+            data={data}
+            dataStart={from}
+            dataEnd={to}
+          />
         )}
       {chart &&
         data &&
@@ -1570,6 +1457,226 @@ export default function ThongKeThuChi({
             dataEnd={to}
           />
         ))}
+      {chartDialogOpen &&
+        createPortal(
+          <div
+            className="tk-chart-backdrop"
+            onPointerDown={(e) => {
+              if (e.target === e.currentTarget) setChartDialogOpen(false);
+            }}
+          >
+            <div
+              className="tk-chart-dialog"
+              ref={dialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label={creatingChart ? "Tạo biểu đồ" : "Thiết lập biểu đồ"}
+            >
+              <header>
+                <h2>{creatingChart ? "Tạo biểu đồ" : "Thiết lập biểu đồ"}</h2>
+                <select
+                  aria-label="Kiểu biểu đồ"
+                  value={draftType}
+                  onChange={(e) =>
+                    setDraftType(e.target.value as "bar" | "pie")
+                  }
+                >
+                  <option value="bar">Cột</option>
+                  <option value="pie">Tròn</option>
+                </select>
+                <button
+                  type="button"
+                  aria-label="Đóng trang chọn biểu đồ"
+                  onClick={() => setChartDialogOpen(false)}
+                >
+                  ×
+                </button>
+              </header>
+              <main>
+                <section aria-label="Chọn đối tượng tạo biểu đồ">
+                  <h3>Đối tượng</h3>
+                  <div className="tk-dialog-object-cols">
+                    <div>
+                      <h4>Chi nhánh</h4>
+                      {(creatingChart ? scopes : rows)
+                        .filter(
+                          (p) => p.loai === "tong" || p.loai === "chi_nhanh",
+                        )
+                        .map((p) => (
+                          <label key={p.key}>
+                            <input
+                              type="checkbox"
+                              checked={draftRows.includes(p.key)}
+                              onChange={(e) =>
+                                setDraftRows((old) =>
+                                  e.target.checked
+                                    ? [...old, p.key]
+                                    : old.filter((k) => k !== p.key),
+                                )
+                              }
+                            />
+                            {p.ten}
+                          </label>
+                        ))}
+                    </div>
+                    <div>
+                      <h4>Phòng</h4>
+                      {(creatingChart ? scopes : rows)
+                        .filter((p) => p.loai === "tong_phong")
+                        .map((p) => (
+                          <label key={p.key}>
+                            <input
+                              type="checkbox"
+                              checked={draftRows.includes(p.key)}
+                              onChange={(e) =>
+                                setDraftRows((old) =>
+                                  e.target.checked
+                                    ? [...old, p.key]
+                                    : old.filter((k) => k !== p.key),
+                                )
+                              }
+                            />
+                            {p.ten}
+                          </label>
+                        ))}
+                      {data?.chi_nhanh.map((b) => (
+                        <section className="tk-dialog-room-branch" key={b.id}>
+                          <h5>{b.ten_homestay}</h5>
+                          <div>
+                            {(creatingChart ? scopes : rows)
+                              .filter(
+                                (p) => p.loai === "phong" && p.branch === b.id,
+                              )
+                              .map((p) => (
+                                <label key={p.key}>
+                                  <input
+                                    type="checkbox"
+                                    checked={draftRows.includes(p.key)}
+                                    onChange={(e) =>
+                                      setDraftRows((old) =>
+                                        e.target.checked
+                                          ? [...old, p.key]
+                                          : old.filter((k) => k !== p.key),
+                                      )
+                                    }
+                                  />
+                                  {p.ten}
+                                </label>
+                              ))}
+                          </div>
+                        </section>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+                <section aria-label="Chọn giá trị tạo biểu đồ">
+                  <h3>Giá trị</h3>
+                  {CALCS.map((group) => (
+                    <div className="tk-dialog-calc" key={group.id}>
+                      <h4>{group.ten}</h4>
+                      <div>
+                        {columns
+                          .filter((c) => c.cachTinh === group.id)
+                          .map((c) => {
+                            const opts = chartOptions.filter(
+                                (l) => l.c.id === c.id && l.b.ngay.length,
+                              ),
+                              keys = opts.map((l) => l.key),
+                              chosen = keys.some((k) => draftKeys.includes(k)),
+                              ranges = draftDates[c.id] || [];
+                            return (
+                              <div
+                                className="tk-dialog-value"
+                                key={c.id}
+                                style={{ background: group.mau }}
+                              >
+                                <label>
+                                  <input
+                                    type="checkbox"
+                                    checked={chosen}
+                                    onChange={(e) => {
+                                      setDraftKeys((old) =>
+                                        e.target.checked
+                                          ? [...new Set([...old, ...keys])]
+                                          : old.filter(
+                                              (k) => !keys.includes(k),
+                                            ),
+                                      );
+                                      if (e.target.checked && !ranges.length)
+                                        setDraftDates((old) => ({
+                                          ...old,
+                                          [c.id]: gopNgayThanhKhoang(
+                                            opts.flatMap((l) => l.b.ngay),
+                                          ),
+                                        }));
+                                    }}
+                                  />
+                                  {CHI_SO.find((m) => m[0] === c.chiSo)?.[1]}
+                                </label>
+                                <span
+                                  className="tk-dialog-ranges"
+                                  title={chuCacKhoang(ranges)}
+                                >
+                                  {chosen
+                                    ? ranges.length > 3
+                                      ? `${chuKhoangNgay({
+                                          tu: ranges.map((r) => r.tu).sort()[0],
+                                          den: ranges
+                                            .map((r) => r.den)
+                                            .sort()
+                                            .at(-1)!,
+                                        })} · ${ranges.length} khoảng`
+                                      : chuCacKhoang(ranges)
+                                    : ""}
+                                </span>
+                                <RangePicker
+                                  compact
+                                  quickMonth
+                                  ariaLabel={"Chọn lại lịch " + tenCot(c)}
+                                  start={ranges[0]?.tu || ""}
+                                  end={ranges.at(-1)?.den || ""}
+                                  ranges={ranges}
+                                  placeholder=" "
+                                  onChange={() => {}}
+                                  onRangesChange={(next) => {
+                                    setDraftDates((old) => ({
+                                      ...old,
+                                      [c.id]: next,
+                                    }));
+                                    if (next.length)
+                                      setDraftKeys((old) => [
+                                        ...new Set([...old, ...keys]),
+                                      ]);
+                                    else
+                                      setDraftKeys((old) =>
+                                        old.filter((k) => !keys.includes(k)),
+                                      );
+                                  }}
+                                />
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  ))}
+                </section>
+              </main>
+              <footer>
+                <button type="button" onClick={() => setChartDialogOpen(false)}>
+                  Thoát
+                </button>
+                <button
+                  type="button"
+                  disabled={!draftRows.length || !draftKeys.length}
+                  onClick={applyChartSetup}
+                >
+                  {creatingChart ? "Tạo biểu đồ" : "Áp dụng"}
+                </button>
+              </footer>
+            </div>
+          </div>,
+          document.body,
+        )}
     </section>
   );
 }

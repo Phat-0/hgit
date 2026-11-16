@@ -616,7 +616,7 @@ await act(async()=>{statsSplit.value='tuan';statsSplit.dispatchEvent(new dom.win
 await click(document.querySelector('.tk-column-editor .lp-range-button'));assert.ok(document.querySelector('.lp-range-portal'));await click(document.querySelector('.lp-range-close'));
 await click(document.querySelector('[aria-label="Chọn giá trị thống kê"]'));await click([...document.querySelectorAll('.tk-add-column button')].find(e=>e.textContent==='TB thời gian lưu trú')!);assert.equal(document.querySelectorAll('.tk-value-chip').length,6);
 const statsKind=document.querySelector('[aria-label="Loại đặt của cột"]') as HTMLSelectElement;assert.equal(statsKind.value,'Theo giờ');assert.ok(document.querySelector('[aria-label="Hiện khung giờ phổ biến"]'));assert.doesNotMatch(document.querySelector('.tk-column-editor')!.textContent!,/Giờ nhận phòng/);
-assert.deepEqual([...document.querySelectorAll('[aria-label="Cách tính cột"] option')].map(e=>e.textContent),['Tổng','Trung bình ngày','Trung bình tuần']);
+assert.deepEqual([...document.querySelectorAll('[aria-label="Cách tính cột"] option')].map(e=>e.textContent),['Tổng','Trung bình ngày','Trung bình tuần','Trung bình tháng']);
 assert.deepEqual([...document.querySelectorAll('[aria-label="Chia cột thống kê"] option')].map(e=>e.textContent),['Chung','Theo ngày','Theo tuần','Theo tháng']);
 assert.ok(document.querySelector('.tk-toolbar [aria-label="Thiết lập biểu đồ"]'));assert.equal(document.querySelector('.tk-chart-controls'),null);
 const previousConfirm=window.confirm;window.confirm=()=>false;assert.equal(window.dispatchEvent(new dom.window.Event('homestay:truoc-chuyen-trang',{cancelable:true})),false);window.confirm=previousConfirm;

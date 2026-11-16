@@ -79,9 +79,15 @@ export function ngayCuaCot(c: CotThongKe, tu: string, den: string) {
     : [{ tu, den }];
   return [...new Set(ranges.flatMap((r) => cacNgay(r.tu, r.den)))]
     .sort()
-    .filter((d) => c.chia !== "ngay" || c.thu.includes(thuCuaNgay(d)));
+    .filter(
+      (d) =>
+        c.chia !== "ngay" ||
+        c.cachTinh !== "tong" ||
+        c.thu.includes(thuCuaNgay(d)),
+    );
 }
 export function nhomNgay(c: CotThongKe, tu: string, den: string) {
+  if (c.cachTinh !== "tong" && c.chia === "ngay") c = { ...c, chia: "chung" };
   const days = ngayCuaCot(c, tu, den),
     groups = new Map<string, { key: string; ten: string; ngay: string[] }>();
   for (const d of days) {
@@ -163,9 +169,10 @@ export function tinhGiaTri(
     };
     if (c.cachTinh === "tb_ngay")
       return days.reduce((s, d) => s + closing(d), 0) / days.length;
-    if (c.cachTinh === "tb_tuan") {
+    if (c.cachTinh === "tb_tuan" || c.cachTinh === "tb_thang") {
       const last = new Map<string, string>();
-      for (const d of days) last.set(dauTuan(d), d);
+      for (const d of days)
+        last.set(c.cachTinh === "tb_thang" ? d.slice(0, 7) : dauTuan(d), d);
       return [...last.values()].reduce((s, d) => s + closing(d), 0) / last.size;
     }
     return closing(days[days.length - 1]);
@@ -178,9 +185,11 @@ export function tinhGiaTri(
       const key =
         c.cachTinh === "tb_ngay"
           ? r.ngay
-          : c.cachTinh === "tb_tuan"
-            ? dauTuan(r.ngay)
-            : "tong";
+          : c.cachTinh === "tb_thang"
+            ? r.ngay.slice(0, 7)
+            : c.cachTinh === "tb_tuan"
+              ? dauTuan(r.ngay)
+              : "tong";
       const b = buckets.get(key) || { hours: 0, count: 0 };
       b.hours += Number(r.gio_o);
       b.count += Number(r.dat);
@@ -216,9 +225,11 @@ export function tinhGiaTri(
   const divisor =
     c.cachTinh === "tb_ngay"
       ? days.length
-      : c.cachTinh === "tb_tuan"
-        ? new Set(days.map(dauTuan)).size
-        : 1;
+      : c.cachTinh === "tb_thang"
+        ? new Set(days.map((d) => d.slice(0, 7))).size
+        : c.cachTinh === "tb_tuan"
+          ? new Set(days.map(dauTuan)).size
+          : 1;
   return divisor ? total / divisor : null;
 }
 export function tenCot(c: CotThongKe) {
@@ -228,13 +239,15 @@ export function tenCot(c: CotThongKe) {
     " · " +
     (c.cachTinh === "tb_ngay"
       ? "TB/ngày"
-      : c.cachTinh === "tb_tuan"
-        ? "TB/tuần"
-        : c.chiSo === "so_du"
-          ? "Cuối kỳ"
-          : c.chiSo === "thoi_gian"
-            ? "Chung"
-            : "Tổng")
+      : c.cachTinh === "tb_thang"
+        ? "TB/tháng"
+        : c.cachTinh === "tb_tuan"
+          ? "TB/tuần"
+          : c.chiSo === "so_du"
+            ? "Cuối kỳ"
+            : c.chiSo === "thoi_gian"
+              ? "Chung"
+              : "Tổng")
   );
 }
 export const hienSo = (n: number | null) =>

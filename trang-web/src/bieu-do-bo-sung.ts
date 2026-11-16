@@ -76,9 +76,11 @@ export function diemBoSung(spec: KhungBieuDo, data: DuLieuThongKe) {
             calc:
               c.cachTinh === "tb_ngay"
                 ? "Trung bình ngày"
-                : c.cachTinh === "tb_tuan"
-                  ? "Trung bình tuần"
-                  : "Tổng",
+                : c.cachTinh === "tb_thang"
+                  ? "Trung bình tháng"
+                  : c.cachTinh === "tb_tuan"
+                    ? "Trung bình tuần"
+                    : "Tổng",
             category:
               p.loai === "phong"
                 ? "Phòng"

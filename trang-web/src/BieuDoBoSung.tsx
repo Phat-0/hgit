@@ -127,9 +127,11 @@ export default function BieuDoBoSung({
                 {CHI_SO.find((m) => m[0] === c.chiSo)?.[1]} ·{" "}
                 {c.cachTinh === "tong"
                   ? "Tổng"
-                  : c.cachTinh === "tb_ngay"
-                    ? "TB ngày"
-                    : "TB tuần"}
+                  : c.cachTinh === "tb_thang"
+                    ? "TB tháng"
+                    : c.cachTinh === "tb_ngay"
+                      ? "TB ngày"
+                      : "TB tuần"}
               </option>
             ))}
           </select>
@@ -142,7 +144,10 @@ export default function BieuDoBoSung({
           {spec.type === "bar" && (
             <option value="cau_hinh">Theo thiết lập cột</option>
           )}
-          <option value="ngay">Theo ngày</option>
+          {(spec.type === "pie" ||
+            spec.columns.every((c) => c.cachTinh === "tong")) && (
+            <option value="ngay">Theo ngày</option>
+          )}
           <option value="tuan">Theo tuần</option>
           <option value="thang">Theo tháng</option>
         </select>
