@@ -245,6 +245,9 @@ try {
     ),
     [1, 7, 1],
   );
+  const multiple={...c,chia:"ngay",lichRieng:true,khoang:[{tu:"2026-11-01",den:"2026-11-02"},{tu:"2026-11-02",den:"2026-11-03"},{tu:"2026-11-05",den:"2026-11-05"}]};
+  assert.deepEqual(nhomNgay(multiple,c.tu,c.den).flatMap(x=>x.ngay),["2026-11-01","2026-11-02","2026-11-03","2026-11-05"]);
+  assert.equal(tinhGiaTri(data,{id:"tong_phong",loai:"tong_phong",ten:"Tổng phòng"},c,["2026-11-01","2026-11-02","2026-11-03"]),160);
   console.log(
     "PASS: tổng/TB ngày/TB tuần, TB lưu trú theo loại, khung giờ phổ biến/trung bình giờ qua đêm, nhiều thứ, lịch riêng, tuần lẻ, năm nhuận, số dư theo tháng/phạm vi, loại đặt/khung giờ, mẫu số 0.",
   );

@@ -31,7 +31,7 @@ type Data = {
   tong_thang: { thu: string; chi: string };
   truoc_ky?: string;
   chi_nhanh: { id: string; ten_homestay: string }[];
-  phong: { id: string; homestay_id: string; ten_phong: string }[];
+  phong: { id: string; homestay_id: string; ma_phong?: string; ten_phong: string }[];
 };
 function NhapSoTien({
   value,

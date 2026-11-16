@@ -11,33 +11,44 @@ export default function BieuDoThongKe({
   comparisonOnly?: boolean;
   title: string;
   unit: string;
-  points: { id: string; ten: string; value: number | null }[];
+  points: { id: string; ten: string; value: number | null; unit?: string }[];
 }) {
   useLuaChonNoi();
   const [percent, setPercent] = useState(false),
     [line, setLine] = useState(false),
     [hidden, setHidden] = useState<string[]>([]),
-    [removed, setRemoved] = useState<string[]>([]);
+    [removed, setRemoved] = useState<string[]>([]),
+    [sort, setSort] = useState("default");
   const ref = useRef<HTMLDivElement>(null);
-  const data = points.filter(
-      (p) =>
-        !hidden.includes(p.id) && !removed.includes(p.id) && p.value !== null,
-    ),
+  const data = points
+      .filter(
+        (p) =>
+          !hidden.includes(p.id) && !removed.includes(p.id) && p.value !== null,
+      )
+      .sort((a, b) =>
+        sort === "asc" || sort === "desc"
+          ? (sort === "desc" ? -1 : 1) * (a.value! - b.value!)
+          : sort === "az" || sort === "za"
+            ? (sort === "za" ? -1 : 1) *
+              a.ten.localeCompare(b.ten, "vi", { numeric: true })
+            : 0,
+      ),
     sum = data.reduce((s, p) => s + Math.abs(p.value!), 0);
-  const usePercent = percent && !comparisonOnly;
+  const usePercent = percent && !comparisonOnly && unit !== "nhiều đơn vị";
   const value = (n: number) => (usePercent ? (sum ? (n / sum) * 100 : 0) : n);
   const low = Math.min(0, ...data.map((p) => value(p.value!))),
     high = Math.max(1, ...data.map((p) => value(p.value!)));
   const y = (n: number) => 240 - ((value(n) - low) / (high - low)) * 170;
-  const txt = (n: number) => hienSo(value(n)) + (usePercent ? "%" : " " + unit);
+  const txt = (n: number, u = unit) =>
+    hienSo(value(n)) + (usePercent ? "%" : " " + u);
   const width = Math.max(620, data.length * 130 + 90),
-    colors = ["#42b69a", "#b16bd4", "#df9750", "#6398db", "#d26994"];
+    colors = ["#99cdbd", "#c7b2df", "#e8c79f", "#afc9e8", "#e4b3c8"];
   let offset = 0;
   const circ = Math.PI * 140;
   function exportFile(format: string) {
     const table = [
       ["Đối tượng", title, "Đơn vị"],
-      ...data.map((p) => [p.ten, p.value!, unit]),
+      ...data.map((p) => [p.ten, p.value!, p.unit || unit]),
     ];
     if (format === "csv")
       taiTep(
@@ -76,11 +87,22 @@ export default function BieuDoThongKe({
         <details className="stc-check-picker stc-chart-menu">
           <summary aria-label="Tùy chọn biểu đồ thống kê">☰</summary>
           <div>
+            <select
+              aria-label="Sắp xếp biểu đồ thống kê"
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+            >
+              <option value="default">Thứ tự bảng</option>
+              <option value="az">A–Z</option>
+              <option value="za">Z–A</option>
+              <option value="asc">Nhỏ → lớn</option>
+              <option value="desc">Lớn → nhỏ</option>
+            </select>
             <label>
               <input
                 type="checkbox"
                 checked={usePercent}
-                disabled={comparisonOnly}
+                disabled={comparisonOnly || unit === "nhiều đơn vị"}
                 onChange={(e) => setPercent(e.target.checked)}
               />
               Hiện %
@@ -112,7 +134,14 @@ export default function BieuDoThongKe({
         {points
           .filter((p) => !removed.includes(p.id))
           .map((p) => (
-            <div className="stc-object-chip" key={p.id}>
+            <div
+              className="stc-object-chip"
+              key={p.id}
+              style={{
+                background: colors[points.indexOf(p) % colors.length] + "35",
+                borderColor: colors[points.indexOf(p) % colors.length],
+              }}
+            >
               <button
                 type="button"
                 aria-pressed={!hidden.includes(p.id)}
@@ -153,7 +182,8 @@ export default function BieuDoThongKe({
           <figcaption>{usePercent ? "Tỷ trọng (%)" : unit}</figcaption>
           <div className="stc-svg-scroll">
             <svg
-              width={width}
+              width={data.length > 5 ? width : "100%"}
+              viewBox={`0 0 ${width} 300`}
               height="300"
               role="img"
               aria-label="Biểu đồ cột thống kê"
@@ -172,10 +202,14 @@ export default function BieuDoThongKe({
                     y={Math.min(y(0), y(p.value!))}
                     width="38"
                     height={Math.abs(y(p.value!) - y(0))}
-                    fill={colors[i % colors.length]}
+                    fill={
+                      colors[
+                        points.findIndex((x) => x.id === p.id) % colors.length
+                      ]
+                    }
                     rx="4"
                   >
-                    <title>{p.ten + ": " + txt(p.value!)}</title>
+                    <title>{p.ten + ": " + txt(p.value!, p.unit)}</title>
                   </rect>
                   <text
                     x={104 + i * 130}
@@ -183,7 +217,7 @@ export default function BieuDoThongKe({
                     textAnchor="middle"
                     fontSize="10"
                   >
-                    {txt(p.value!)}
+                    {txt(p.value!, p.unit)}
                   </text>
                   <text
                     x={104 + i * 130}
@@ -211,7 +245,9 @@ export default function BieuDoThongKe({
         </figure>
         <figure>
           <figcaption>Tỷ trọng các đối tượng</figcaption>
-          {comparisonOnly ? (
+          {unit === "nhiều đơn vị" ? (
+            <p>Chọn các giá trị cùng đơn vị để xem tỷ trọng.</p>
+          ) : comparisonOnly ? (
             <p>
               Các đối tượng được chọn có dữ liệu bao gồm nhau. Dùng biểu đồ cột
               để so sánh, hoặc bỏ tổng/chi nhánh bao gồm phòng để xem tỷ trọng.
@@ -247,13 +283,17 @@ export default function BieuDoThongKe({
                       cy="145"
                       r="70"
                       fill="none"
-                      stroke={colors[data.indexOf(p) % colors.length]}
+                      stroke={
+                        colors[
+                          points.findIndex((x) => x.id === p.id) % colors.length
+                        ]
+                      }
                       strokeWidth="35"
                       strokeDasharray={`${length} ${circ - length}`}
                       strokeDashoffset={-o}
                       transform="rotate(-90 190 145)"
                     >
-                      <title>{p.ten + ": " + txt(p.value!)}</title>
+                      <title>{p.ten + ": " + txt(p.value!, p.unit)}</title>
                     </circle>
                   );
                 })}

@@ -11,3 +11,7 @@ body>.lp-range-dual.lp-range-portal{position:fixed!important;right:auto!importan
 @media(max-width:600px){.lp-range-control .lp-range-button{font-size:10px!important;padding:5px!important}}
 
 body .lp-range-control .lp-range-button,.stc-page .lp-range-control .lp-range-button{min-width:0!important;width:auto!important;min-height:28px!important;height:auto!important;padding:5px 7px!important;font-size:11px!important;gap:5px!important;white-space:nowrap}
+/* Dải tháng kéo ngang, năm luôn ở hàng trên. */
+.lp-range-portal .lp-range-quick-month{align-items:center;gap:8px;padding:8px}
+.lp-month-strip-wrap{min-width:0;flex:1}.lp-year-strip{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:6px}.lp-year-strip strong{font-size:13px}.lp-range-portal .lp-year-strip button{padding:1px 9px;background:transparent;color:#76548b;min-height:24px}
+.lp-month-strip{display:flex;overflow-x:auto;overscroll-behavior-x:contain;gap:4px;scroll-snap-type:x proximity;padding-bottom:5px;max-width:100%}.lp-range-portal .lp-month-strip button{flex:0 0 34px;scroll-snap-align:center;padding:5px 3px;background:#fff;color:#76548b;border:1px solid #e6d9f0;min-height:28px}.lp-range-portal .lp-month-strip button[aria-pressed=true]{background:#bfa5d4;color:#fff}

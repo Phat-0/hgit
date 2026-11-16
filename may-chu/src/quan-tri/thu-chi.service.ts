@@ -88,7 +88,7 @@ export class ThuChiService {
         'SELECT id,ten_homestay FROM public.homestay ORDER BY ten_homestay',
       );
       const rooms = await c.query(
-        'SELECT id,homestay_id,ten_phong FROM public.phong ORDER BY ten_phong',
+        'SELECT id,homestay_id,ma_phong,ten_phong FROM public.phong ORDER BY ten_phong',
       );
       await c.query('COMMIT');
       return {
@@ -441,7 +441,7 @@ export class ThuChiService {
         'SELECT id,ten_homestay FROM public.homestay ORDER BY ten_homestay',
       );
       const rooms = await c.query(
-        'SELECT id,homestay_id,ten_phong FROM public.phong ORDER BY ten_phong',
+        'SELECT id,homestay_id,ma_phong,ten_phong FROM public.phong ORDER BY ten_phong',
       );
       await c.query('COMMIT');
       return {

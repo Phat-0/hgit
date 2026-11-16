@@ -679,3 +679,14 @@
   justify-content: center;
   padding: 5px;
 }
+/* Ô điều khiển gọn, phân cấp và chọn hàng giống bảng tính. */
+.tk-page .tk-toolbar .tk-scope-picker>summary{max-width:165px;min-width:0!important}
+.tk-page .tk-sheet th.tk-name{min-width:125px!important;width:150px!important;max-width:150px!important}.tk-sheet .tk-name span{white-space:normal;overflow-wrap:anywhere}.tk-sheet tbody{user-select:none;-webkit-user-select:none;touch-action:pan-x pan-y}.tk-sheet tbody :is(td,th){cursor:cell}.tk-sheet th.tk-name[draggable]{cursor:grab}
+.tk-multi-ranges{display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:100%}.tk-multi-ranges>div{display:flex;align-items:center;gap:2px;min-width:0}.tk-page .tk-column-editor .tk-multi-ranges button{flex:none;width:auto;max-width:210px}.tk-page .tk-editor-compact>select{flex:0 1 150px;min-width:125px;max-width:190px}
+.stc-pie-calendar{display:flex;align-items:center;gap:5px;min-width:0}.stc-pie-calendar>span,.stc-calendar-label{font-size:11px;color:#80678e;flex:none}
+.stc-selected-objects .stc-object-chip{max-width:230px}.stc-selected-objects .stc-object-chip>button:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:205px}
+html body .lua-chon-noi details{grid-column:1/-1;min-width:0}html body .lua-chon-noi details details{margin-left:14px}html body .lua-chon-noi details>div{padding-left:12px!important;border-left:1px solid #eadff1!important}
+html body .lua-chon-noi details>summary{font-size:12px;cursor:pointer;padding:6px 8px;min-height:28px}
+html body .lua-chon-noi .tk-date-options{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:4px!important;padding:6px 0 6px 8px!important}html body .lua-chon-noi .tk-date-options label{font-size:11px!important;gap:4px!important;padding:5px 3px!important;min-height:28px!important}
+html body .lua-chon-noi label{min-height:28px;padding:5px 7px!important}
+@media(max-width:600px){.stc-selected-objects .stc-object-chip{max-width:175px}.stc-selected-objects .stc-object-chip>button:first-child{max-width:150px}html body .lua-chon-noi .tk-date-options label{font-size:10px!important;flex-wrap:wrap}}

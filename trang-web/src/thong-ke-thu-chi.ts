@@ -2,7 +2,7 @@ import { cacNgay } from "./bieu-do-thu-chi";
 export type PhamVi = {
   id: string;
   ten: string;
-  loai: "tong" | "chi_nhanh" | "phong";
+  loai: "tong" | "tong_phong" | "chi_nhanh" | "phong";
 };
 export type CotThongKe = {
   id: string;
@@ -15,10 +15,16 @@ export type CotThongKe = {
   thu: number[];
   loaiDat: string[];
   khungGio?: boolean;
+  khoang?: { tu: string; den: string }[];
 };
 export type DuLieuThongKe = {
   chi_nhanh: { id: string; ten_homestay: string }[];
-  phong: { id: string; homestay_id: string; ten_phong: string }[];
+  phong: {
+    id: string;
+    homestay_id: string;
+    ma_phong?: string;
+    ten_phong: string;
+  }[];
   dong: {
     ngay: string;
     homestay_id: string | null;
@@ -65,9 +71,14 @@ const congNgay = (d: string, n: number) =>
     .slice(0, 10);
 export const dauTuan = (d: string) => congNgay(d, -thuCuaNgay(d));
 export function ngayCuaCot(c: CotThongKe, tu: string, den: string) {
-  return cacNgay(c.lichRieng ? c.tu : tu, c.lichRieng ? c.den : den).filter(
-    (d) => c.chia !== "ngay" || c.thu.includes(thuCuaNgay(d)),
-  );
+  const ranges = c.lichRieng
+    ? c.khoang?.length
+      ? c.khoang
+      : [{ tu: c.tu, den: c.den }]
+    : [{ tu, den }];
+  return [...new Set(ranges.flatMap((r) => cacNgay(r.tu, r.den)))]
+    .sort()
+    .filter((d) => c.chia !== "ngay" || c.thu.includes(thuCuaNgay(d)));
 }
 export function nhomNgay(c: CotThongKe, tu: string, den: string) {
   const days = ngayCuaCot(c, tu, den),
@@ -104,6 +115,7 @@ function khop(
 ) {
   return (
     p.loai === "tong" ||
+    (p.loai === "tong_phong" && !!r.phong_id) ||
     (p.loai === "chi_nhanh" ? r.homestay_id : r.phong_id) === p.id
   );
 }

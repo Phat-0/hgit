@@ -1,5 +1,6 @@
 import { useLuaChonNoi, useBamNgoai } from "./lua-chon-noi";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { NhieuKhoangNgay } from "./NhieuKhoangNgay";
 import { RangePicker } from "./RangePicker";
 import { ngayVN, quanTriApi } from "./bao-cao-api";
 import { ngayCuoiThang } from "./so-thu-chi";
@@ -10,6 +11,7 @@ import {
   hienSo,
   ngayNgan,
   nhomNgay,
+  ngayCuaCot,
   tenCot,
   tinhGiaTri,
   khungGioPhoBien,
@@ -40,7 +42,8 @@ function newColumn(metric: string, tu: string, den: string): CotThongKe {
 function period(c: CotThongKe, tu: string, den: string) {
   return c.lichRieng
     ? c.tu && c.den
-      ? `${ngayNgan(c.tu)}–${ngayNgan(c.den)}`
+      ? `${ngayNgan(c.tu)}–${ngayNgan(c.den)}` +
+        (c.khoang && c.khoang.length > 1 ? ` · ${c.khoang.length} khoảng` : "")
       : "Chưa chọn lịch"
     : `${ngayNgan(tu)}–${ngayNgan(den)}`;
 }
@@ -75,6 +78,26 @@ export default function ThongKeThuChi({
     [chartKeys, setChartKeys] = useState<string[]>([]),
     [saved, setSaved] = useState(false);
   const dragging = useRef("");
+  const selection = useRef<{
+    start: number;
+    base: string[];
+    add: boolean;
+  } | null>(null);
+  const [sortRows, setSortRows] = useState("manual");
+  const [chartTu, setChartTu] = useState(tu),
+    [chartDen, setChartDen] = useState(den);
+  useEffect(() => {
+    const stop = () => {
+      selection.current = null;
+    };
+    window.addEventListener("pointerup", stop);
+    window.addEventListener("pointercancel", stop);
+    return () => {
+      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("pointercancel", stop);
+    };
+  }, []);
+
   useBamNgoai(
     !!editing,
     ".tk-column-editor,.tk-column-list,.tk-add-column,.lp-range-portal",
@@ -88,7 +111,9 @@ export default function ThongKeThuChi({
     { tu, den },
     ...columns
       .filter((c) => c.lichRieng && (c.tu || c.den))
-      .map((c) => ({ tu: c.tu, den: c.den })),
+      .flatMap((c) =>
+        c.khoang?.length ? c.khoang : [{ tu: c.tu, den: c.den }],
+      ),
   ];
   const from = allRanges.map((r) => r.tu).sort()[0],
     to = allRanges
@@ -147,6 +172,12 @@ export default function ThongKeThuChi({
               loai: "tong",
               ten: "Tổng các chi nhánh",
             },
+            {
+              key: "tong_phong",
+              id: "tong_phong",
+              loai: "tong_phong",
+              ten: "Tổng phòng",
+            },
             ...data.chi_nhanh.map((b) => ({
               key: "cn:" + b.id,
               id: b.id,
@@ -158,11 +189,7 @@ export default function ThongKeThuChi({
               id: p.id,
               loai: "phong" as const,
               branch: p.homestay_id,
-              ten:
-                (data.chi_nhanh.find((b) => b.id === p.homestay_id)
-                  ?.ten_homestay || "") +
-                " · " +
-                p.ten_phong,
+              ten: p.ma_phong || p.ten_phong,
             })),
           ],
     [data],
@@ -172,6 +199,23 @@ export default function ThongKeThuChi({
       scopes
         .filter((p) => chosenScopes.includes(p.key))
         .sort((a, b) => {
+          if (sortRows === "az" || sortRows === "za")
+            return (
+              (sortRows === "za" ? -1 : 1) *
+              a.ten.localeCompare(b.ten, "vi", { numeric: true })
+            );
+          if (sortRows === "asc" || sortRows === "desc") {
+            const col = columns[0];
+            const dates = col
+              ? nhomNgay(col, tu, den).flatMap((b) => b.ngay)
+              : [];
+            const diff =
+              data && col
+                ? (tinhGiaTri(data, a, col, dates) || 0) -
+                  (tinhGiaTri(data, b, col, dates) || 0)
+                : 0;
+            return (sortRows === "desc" ? -1 : 1) * diff;
+          }
           const ia = rowOrder.indexOf(a.key),
             ib = rowOrder.indexOf(b.key);
           return (
@@ -179,7 +223,7 @@ export default function ThongKeThuChi({
             a.ten.localeCompare(b.ten, "vi", { numeric: true })
           );
         }),
-    [scopes, chosenScopes, rowOrder],
+    [scopes, chosenScopes, rowOrder, sortRows, columns, data, tu, den],
   );
   const expanded = useMemo(
     () =>
@@ -208,18 +252,41 @@ export default function ThongKeThuChi({
       ),
     [expanded],
   );
+  const hasSubheaders = expanded.some(
+    (g) => g.config.chia !== "chung" && g.bins.some((b) => b.ngay.length),
+  );
+  const headerRows = hasSubheaders ? 2 : 1;
   const tooLarge = leaves.length > 500 || leaves.length * rows.length > 50000;
   const chartRows = rows.filter((p) => selectedRows.includes(p.key));
   const comparisonOnly =
     chartRows.length > 1 &&
-    (chartRows.some((p) => p.loai === "tong") ||
+    (chartRows.some((p) => p.loai === "tong" || p.loai === "tong_phong") ||
       chartRows.some(
         (p) =>
           p.loai === "chi_nhanh" &&
           chartRows.some((r) => r.loai === "phong" && r.branch === p.id),
       ));
-  const chartLeaves = leaves.filter(
-    (l) => chartKeys.includes(l.key) && l.b.ngay.length > 0,
+  const chartOptions = columns.flatMap((c) => {
+    const days = ngayCuaCot(c, tu, den).filter(
+      (d) => d >= chartTu && d <= chartDen,
+    );
+    return [
+      {
+        key: c.id + ":chung",
+        c,
+        b: { key: "chung", ten: "Cả kỳ", ngay: days },
+      },
+      ...days.map((d) => ({
+        key: c.id + ":" + d,
+        c,
+        b: { key: d, ten: ngayNgan(d), ngay: [d] },
+      })),
+    ];
+  });
+  const chartLeaves = chartOptions.filter(
+    (l) =>
+      chartKeys.includes(l.key) &&
+      l.b.ngay.some((d) => d >= chartTu && d <= chartDen),
   );
   function toggleScope(key: string) {
     setChosenScopes((old) =>
@@ -245,6 +312,7 @@ export default function ThongKeThuChi({
     if (a < 0 || b < 0 || a === b) return;
     ids.splice(a, 1);
     ids.splice(b, 0, id);
+    setSortRows("manual");
     setRowOrder(ids);
     mark();
   }
@@ -388,7 +456,6 @@ export default function ThongKeThuChi({
           </span>
         </header>
         <div className="tk-toolbar">
-          <span>Lịch chung</span>
           <RangePicker
             compact
             quickMonth
@@ -405,16 +472,19 @@ export default function ThongKeThuChi({
               Đối tượng ({chosenScopes.length})
             </summary>
             <div role="group" aria-label="Chọn nhiều đối tượng thống kê">
-              {scopes.filter((p) => p.loai === "tong").map(scopeInput)}
               <details>
                 <summary>Chi nhánh</summary>
                 <div>
+                  {scopes.filter((p) => p.loai === "tong").map(scopeInput)}
                   {scopes.filter((p) => p.loai === "chi_nhanh").map(scopeInput)}
                 </div>
               </details>
               <details>
-                <summary>Phòng theo chi nhánh</summary>
+                <summary>Phòng</summary>
                 <div>
+                  {scopes
+                    .filter((p) => p.loai === "tong_phong")
+                    .map(scopeInput)}
                   {data?.chi_nhanh.map((b) => (
                     <details className="tk-room-branch" key={b.id}>
                       <summary>{b.ten_homestay}</summary>
@@ -467,6 +537,21 @@ export default function ThongKeThuChi({
           <details className="stc-check-picker stc-chart-menu">
             <summary aria-label="Lưu hoặc xuất thống kê">☰</summary>
             <div>
+              <select
+                aria-label="Sắp xếp hàng thống kê"
+                value={sortRows}
+                onChange={(e) => {
+                  setSortRows(e.target.value);
+                  mark();
+                }}
+              >
+                <option value="manual">Thứ tự kéo thả</option>
+                <option value="az">A–Z</option>
+                <option value="za">Z–A</option>
+                <option value="asc">Giá trị nhỏ → lớn</option>
+                <option value="desc">Giá trị lớn → nhỏ</option>
+              </select>
+              <small>Sắp xếp giá trị theo cột đầu tiên.</small>
               <select
                 aria-label="Xuất bảng thống kê"
                 value=""
@@ -581,10 +666,10 @@ export default function ThongKeThuChi({
                 const chia = e.target.value;
                 patch(current.id, {
                   chia,
-                  lichRieng: chia === "tuan",
-                  tu: chia === "tuan" ? "" : tu,
-                  den: chia === "tuan" ? "" : den,
                   thu: [...allDays],
+                  ...(chia === "tuan" && !current.lichRieng
+                    ? { lichRieng: true, tu: "", den: "", khoang: undefined }
+                    : {}),
                 });
               }}
             >
@@ -592,15 +677,39 @@ export default function ThongKeThuChi({
               <option value="ngay">Theo ngày</option>
               <option value="tuan">Theo tuần</option>
             </select>
-            {current.chia === "tuan" && (
-              <RangePicker
-                compact
-                quickMonth
-                start={current.tu}
-                end={current.den}
-                placeholder={!current.tu ? "Chọn lịch riêng" : undefined}
-                onChange={(a, b) => patch(current.id, { tu: a, den: b })}
-              />
+            <NhieuKhoangNgay
+              ranges={
+                current.lichRieng
+                  ? current.khoang?.length
+                    ? current.khoang
+                    : current.tu
+                      ? [{ tu: current.tu, den: current.den }]
+                      : []
+                  : [{ tu, den }]
+              }
+              onChange={(ranges) =>
+                patch(current.id, {
+                  lichRieng: true,
+                  khoang: ranges,
+                  tu: ranges[0]?.tu || "",
+                  den: ranges.at(-1)?.den || "",
+                })
+              }
+            />
+            {current.lichRieng && (
+              <button
+                type="button"
+                onClick={() =>
+                  patch(current.id, {
+                    lichRieng: false,
+                    khoang: undefined,
+                    tu,
+                    den,
+                  })
+                }
+              >
+                Dùng lịch chung
+              </button>
             )}
             {current.chia === "ngay" && (
               <div className="tk-weekdays">
@@ -650,7 +759,7 @@ export default function ThongKeThuChi({
             <table className="tk-sheet">
               <thead>
                 <tr>
-                  <th className="tk-row-check" rowSpan={2}>
+                  <th className="tk-row-check" rowSpan={headerRows}>
                     <input
                       type="checkbox"
                       aria-label="Chọn tất cả hàng thống kê"
@@ -666,11 +775,21 @@ export default function ThongKeThuChi({
                       }}
                     />
                   </th>
-                  <th rowSpan={2} className="tk-name">
+                  <th rowSpan={headerRows} className="tk-name">
                     Đối tượng
                   </th>
                   {expanded.map((g) => (
-                    <th key={g.config.id} colSpan={g.bins.length}>
+                    <th
+                      key={g.config.id}
+                      colSpan={g.bins.length}
+                      rowSpan={
+                        hasSubheaders &&
+                        (g.config.chia === "chung" ||
+                          !g.bins.some((b) => b.ngay.length))
+                          ? 2
+                          : 1
+                      }
+                    >
                       <button
                         type="button"
                         onClick={() => setEditing(g.config.id)}
@@ -688,11 +807,23 @@ export default function ThongKeThuChi({
                     </th>
                   ))}
                 </tr>
-                <tr>
-                  {leaves.map((l) => (
-                    <th key={l.key}>{l.b.ten}</th>
-                  ))}
-                </tr>
+                {hasSubheaders && (
+                  <tr>
+                    {expanded
+                      .filter(
+                        (g) =>
+                          g.config.chia !== "chung" &&
+                          g.bins.some((b) => b.ngay.length),
+                      )
+                      .flatMap((g) =>
+                        g.bins.map((b) => (
+                          <th key={g.config.id + ":" + b.key}>
+                            {b.ngay.length ? b.ten : ""}
+                          </th>
+                        )),
+                      )}
+                  </tr>
+                )}
               </thead>
               <tbody>
                 {rows.map((p) => (
@@ -700,10 +831,37 @@ export default function ThongKeThuChi({
                     key={p.key}
                     data-row-key={p.key}
                     aria-selected={selectedRows.includes(p.key)}
-                    onClick={(e) => {
-                      if (!(e.target as HTMLElement).closest("input,button"))
-                        toggleRow(p.key);
+                    onPointerDown={(e) => {
+                      if (
+                        e.button !== 0 ||
+                        e.altKey ||
+                        (e.target as HTMLElement).closest("input,button")
+                      )
+                        return;
+                      e.preventDefault();
+                      const start = rows.findIndex((r) => r.key === p.key);
+                      const base = e.ctrlKey || e.metaKey ? selectedRows : [];
+                      selection.current = { start, base, add: true };
+                      setSelectedRows([...new Set([...base, p.key])]);
+                      mark();
                     }}
+                    onPointerEnter={() => {
+                      const s = selection.current;
+                      if (!s) return;
+                      const i = rows.findIndex((r) => r.key === p.key);
+                      setSelectedRows([
+                        ...new Set([
+                          ...s.base,
+                          ...rows
+                            .slice(
+                              Math.min(s.start, i),
+                              Math.max(s.start, i) + 1,
+                            )
+                            .map((r) => r.key),
+                        ]),
+                      ]);
+                    }}
+
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => {
                       e.preventDefault();
@@ -719,37 +877,20 @@ export default function ThongKeThuChi({
                         onChange={() => toggleRow(p.key)}
                       />
                     </td>
-                    <th scope="row" className="tk-name">
+                    <th
+                      scope="row"
+                      className="tk-name"
+                      title="Alt + kéo để đổi thứ tự hàng"
+                      draggable
+                      onDragStart={(e) => {
+                        dragging.current = p.key;
+                        e.dataTransfer.setData("text/plain", p.key);
+                      }}
+                      onDragEnd={() => {
+                        dragging.current = "";
+                      }}
+                    >
                       <div>
-                        <button
-                          type="button"
-                          draggable
-                          aria-label={"Kéo hàng " + p.ten}
-                          title="Kéo để đổi thứ tự; dùng Alt + phím lên/xuống khi chọn nút"
-                          onDragStart={(e) => {
-                            dragging.current = p.key;
-                            e.dataTransfer.setData("text/plain", p.key);
-                          }}
-                          onDragEnd={() => {
-                            dragging.current = "";
-                          }}
-                          onKeyDown={(e) => {
-                            if (
-                              !e.altKey ||
-                              !["ArrowUp", "ArrowDown"].includes(e.key)
-                            )
-                              return;
-                            e.preventDefault();
-                            const next =
-                              rows[
-                                rows.findIndex((r) => r.key === p.key) +
-                                  (e.key === "ArrowUp" ? -1 : 1)
-                              ];
-                            if (next) moveRow(p.key, next.key);
-                          }}
-                        >
-                          ⠿
-                        </button>
                         <span>
                           {p.ten}
                           <small>
@@ -812,30 +953,48 @@ export default function ThongKeThuChi({
               ))}
             </div>
           </details>
-          <details className="stc-check-picker">
+          <details className="stc-check-picker tk-scope-picker tk-values-picker">
             <summary>Giá trị biểu đồ ({chartLeaves.length})</summary>
             <div>
-              {leaves
-                .filter((l) => l.b.ngay.length)
-                .map((l) => (
-                  <label key={l.key}>
-                    <input
-                      type="checkbox"
-                      checked={chartKeys.includes(l.key)}
-                      onChange={(e) => {
-                        setChartKeys((old) =>
-                          e.target.checked
-                            ? [...old, l.key]
-                            : old.filter((k) => k !== l.key),
-                        );
-                        mark();
-                      }}
-                    />
-                    {tenCot(l.c)} · {l.c.loaiDat.join(", ")} · {l.b.ten}
-                  </label>
-                ))}
+              {expanded.map((g) => (
+                <details key={g.config.id} className="tk-metric-dates">
+                  <summary>{tenCot(g.config)}</summary>
+                  <div className="tk-date-options">
+                    {chartOptions
+                      .filter((l) => l.c.id === g.config.id && l.b.ngay.length)
+                      .map((l) => (
+                        <label key={l.key}>
+                          <input
+                            type="checkbox"
+                            checked={chartKeys.includes(l.key)}
+                            onChange={(e) => {
+                              setChartKeys((old) =>
+                                e.target.checked
+                                  ? [...old, l.key]
+                                  : old.filter((k) => k !== l.key),
+                              );
+                              mark();
+                            }}
+                          />
+                          {l.b.ten}
+                        </label>
+                      ))}
+                  </div>
+                </details>
+              ))}
             </div>
           </details>
+          <RangePicker
+            compact
+            quickMonth
+            start={chartTu}
+            end={chartDen}
+            onChange={(a, b) => {
+              setChartTu(a);
+              setChartDen(b);
+              mark();
+            }}
+          />
           <button
             type="button"
             aria-label="Hiển thị biểu đồ thống kê"
@@ -853,9 +1012,7 @@ export default function ThongKeThuChi({
             Chọn hàng đối tượng và giá trị để vẽ biểu đồ.
           </p>
         )}
-        {chart && chartRows.length > 0 && chartLeaves.length > 8 && (
-          <p role="alert">Chọn tối đa 8 giá trị để xem biểu đồ cùng lúc.</p>
-        )}
+
         <details className="tk-rules">
           <summary>Quy tắc tính số liệu</summary>
           <p>
@@ -888,22 +1045,48 @@ export default function ThongKeThuChi({
         data &&
         !tooLarge &&
         chartRows.length > 0 &&
-        chartLeaves.length <= 8 &&
-        chartLeaves.map((l) => (
+        chartLeaves.length > 0 && (
           <BieuDoThongKe
-            key={l.key}
-            comparisonOnly={comparisonOnly}
-            title={
-              tenCot(l.c) + " · " + l.c.loaiDat.join(", ") + " · " + l.b.ten
+            comparisonOnly={
+              comparisonOnly ||
+              chartLeaves.some((a, i) =>
+                chartLeaves.some(
+                  (b, j) =>
+                    j > i &&
+                    a.c.id === b.c.id &&
+                    a.b.ngay.some((d) => b.b.ngay.includes(d)),
+                ),
+              )
             }
-            unit={CHI_SO.find((m) => m[0] === l.c.chiSo)?.[2] || ""}
-            points={chartRows.map((p) => ({
-              id: p.key,
-              ten: p.ten,
-              value: tinhGiaTri(data, p, l.c, l.b.ngay),
-            }))}
+            title="Biểu đồ thống kê"
+            unit={
+              new Set(
+                chartLeaves.map(
+                  (l) => CHI_SO.find((m) => m[0] === l.c.chiSo)?.[2],
+                ),
+              ).size === 1
+                ? CHI_SO.find((m) => m[0] === chartLeaves[0].c.chiSo)?.[2] || ""
+                : "nhiều đơn vị"
+            }
+            points={chartLeaves.flatMap((l) =>
+              chartRows.map((p) => ({
+                id: l.key + ":" + p.key,
+                unit: CHI_SO.find((m) => m[0] === l.c.chiSo)?.[2] || "",
+                ten:
+                  p.ten +
+                  " · " +
+                  tenCot(l.c) +
+                  (l.b.key !== "chung" ? " · " + l.b.ten : ""),
+                value: tinhGiaTri(
+                  data,
+                  p,
+                  l.c,
+                  l.b.ngay.filter((d) => d >= chartTu && d <= chartDen),
+                ),
+              })),
+            )}
           />
-        ))}
+        )}
     </section>
   );
 }

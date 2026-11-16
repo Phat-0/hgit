@@ -36,22 +36,27 @@ export default function BieuDoThuChi({
   useLuaChonNoi();
   const [chartStart, setChartStart] = useState(start),
     [chartEnd, setChartEnd] = useState(end),
+    [pieStart, setPieStart] = useState(start),
+    [pieEnd, setPieEnd] = useState(end),
     [source, setSource] = useState<DongThuChi[]>(rows),
     [loading, setLoading] = useState(false),
     [error, setError] = useState(""),
     [selected, setSelected] = useState<string[]>(["tong"]),
     [hidden, setHidden] = useState<string[]>([]),
-    [metric, setMetric] = useState("thu"),
+    [metric, setMetric] = useState("both"),
     [scope, setScope] = useState("chi_nhanh"),
     [sort, setSort] = useState("ngay"),
     [percent, setPercent] = useState(false),
     [showLine, setShowLine] = useState(false),
     [income, setIncome] = useState(() =>
-      readColor("thu-chi:mau-thu", "#42b69a"),
+      readColor("thu-chi:mau-thu-v2", "#99cdbd"),
     ),
     [expense, setExpense] = useState(() =>
-      readColor("thu-chi:mau-chi", "#b16bd4"),
+      readColor("thu-chi:mau-chi-v2", "#c7b2df"),
     );
+  const [pieSource, setPieSource] = useState<DongThuChi[]>(rows),
+    [pieError, setPieError] = useState(""),
+    [pieLoading, setPieLoading] = useState(false);
   const grid = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let live = true;
@@ -68,7 +73,10 @@ export default function BieuDoThuChi({
     void quanTriApi<{ dong: DongThuChi[] }>(
       token,
       "thu-chi?" +
-        new URLSearchParams({ tu_ngay: chartStart, den_ngay: chartEnd }),
+        new URLSearchParams({
+          tu_ngay: chartStart,
+          den_ngay: chartEnd,
+        }),
     )
       .then((x) => {
         if (live) setSource(x.dong);
@@ -83,9 +91,39 @@ export default function BieuDoThuChi({
       live = false;
     };
   }, [token, chartStart, chartEnd, rows, start, end]);
+  useEffect(() => {
+    let live = true;
+    setPieError("");
+    if (pieStart === start && pieEnd === end) {
+      setPieSource(rows);
+      setPieLoading(false);
+      return () => {
+        live = false;
+      };
+    }
+    setPieSource([]);
+    setPieLoading(true);
+    void quanTriApi<{ dong: DongThuChi[] }>(
+      token,
+      "thu-chi?" + new URLSearchParams({ tu_ngay: pieStart, den_ngay: pieEnd }),
+    )
+      .then((x) => {
+        if (live) setPieSource(x.dong);
+      })
+      .catch((e) => {
+        if (live) setPieError(e.message);
+      })
+      .finally(() => {
+        if (live) setPieLoading(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [token, pieStart, pieEnd, start, end, rows]);
   const choices = useMemo(
     () => [
-      { key: "tong", label: "Toàn hệ thống", mau: mauNhom[0] },
+      { key: "tong", label: "Tổng chi nhánh", mau: mauNhom[0] },
+      { key: "tong_phong", label: "Tổng phòng", mau: mauNhom[0] },
       ...branches.map((b, i) => ({
         key: "cn:" + b.id,
         label: b.ten_homestay || "Chi nhánh",
@@ -93,10 +131,7 @@ export default function BieuDoThuChi({
       })),
       ...rooms.map((r, i) => ({
         key: "p:" + r.id,
-        label:
-          (branches.find((b) => b.id === r.homestay_id)?.ten_homestay || "") +
-          " · " +
-          r.ten_phong,
+        label: r.ma_phong || r.ten_phong || "Phòng",
         mau: mauNhom[i % mauNhom.length],
       })),
     ],
@@ -105,11 +140,18 @@ export default function BieuDoThuChi({
   const activeKeys = selected.filter((key) => !hidden.includes(key));
   const matches = (r: DongThuChi, key: string) =>
     key === "tong" ||
+    (key === "tong_phong" && !!r.phong_id) ||
     key === "cn:" + r.homestay_id ||
     key === "p:" + r.phong_id;
-  const filtered = source.filter((r) =>
+  const scopeRows = source.filter((r) =>
     activeKeys.some((key) => matches(r, key)),
   );
+  const filtered = scopeRows.filter(
+    (r) => r.ngay >= chartStart && r.ngay <= chartEnd,
+  );
+  const pieRows = pieSource
+    .filter((r) => activeKeys.some((key) => matches(r, key)))
+    .filter((r) => r.ngay >= pieStart && r.ngay <= pieEnd);
   const groups = useMemo(() => {
     if (sort === "ngay") {
       return cacNgay(chartStart, chartEnd)
@@ -128,7 +170,7 @@ export default function BieuDoThuChi({
       .filter((c) => activeKeys.includes(c.key))
       .map((c) => ({
         ...nhomThuChi(
-          source.filter((r) => matches(r, c.key)),
+          filtered.filter((r) => matches(r, c.key)),
           "tong",
           [],
           [],
@@ -136,12 +178,23 @@ export default function BieuDoThuChi({
         )[0],
         ...c,
       }))
-      .sort(
-        (a, b) =>
-          (sort === "za" ? -1 : 1) *
-          a.label.localeCompare(b.label, "vi", { numeric: true }),
+      .sort((a, b) =>
+        sort === "asc" || sort === "desc"
+          ? (sort === "desc" ? -1 : 1) *
+            ((metric === "thu"
+              ? a.thu
+              : metric === "chi"
+                ? a.chi
+                : a.thu + a.chi) -
+              (metric === "thu"
+                ? b.thu
+                : metric === "chi"
+                  ? b.chi
+                  : b.thu + b.chi))
+          : (sort === "za" ? -1 : 1) *
+            a.label.localeCompare(b.label, "vi", { numeric: true }),
       );
-  }, [source, selected, hidden, choices, sort, chartStart, chartEnd]);
+  }, [source, selected, hidden, choices, sort, metric, chartStart, chartEnd]);
   const group =
     sort === "ngay" || activeKeys.length !== 1 || activeKeys[0] !== "tong"
       ? "chon"
@@ -183,7 +236,7 @@ export default function BieuDoThuChi({
   const pie = (["thu", "chi"] as const).map((k) => ({
     key: k,
     label: k === "thu" ? "Thu" : "Chi",
-    money: filtered.reduce(
+    money: pieRows.reduce(
       (sum, r) =>
         sum +
         (k === "thu"
@@ -356,6 +409,7 @@ export default function BieuDoThuChi({
       <header>
         <h2>Biểu đồ thu chi</h2>
         <div className="stc-tools">
+          <span className="stc-calendar-label">Cột</span>
           <RangePicker
             compact
             quickMonth
@@ -366,6 +420,19 @@ export default function BieuDoThuChi({
               setChartEnd(b);
             }}
           />
+          <div className="stc-pie-calendar" title="Lịch biểu đồ tròn">
+            <span>Tròn</span>
+            <RangePicker
+              compact
+              quickMonth
+              start={pieStart}
+              end={pieEnd}
+              onChange={(a, b) => {
+                setPieStart(a);
+                setPieEnd(b);
+              }}
+            />
+          </div>
           <select
             aria-label="Loại đối tượng biểu đồ"
             value={scope}
@@ -406,40 +473,54 @@ export default function BieuDoThuChi({
             </details>
           )}
           {scope === "phong" && (
-            <details className="stc-check-picker">
+            <details className="stc-check-picker tk-scope-picker">
               <summary>
                 Phòng ({selected.filter((k) => k.startsWith("p:")).length})
               </summary>
               <div role="group" aria-label="Chọn phòng biểu đồ">
-                {rooms.map((r) => (
-                  <label key={r.id}>
-                    <input
-                      type="checkbox"
-                      checked={selected.includes("p:" + r.id)}
-                      onChange={() => toggleChoice("p:" + r.id)}
-                    />
-                    {choices.find((c) => c.key === "p:" + r.id)?.label}
-                  </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={selected.includes("tong_phong")}
+                    onChange={() => {
+                      setSelected((old) =>
+                        old.includes("tong_phong") ? [] : ["tong_phong"],
+                      );
+                      setHidden([]);
+                    }}
+                  />
+                  Tổng phòng
+                </label>
+                {branches.map((b) => (
+                  <details key={b.id} className="tk-room-branch">
+                    <summary>{b.ten_homestay}</summary>
+                    <div>
+                      {rooms
+                        .filter((r) => r.homestay_id === b.id)
+                        .map((r) => (
+                          <label key={r.id}>
+                            <input
+                              type="checkbox"
+                              checked={selected.includes("p:" + r.id)}
+                              onChange={() => toggleChoice("p:" + r.id)}
+                            />
+                            {r.ma_phong || r.ten_phong}
+                          </label>
+                        ))}
+                    </div>
+                  </details>
                 ))}
                 {!rooms.length && <span>Chưa có phòng.</span>}
               </div>
             </details>
           )}
-          <select
-            aria-label="Sắp xếp biểu đồ"
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-          >
-            <option value="ngay">Theo ngày</option>
-            <option value="az">A–Z</option>
-            <option value="za">Z–A</option>
-          </select>
           <div className="stc-chart-actions">
             <select
               aria-label="Hiển thị thu hoặc chi"
               value={metric}
               onChange={(e) => setMetric(e.target.value)}
             >
+              <option value="both">Thu và chi</option>
               <option value="thu">Chỉ thu</option>
               <option value="chi">Chỉ chi</option>
             </select>
@@ -448,6 +529,17 @@ export default function BieuDoThuChi({
                 ☰
               </summary>
               <div>
+                <select
+                  aria-label="Sắp xếp biểu đồ"
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value)}
+                >
+                  <option value="ngay">Theo ngày</option>
+                  <option value="az">A–Z</option>
+                  <option value="za">Z–A</option>
+                  <option value="asc">Nhỏ → lớn</option>
+                  <option value="desc">Lớn → nhỏ</option>
+                </select>
                 <label>
                   <input
                     aria-label="Hiện phần trăm biểu đồ"
@@ -473,7 +565,7 @@ export default function BieuDoThuChi({
                     aria-label="Màu biểu đồ thu"
                     value={income}
                     onChange={(e) =>
-                      saveColor("thu-chi:mau-thu", e.target.value, setIncome)
+                      saveColor("thu-chi:mau-thu-v2", e.target.value, setIncome)
                     }
                   />
                 </label>
@@ -484,7 +576,11 @@ export default function BieuDoThuChi({
                     aria-label="Màu biểu đồ chi"
                     value={expense}
                     onChange={(e) =>
-                      saveColor("thu-chi:mau-chi", e.target.value, setExpense)
+                      saveColor(
+                        "thu-chi:mau-chi-v2",
+                        e.target.value,
+                        setExpense,
+                      )
                     }
                   />
                 </label>
@@ -492,7 +588,7 @@ export default function BieuDoThuChi({
                   aria-label="Xuất biểu đồ"
                   value=""
                   onChange={(e) => exportChart(e.target.value)}
-                  disabled={loading || !!error}
+                  disabled={loading || pieLoading || !!error || !!pieError}
                 >
                   <option value="" disabled>
                     ↗ Xuất biểu đồ
@@ -514,7 +610,24 @@ export default function BieuDoThuChi({
         {choices
           .filter((c) => selected.includes(c.key))
           .map((c) => (
-            <div className="stc-object-chip" key={c.key}>
+            <div
+              className="stc-object-chip"
+              key={c.key}
+              style={{
+                background:
+                  metric === "chi"
+                    ? expense + "40"
+                    : metric === "thu"
+                      ? income + "40"
+                      : c.mau + "35",
+                borderColor:
+                  metric === "chi"
+                    ? expense
+                    : metric === "thu"
+                      ? income
+                      : c.mau,
+              }}
+            >
               <button
                 type="button"
                 aria-pressed={!hidden.includes(c.key)}
@@ -546,7 +659,9 @@ export default function BieuDoThuChi({
           <small>Chọn chi nhánh hoặc phòng để hiển thị biểu đồ.</small>
         )}
       </div>
-      {error && <p role="alert">{error}</p>}
+      {error && <p role="alert">Cột: {error}</p>}
+      {pieError && <p role="alert">Tròn: {pieError}</p>}
+      {pieLoading && <p role="status">Đang tải biểu đồ tròn…</p>}
       {loading && <p role="status">Đang tải biểu đồ theo khoảng ngày riêng…</p>}
       {duplicated && (
         <p className="stc-chart-note">

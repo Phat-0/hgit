@@ -3,6 +3,7 @@ export type TuyChonBieuDo = {
   id: string;
   homestay_id?: string;
   ten_homestay?: string;
+  ma_phong?: string;
   ten_phong?: string;
 };
 export type DoiTuongBieuDo = {

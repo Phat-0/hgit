@@ -68,6 +68,16 @@ export function RangePicker({
       window.removeEventListener("scroll", place, true);
     };
   }, [open, month, first]);
+  useLayoutEffect(() => {
+    if (!open) return;
+    const strip = panel.current?.querySelector<HTMLElement>(".lp-month-strip"),
+      chosen = strip?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (strip && chosen)
+      strip.scrollLeft =
+        chosen.offsetLeft -
+        strip.offsetLeft -
+        (strip.clientWidth - chosen.offsetWidth) / 2;
+  }, [open, month]);
   useEffect(() => {
     if (!open) return;
     const dismiss = (e: PointerEvent) => {
@@ -204,18 +214,43 @@ export function RangePicker({
             </div>
             {quickMonth && (
               <div className="lp-range-quick-month">
-                <label>
-                  Chọn nhanh tháng
-                  <input
-                    type="month"
-                    aria-label="Chọn nhanh tháng"
-                    value={month}
-                    onChange={(e) => {
-                      if (/^\d{4}-(0[1-9]|1[0-2])$/.test(e.target.value))
-                        setMonth(e.target.value);
-                    }}
-                  />
-                </label>
+                <div className="lp-month-strip-wrap">
+                  <div className="lp-year-strip">
+                    <button
+                      type="button"
+                      aria-label="Năm trước"
+                      onClick={() => setMonth((v) => shift(v, -12))}
+                    >
+                      ‹
+                    </button>
+                    <strong>{month.slice(0, 4)}</strong>
+                    <button
+                      type="button"
+                      aria-label="Năm sau"
+                      onClick={() => setMonth((v) => shift(v, 12))}
+                    >
+                      ›
+                    </button>
+                  </div>
+                  <div className="lp-month-strip" aria-label="Chọn tháng">
+                    {Array.from({ length: 12 }, (_, i) => {
+                      const m =
+                        month.slice(0, 4) +
+                        "-" +
+                        String(i + 1).padStart(2, "0");
+                      return (
+                        <button
+                          type="button"
+                          key={m}
+                          aria-pressed={m === month}
+                          onClick={() => setMonth(m)}
+                        >
+                          T{i + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
                 <button
                   type="button"
                   disabled={
