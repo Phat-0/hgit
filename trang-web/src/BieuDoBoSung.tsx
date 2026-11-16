@@ -3,7 +3,12 @@ import BieuDoThongKe from "./BieuDoThongKe";
 import { NhieuKhoangNgay } from "./NhieuKhoangNgay";
 import { quanTriApi } from "./bao-cao-api";
 import { CHI_SO, type DuLieuThongKe } from "./thong-ke-thu-chi";
-import { diemBoSung, gopNgayThanhKhoang, phamViBiTrung, type KhungBieuDo } from "./bieu-do-bo-sung";
+import {
+  diemBoSung,
+  gopNgayThanhKhoang,
+  phamViBiTrung,
+  type KhungBieuDo,
+} from "./bieu-do-bo-sung";
 export default function BieuDoBoSung({
   spec,
   onChange,
@@ -12,6 +17,7 @@ export default function BieuDoBoSung({
   data,
   dataStart,
   dataEnd,
+  demo = false,
 }: {
   spec: KhungBieuDo;
   onChange: (v: KhungBieuDo) => void;
@@ -20,6 +26,7 @@ export default function BieuDoBoSung({
   data: DuLieuThongKe;
   dataStart: string;
   dataEnd: string;
+  demo?: boolean;
 }) {
   const [source, setSource] = useState<DuLieuThongKe | null>(data),
     [error, setError] = useState(""),
@@ -43,7 +50,7 @@ export default function BieuDoBoSung({
       setError("Chọn lịch tối đa 367 ngày.");
       return;
     }
-    if (start >= dataStart && end <= dataEnd) {
+    if (demo || (start >= dataStart && end <= dataEnd)) {
       setSource(data);
       setLoading(false);
       return;
@@ -67,7 +74,7 @@ export default function BieuDoBoSung({
     return () => {
       live = false;
     };
-  }, [token, data, dataStart, dataEnd, start, end]);
+  }, [token, data, dataStart, dataEnd, start, end, demo]);
   const active =
     spec.columns.find((c) => c.id === spec.metricId) || spec.columns[0];
   const points = source ? diemBoSung(spec, source) : [];

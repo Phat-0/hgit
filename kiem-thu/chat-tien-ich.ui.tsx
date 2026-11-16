@@ -618,7 +618,7 @@ await click(document.querySelector('[aria-label="Chọn giá trị thống kê"]
 const statsKind=document.querySelector('[aria-label="Loại đặt của cột"]') as HTMLSelectElement;assert.equal(statsKind.value,'Theo giờ');assert.ok(document.querySelector('[aria-label="Hiện khung giờ phổ biến"]'));assert.doesNotMatch(document.querySelector('.tk-column-editor')!.textContent!,/Giờ nhận phòng/);
 assert.deepEqual([...document.querySelectorAll('[aria-label="Cách tính cột"] option')].map(e=>e.textContent),['Tổng','Trung bình ngày','Trung bình tuần']);
 assert.deepEqual([...document.querySelectorAll('[aria-label="Chia cột thống kê"] option')].map(e=>e.textContent),['Chung','Theo ngày','Theo tuần','Theo tháng']);
-assert.ok(document.querySelector('.tk-chart-controls [aria-label="Hiển thị biểu đồ thống kê"]'));assert.equal(document.querySelector('.tk-toolbar [aria-label="Hiển thị biểu đồ thống kê"]'),null);
+assert.ok(document.querySelector('.tk-toolbar [aria-label="Thiết lập biểu đồ"]'));assert.equal(document.querySelector('.tk-chart-controls'),null);
 const previousConfirm=window.confirm;window.confirm=()=>false;assert.equal(window.dispatchEvent(new dom.window.Event('homestay:truoc-chuyen-trang',{cancelable:true})),false);window.confirm=previousConfirm;
 console.log('PASS UI thống kê: tab thứ hai, API riêng, header hai hàng, chọn phạm vi, chia thứ/lịch riêng, thêm cột và cảnh báo rời trang.');
 await act(async()=>root.unmount());root=createRoot(document.getElementById('root')!);

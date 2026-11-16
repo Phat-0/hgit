@@ -196,7 +196,7 @@ function install(doc: Document) {
   const change = (e: Event) => {
     if (!(e.target instanceof win.HTMLSelectElement)) return;
     const d = e.target.closest<HTMLDetailsElement>("details.stc-check-picker");
-    if (d) close(d);
+    if (d && !d.classList.contains("tk-chart-setup")) close(d);
   };
   const position = () => {
     for (const d of entries.keys()) place(d);
