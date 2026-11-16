@@ -1,3 +1,4 @@
+import BieuTuong, {type TenBieuTuong} from "./BieuTuong";
 import { useBamNgoai } from "./lua-chon-noi";
 import TongQuan from "./TongQuan";
 import BaoCao from "./BaoCao";
@@ -60,19 +61,19 @@ type Muc =
   | "thong-tin"
   | "tin-nhan";
 const danhMuc: { id: Muc; nhan: string; icon: string }[] = [
-  { id: "tong-quan", nhan: "Tổng quan", icon: "▦" },
-  { id: "lich", nhan: "Lịch", icon: "▣" },
-  { id: "chi-nhanh", nhan: "Chi nhánh", icon: "▥" },
-  { id: "phong", nhan: "Phòng", icon: "▤" },
-  { id: "loai-phong", nhan: "Loại phòng", icon: "▥" },
-  { id: "goi-combo", nhan: "Combo", icon: "◈" },
-  { id: "dat-phong", nhan: "Đơn đặt phòng", icon: "▣" },
-  { id: "trang-chu", nhan: "Trang chủ", icon: "⌂" },
-  { id: "nhan-vien", nhan: "Nhân viên", icon: "♙" },
-  { id: "tin-nhan", nhan: "Tin nhắn", icon: "☏" },
-  { id: "danh-gia", nhan: "Đánh giá", icon: "★" },
-  { id: "bao-cao", nhan: "Báo cáo thống kê", icon: "▥" },
-  { id: "thong-tin", nhan: "Thông tin cá nhân", icon: "♙" },
+  { id: "tong-quan", nhan: "Tổng quan", icon: "grid" },
+  { id: "lich", nhan: "Lịch", icon: "calendar" },
+  { id: "chi-nhanh", nhan: "Chi nhánh", icon: "building" },
+  { id: "phong", nhan: "Phòng", icon: "bed" },
+  { id: "loai-phong", nhan: "Loại phòng", icon: "building" },
+  { id: "goi-combo", nhan: "Combo", icon: "gift" },
+  { id: "dat-phong", nhan: "Đơn đặt phòng", icon: "calendar" },
+  { id: "trang-chu", nhan: "Trang chủ", icon: "home" },
+  { id: "nhan-vien", nhan: "Nhân viên", icon: "users" },
+  { id: "tin-nhan", nhan: "Tin nhắn", icon: "message" },
+  { id: "danh-gia", nhan: "Đánh giá", icon: "star" },
+  { id: "bao-cao", nhan: "Báo cáo thống kê", icon: "chart" },
+  { id: "thong-tin", nhan: "Thông tin cá nhân", icon: "users" },
 ];
 async function api<T>(
   url: string,
@@ -381,7 +382,7 @@ export default function QuanTri() {
           aria-label={sidebarHidden ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}
           onClick={() => setSidebarHidden((v) => !v)}
         >
-          {sidebarHidden ? "❯" : "❮"}
+          <span style={{display:"flex",transform:sidebarHidden?undefined:"rotate(180deg)"}}><BieuTuong ten="chevron" size={16}/></span>
         </button>
         <div className="qt-menu-scroll">
           {danhMuc
@@ -404,7 +405,7 @@ export default function QuanTri() {
                   setThongBao("");
                 }}
               >
-                <span className="qt-nav-icon">{item.icon}</span>
+                <span className="qt-nav-icon"><BieuTuong ten={item.icon as TenBieuTuong}/></span>
                 <span>{item.nhan}</span>
                 <span className="qt-nav-arrow">›</span>
               </button>
@@ -496,7 +497,7 @@ export default function QuanTri() {
               onClick={() => setMenuMo(!menuMo)}
               aria-label="Mở menu"
             >
-              ☰
+              <BieuTuong ten="menu"/>
             </button>
             {muc === "tong-quan" && (
               <div
@@ -614,7 +615,7 @@ export default function QuanTri() {
           ) : (
             <section className="qt-placeholder">
               <div className="qt-placeholder-icon">
-                {danhMuc.find((x) => x.id === muc)?.icon}
+                <BieuTuong ten={(danhMuc.find((x) => x.id === muc)?.icon || "grid") as TenBieuTuong} size={28}/>
               </div>
               <h2>{danhMuc.find((x) => x.id === muc)?.nhan}</h2>
               {muc === "thong-tin" ? (
@@ -635,6 +636,7 @@ export default function QuanTri() {
             </section>
           )}
         </main>
+        <footer className="qt-footer"><span>HomeStay · Quản trị</span><a href="/">Xem trang khách</a></footer>
         {permissions.includes("tin-nhan") && (
           <TroChuyen token={token} inline={muc === "tin-nhan"} admin />
         )}

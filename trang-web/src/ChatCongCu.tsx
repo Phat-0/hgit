@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { khachApi } from "./khach-api";
 import { TepDinhKem, type TepChat } from "./chat-tep";
 import QuanLyCauTraLoi from "./QuanLyCauTraLoi";
+import BieuTuong from "./BieuTuong";
 type Mau = {
   thu_tu?: number;
   id: string;
@@ -40,6 +41,11 @@ export default function ChatCongCu({
     [error, setError] = useState(""),
     [manage, setManage] = useState(false),
     [reload, setReload] = useState(0);
+  useEffect(() => {
+    const close = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', close);
+    return () => window.removeEventListener('keydown', close);
+  }, [onClose]);
   const [action, setAction] = useState<"send" | "edit" | "delete" | "sort">(
       "send",
     ),
@@ -184,7 +190,7 @@ export default function ChatCongCu({
     </svg>
   );
   return (
-    <div className="chat-tools-panel">
+    <div className="chat-tools-panel" role="region" aria-label="Công cụ trò chuyện">
       <header>
         <strong>
           {
@@ -241,7 +247,7 @@ export default function ChatCongCu({
           </div>
         )}
         <button aria-label="Đóng công cụ chat" onClick={onClose}>
-          ×
+          <BieuTuong ten="close" />
         </button>
       </header>
       <input

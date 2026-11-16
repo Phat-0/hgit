@@ -11,6 +11,8 @@ import { lichTuTinNhan } from "./dat-phong-tu-tin-nhan";
 import AnhPhongNoi from "./AnhPhongNoi";
 import "./trang-khach.css";
 import "./khach-am.css";
+import BieuTuong from "./BieuTuong";
+import ThuVienAnhKhach from "./ThuVienAnhKhach";
 type Room = {
   id: string;
   ten_phong: string;
@@ -121,7 +123,6 @@ export default function App() {
     [authPassword, setAuthPassword] = useState("");
   useEffect(()=>{if(!login)setAuthPassword('');},[login]);
   const [ready, setReady] = useState(false);
-  const [chatGuests, setChatGuests] = useState(1);
   const serial = useRef(0),
     filterTimer = useRef<number | null>(null);
   const requestKey = useRef(""),
@@ -399,17 +400,37 @@ export default function App() {
       setError((e as Error).message);
     }
   }
+  const [navOpen, setNavOpen] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!navOpen) return;
+    const outside = (e: MouseEvent) => { if (!navRef.current?.contains(e.target as Node)) setNavOpen(false); };
+    const escape = (e: KeyboardEvent) => { if (e.key === 'Escape') setNavOpen(false); };
+    document.addEventListener('mousedown', outside); document.addEventListener('keydown', escape);
+    return () => { document.removeEventListener('mousedown', outside); document.removeEventListener('keydown', escape); };
+  }, [navOpen]);
+  useEffect(() => {
+    if (!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+      if (entry.isIntersecting) { entry.target.setAttribute('data-reveal', 'shown'); observer.unobserve(entry.target); }
+    }), { threshold: .08 });
+    document.querySelectorAll('.kh-site .kh-room-card, .kh-site .kh-cms-cards article').forEach(e => {
+      e.setAttribute('data-reveal', 'pending'); observer.observe(e);
+    });
+    return () => observer.disconnect();
+  }, [home, rooms]);
   const modal = selected || login || history !== null;
   const ui={...giaoDienMacDinh,...home?.giao_dien};
   const rgb=[1,3,5].map(i=>parseInt(ui.mau_nhan.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
   const buttonText=rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722>.179?'#20142b':'#fff';
   return (
     <main className={"kh-site kh-cms-custom "+(ui.anh_ben_trai?"kh-hero-left":"")} style={{'--kh-bg':ui.mau_nen,'--kh-accent':ui.mau_nhan,'--kh-button-text':buttonText,'--kh-columns':ui.so_cot} as CSSProperties}>
-      <header className="kh-nav">
+      <header className="kh-nav" ref={navRef}>
         <a className="kh-brand" href="/">
-          {ui.ten_web}
+          <BieuTuong ten="home" size={28}/><span>{ui.ten_web}</span>
         </a>
-        <nav>
+        <button className="kh-nav-toggle" aria-label="Menu điều hướng" aria-expanded={navOpen} aria-controls="kh-navigation" onClick={()=>setNavOpen(!navOpen)}><BieuTuong ten={navOpen ? "close" : "menu"}/></button>
+        <nav id="kh-navigation" aria-label="Điều hướng chính" className={navOpen ? "kh-nav-open" : ""} onClick={()=>setNavOpen(false)}>
           <button onClick={()=>window.dispatchEvent(new Event('homestay:mo-chat'))}>Hỗ trợ</button>
           {home?.hien_phong && <a href="#phong-khach">Khám phá phòng</a>}
           <button onClick={() => void myBookings()}>Đơn của tôi</button>
@@ -448,16 +469,13 @@ export default function App() {
             <h1>{home.hero.tieu_de}</h1>
             <p>{home.hero.noi_dung}</p>
           </div>
-          {home.hero.anh ? (
-            <button
-              className="kh-cms-photo"
-              onClick={() => setLightbox(home.hero!.anh)}
-            >
-              <img src={home.hero.anh} alt={home.hero.tieu_de} />
-            </button>
-          ) : (
-            rooms.some(r => r.anh.some(Boolean)) ? <button className="kh-cms-photo kh-room-preview" onClick={() => void choose(rooms.find(r => r.anh.some(Boolean))!)} aria-label="Khám phá phòng phù hợp"><img src={rooms.find(r => r.anh.some(Boolean))!.anh.find(Boolean)!} alt={rooms.find(r => r.anh.some(Boolean))!.ten_phong} /><span>{rooms.find(r => r.anh.some(Boolean))!.ten_phong}</span></button> : <a className="kh-stay-note" href="#phong-khach"><span>Một khoảng riêng</span><strong>Chọn lịch nghỉ.<br />Tìm nơi bạn muốn ở.</strong><span>Xem phòng và giá theo thời gian của bạn ↗</span></a>
-          )}
+          {home.hero.anh || rooms.some(r=>r.anh.some(Boolean)) ?
+            <ThuVienAnhKhach anh={[
+              ...(home.hero.anh ? [{url:home.hero.anh,ten:home.hero.tieu_de}] : []),
+              ...rooms.flatMap(r=>r.anh.filter((url):url is string=>!!url).map(url=>({url,ten:r.ten_phong}))).slice(0,8),
+            ]} onMo={setLightbox}/> :
+            <a className="kh-stay-note" href="#phong-khach"><span>Một khoảng riêng</span><strong>Chọn lịch nghỉ.<br />Tìm nơi bạn muốn ở.</strong><span>Xem phòng và giá theo thời gian của bạn ↗</span></a>}
+
         </section>
       )}
       {home?.gioi_thieu && (
@@ -697,20 +715,20 @@ export default function App() {
               width="70"
             />
           )}
-          <strong>{home.chan_trang.tieu_de}</strong>
-          <span>{home.chan_trang.noi_dung}</span>
-          <a href="/quan-tri">Dành cho nhân viên</a>
+          <div className="kh-footer-about"><strong>{home.chan_trang.tieu_de}</strong><p>{home.chan_trang.noi_dung}</p></div>
+          <nav aria-label="Liên kết cuối trang">{home.hien_phong&&<a href="#phong-khach">Phòng và giá</a>}<button onClick={()=>window.dispatchEvent(new Event('homestay:mo-chat'))}>Liên hệ HomeStay</button><a href="/quan-tri">Dành cho nhân viên</a></nav>
+          <small className="kh-footer-bottom">© {new Date().getFullYear()} {ui.ten_web}</small>
         </footer>
       )}
-      <TroChuyen token={token || undefined} branch={branch} phong={rooms.filter(r => r.suc_chua >= chatGuests)} dangTimPhong={loading} khoangDat={searched ? `${new Date(lastSearch.current?.bat_dau || start).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })} – ${new Date(lastSearch.current?.ket_thuc || end).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })} · ${kind === 'gio' ? `${st} – ${et}` : kind === 'dem' ? 'Qua đêm' : 'Theo ngày'}` : ''} onNhapDatPhong={text => {
+      <TroChuyen token={token || undefined} branch={branch} onNhapDatPhong={text => {
         const lich = lichTuTinNhan(text);
         if (!lich) return;
         // Calendar ranges store the last occupied day, chat text names checkout day.
         const lastDay = config[lich.kind + '_den'] <= config[lich.kind + '_tu']
           ? new Date(new Date(lich.end + 'T12:00:00+07:00').getTime() - 86400000).toISOString().slice(0, 10) : lich.end;
-        setStart(lich.start); setEnd(lastDay); setKind(lich.kind); setChatGuests(lich.guests || 1);
+        setStart(lich.start); setEnd(lastDay); setKind(lich.kind);
         if (lich.guests) setForm(f => ({ ...f, so_khach: lich.guests! }));
-      }} onChonPhong={p => { const room = rooms.find(r => r.id === p.id); if (room) void choose(room); }} />
+      }} />
       {modal &&
         createPortal(
           <div

@@ -14,7 +14,7 @@ import { khachApi } from "./khach-api";
 import "./tro-chuyen.css";
 import "./chat-bo-cuc.css";
 import "./chat-khach.css";
-export type PhongChat = { id: string; ten_phong: string; ten_loai: string; ten_homestay: string; suc_chua: number; dien_tich_m2: string | null; tien_phong: number; anh: (string | null)[] };
+import BieuTuong from "./BieuTuong";
 type Thread = {
   id: string;
   loai: string;
@@ -62,20 +62,12 @@ export default function TroChuyen({
   branch,
   inline = false,
   admin = false,
-  phong = [],
-  khoangDat = "",
-  dangTimPhong = false,
-  onChonPhong,
   onNhapDatPhong,
 }: {
   token?: string;
   branch?: string;
   inline?: boolean;
   admin?: boolean;
-  phong?: PhongChat[];
-  khoangDat?: string;
-  dangTimPhong?: boolean;
-  onChonPhong?: (phong: PhongChat) => void;
   onNhapDatPhong?: (text: string) => void;
 }) {
   const [open, setOpen] = useState(false),
@@ -582,6 +574,37 @@ export default function TroChuyen({
       olderLock.current = false;
     }
   }
+  const toolsBar = (
+                <div className="chat-tool-buttons">
+                  <button
+                    disabled={!current}
+                    aria-label="Tìm tin nhắn"
+                    aria-pressed={tool === "tim"}
+                    title="Tìm tin nhắn"
+                    onClick={() => setTool(tool === "tim" ? null : "tim")}
+                  >
+                    <BieuTuong ten="search" />
+                  </button>
+                  <button
+                    disabled={!current}
+                    aria-label="Xem ảnh đã gửi"
+                    aria-pressed={tool === "anh"}
+                    title="Ảnh đã gửi"
+                    onClick={() => setTool(tool === "anh" ? null : "anh")}
+                  >
+                    <BieuTuong ten="image" />
+                  </button>
+                  <button
+                    disabled={!current}
+                    aria-label="Xem tệp đã gửi"
+                    aria-pressed={tool === "tep"}
+                    title="Tệp đã gửi"
+                    onClick={() => setTool(tool === "tep" ? null : "tep")}
+                  >
+                    <BieuTuong ten="file" />
+                  </button>
+                </div>
+  );
   const title =
     threads.find((t) => t.id === current)?.ten_hien_thi ||
     currentName ||
@@ -636,7 +659,7 @@ export default function TroChuyen({
               title="Thu gọn vào mép màn hình"
               onClick={hideBubble}
             >
-              {floating.dockRight ? "›" : "‹"}
+              <span style={{ transform: floating.dockRight ? undefined : "rotate(180deg)", display: "flex" }}><BieuTuong ten="chevron" size={16} /></span>
             </button>
           }
         </>
@@ -654,7 +677,7 @@ export default function TroChuyen({
             );
           }}
         >
-          {floating.dockRight ? "‹" : "›"}
+          <span style={{ transform: floating.dockRight ? "rotate(180deg)" : undefined, display: "flex" }}><BieuTuong ten="message" size={18} /></span>
           {unread > 0 && <span>{unread.toLocaleString("vi-VN")}</span>}
         </button>
       )}
@@ -678,9 +701,10 @@ export default function TroChuyen({
               <span className="chat-home-avatar" role="img" aria-label="HomeStay" title="HomeStay">
                 <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m5 15 11-10 11 10M9 13v14h14V13M13 27v-9h6v9"/><path d="M23 6c5-1 6-4 6-4 1 5-1 8-5 8"/></svg>
               </span>}
+            {!admin && toolsBar}
             {!inline && (
               <button aria-label="Đóng chat" onClick={() => setOpen(false)}>
-                ×
+                <BieuTuong ten="close" />
               </button>
             )}
           </header>
@@ -857,40 +881,8 @@ export default function TroChuyen({
                       : "Chọn một cuộc trò chuyện để bắt đầu"}
                   </small>
                 </div>
-                <div className="chat-tool-buttons">
-                  <button
-                    disabled={!current}
-                    aria-label="Tìm tin nhắn"
-                    title="Tìm tin nhắn"
-                    onClick={() => setTool(tool === "tim" ? null : "tim")}
-                  >
-                    ⌕
-                  </button>
-                  <button
-                    disabled={!current}
-                    aria-label="Xem ảnh đã gửi"
-                    title="Ảnh đã gửi"
-                    onClick={() => setTool(tool === "anh" ? null : "anh")}
-                  >
-                    ▧
-                  </button>
-                  <button
-                    disabled={!current}
-                    aria-label="Xem tệp đã gửi"
-                    title="Tệp đã gửi"
-                    onClick={() => setTool(tool === "tep" ? null : "tep")}
-                  >
-                    ▤
-                  </button>
-                </div>
+                {toolsBar}
               </div>
-              {!admin && onChonPhong && (dangTimPhong || khoangDat) && <section className="chat-room-context" aria-label="Phòng theo thông tin đặt phòng">
-                <div className="chat-room-context-label"><strong>Phòng cho chuyến đi của bạn</strong><span>{khoangDat}</span></div>
-                {dangTimPhong ? <p role="status">Đang kiểm tra phòng phù hợp…</p> : phong.length ? <div className="chat-room-options">{phong.map(p => <button type="button" className="chat-room-option" key={p.id} onClick={() => { if (!inline) setOpen(false); onChonPhong(p); }}>
-                  {p.anh.find(Boolean) ? <img src={p.anh.find(Boolean)!} alt={p.ten_phong} loading="lazy" /> : <span className="chat-room-no-photo">Chưa có ảnh phòng</span>}
-                  <span><small>{p.ten_homestay}</small><strong>{p.ten_phong}</strong><small>{p.suc_chua} khách{p.dien_tich_m2 ? ` · ${p.dien_tich_m2} m²` : ""} · {p.ten_loai}</small><b>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(p.tien_phong)}<small> / khoảng đặt</small></b></span>
-                </button>)}</div> : <p>Không có phòng phù hợp trong khoảng đã chọn. Bạn có thể đổi lịch ở phần đặt phòng.</p>}
-              </section>}
               {error && (
                 <p role="alert" className="chat-error">
                   {error}
