@@ -15,6 +15,7 @@ export type CotThongKe = {
   thu: number[];
   loaiDat: string[];
   khungGio?: boolean;
+  an?: boolean;
   khoang?: { tu: string; den: string }[];
 };
 export type DuLieuThongKe = {

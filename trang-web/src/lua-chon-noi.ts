@@ -79,7 +79,7 @@ function install(doc: Document) {
       menu = d.classList.contains("stc-chart-menu");
     const width = Math.max(
       1,
-      Math.min(roomy ? 560 : add ? 380 : menu ? 240 : 500, vw - 24),
+      Math.min(roomy ? 560 : add ? 680 : menu ? 240 : 500, vw - 24),
     );
     const below = Math.max(0, y1 - a.bottom - 6),
       above = Math.max(0, a.top - y0 - 6),

@@ -82,7 +82,7 @@ export async function kiemTraLuaChonNoi(page) {
       await page.setViewportSize({ width, height: 900 });
       const trigger = root.getByLabel("Đối tượng thống kê", { exact: true });
       await trigger.click();
-      const panel = root.locator(".tk-scope-picker>div");
+      const panel = root.locator(".tk-toolbar .tk-scope-picker>div");
       await inspect(panel, width);
       const branchGroup = panel.locator(":scope>details").nth(0);
       if (!(await branchGroup.evaluate((el) => el.open)))
@@ -96,12 +96,12 @@ export async function kiemTraLuaChonNoi(page) {
         })),
       }));
       assert(
-        grid.cols === (width > 700 ? 3 : 2),
+        grid.cols === 1,
         "Wrong object grid column count at " + width + ": " + grid.cols,
       );
       assert(
         grid.labels.every(
-          (l) => l.height >= 34 && l.wrap === "normal" && !l.scroll,
+          (l) => l.height >= 26 && l.wrap === "normal" && !l.scroll,
         ),
         "Long names clipped at " + width,
       );
@@ -109,15 +109,14 @@ export async function kiemTraLuaChonNoi(page) {
         .getByLabel("Hiển thị " + branches[0].ten_homestay, { exact: true })
         .check();
       assert(
-        await root.locator(".tk-scope-picker").evaluate((el) => el.open),
+        await root.locator(".tk-toolbar .tk-scope-picker").evaluate((el) => el.open),
         "Checkbox unexpectedly closed a multi-select",
       );
       const roomGroup = panel.locator(":scope>details").nth(1);
       if (!(await roomGroup.evaluate((el) => el.open)))
         await roomGroup.locator(":scope>summary").click();
       const roomBranch = roomGroup.locator(".tk-room-branch").first();
-      if (!(await roomBranch.evaluate((el) => el.open)))
-        await roomBranch.locator(":scope>summary").click();
+
       await inspect(panel, width);
       const roomCols = await roomBranch
         .locator(":scope>div")
@@ -125,15 +124,15 @@ export async function kiemTraLuaChonNoi(page) {
           (el) => getComputedStyle(el).gridTemplateColumns.split(" ").length,
         );
       assert(
-        roomCols === (width > 700 ? 3 : 2),
+        roomCols === 5,
         "Room options not in columns at " + width,
       );
       await page.mouse.click(4, 4);
       assert(
-        await root.locator(".tk-scope-picker").evaluate((el) => !el.open),
+        await root.locator(".tk-toolbar .tk-scope-picker").evaluate((el) => !el.open),
         "Outside click did not close object selector",
       );
-      const add = root.getByLabel("Thêm cột thống kê", { exact: true });
+      const add = root.getByLabel("Chọn giá trị thống kê", { exact: true });
       await add.click();
       await inspect(root.locator(".tk-add-column>div"), width);
       await page.keyboard.press("Escape");
@@ -152,7 +151,7 @@ export async function kiemTraLuaChonNoi(page) {
         .getByLabel("Lưu hoặc xuất thống kê", { exact: true })
         .press("Enter");
       assert(
-        await root.locator(".tk-scope-picker").evaluate((el) => !el.open),
+        await root.locator(".tk-toolbar .tk-scope-picker").evaluate((el) => !el.open),
         "Opening another menu did not close the previous one",
       );
       const exportPanel = root.locator(".tk-toolbar>.stc-chart-menu>div");

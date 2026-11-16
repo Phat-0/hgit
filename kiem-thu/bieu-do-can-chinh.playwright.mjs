@@ -13,7 +13,7 @@ export async function kiemTraCanChinhBieuDo(page){
  check(widths.every(w=>w<=170),'Khung tên nhóm được thu ngắn');
  await panel.locator(':scope>details>summary').first().click();
  check(await panel.locator('label').first().evaluate(e=>e.getBoundingClientRect().width)<=170,'Ô chọn chỉ ôm tên');await page.mouse.click(4,4);
- await page.locator('.tk-value-chip button').first().click();
+ await page.locator('.tk-value-chip button').first().dblclick();
  const editor=await page.locator('.tk-column-editor').evaluate(e=>({gap:getComputedStyle(e).gap,padding:getComputedStyle(e).padding}));
  check(editor.gap==='4px'&&editor.padding==='6px','Thiết lập gọn');await page.locator('.tk-column-editor').getByRole('button',{name:'Xong',exact:true}).click();
  await page.getByRole('tab',{name:'Thu chi',exact:true}).click();const charts=page.locator('#panel-thu-chi .stc-charts');

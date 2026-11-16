@@ -17,7 +17,7 @@ export async function kiemTraThongKeGon(page) {
   await root
     .locator(":scope>details")
     .nth(0)
-    .locator("summary")
+    .locator("h4")
     .first()
     .click();
   await root
@@ -26,7 +26,7 @@ export async function kiemTraThongKeGon(page) {
   await root
     .locator(":scope>details")
     .nth(1)
-    .locator("summary")
+    .locator("h4")
     .first()
     .click();
   check(
@@ -34,7 +34,7 @@ export async function kiemTraThongKeGon(page) {
       1,
     "Tổng nằm trong phòng",
   );
-  await root.locator(".tk-room-branch>summary").click();
+
   await root.getByLabel("Hiển thị P101", { exact: true }).check();
   await page.mouse.click(4, 4);
   const cells = page.locator(".tk-sheet tbody tr td:nth-child(3)");
@@ -76,7 +76,7 @@ export async function kiemTraThongKeGon(page) {
     .first()
     .locator("button")
     .first()
-    .click();
+    .dblclick();
   const editor = page.locator(".tk-column-editor");
   check(
     (await editor.locator(".lp-range-button").count()) === 1,
@@ -292,15 +292,15 @@ export async function kiemTraNhomGiaTri(page) {
     if (!v) throw Error(m);
   };
   for (const group of ["Trung bình ngày", "Trung bình tuần"]) {
-    await page.getByLabel("Thêm cột thống kê", { exact: true }).click();
+    await page.getByLabel("Chọn giá trị thống kê", { exact: true }).click();
     const option = page
-      .locator(".tk-add-column .tk-calc-options")
+      .locator(".tk-add-column .tk-value-options")
       .filter({
         has: page
-          .locator("summary")
+          .locator("h4")
           .filter({ hasText: new RegExp("^" + group + "$") }),
       });
-    await option.locator(":scope>summary").click();
+
     await option.getByRole("button", { name: "Thu", exact: true }).click();
     check(
       (await page.getByLabel("Cách tính cột", { exact: true }).inputValue()) ===
@@ -351,7 +351,7 @@ export async function kiemTraNhomGiaTri(page) {
     "Phòng nhóm tiếp theo chi nhánh",
   );
   const chip = page.locator(".tk-value-chip").first();
-  await chip.locator("button").first().click();
+  await chip.locator("button").first().dblclick();
   await page.locator(".tk-column-editor .lp-range-button").click();
   const month = await page
       .getByRole("button", { name: "Chọn tháng", exact: true })

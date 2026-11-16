@@ -84,6 +84,27 @@ export default function ThongKeThuChi({
     [chartKeys, setChartKeys] = useState<string[]>([]),
     [saved, setSaved] = useState(false);
   const dragging = useRef("");
+  const columnDrag = useRef("");
+  function moveColumn(id: string, target: string) {
+    if (!id || id === target) return;
+    setColumns((old) => {
+      const next = [...old],
+        a = next.findIndex((c) => c.id === id),
+        b = next.findIndex((c) => c.id === target);
+      if (a < 0 || b < 0) return old;
+      const [item] = next.splice(a, 1);
+      next.splice(b, 0, item);
+      return next;
+    });
+    mark();
+  }
+  function columnKeys(e: React.KeyboardEvent, id: string) {
+    if (!e.altKey || !["ArrowLeft", "ArrowRight"].includes(e.key)) return;
+    e.preventDefault();
+    const i = columns.findIndex((c) => c.id === id),
+      target = columns[i + (e.key === "ArrowLeft" ? -1 : 1)];
+    if (target) moveColumn(id, target.id);
+  }
   const rowAnchor = useRef<string | null>(null);
   const selection = useRef<{
     start: number;
@@ -212,7 +233,7 @@ export default function ThongKeThuChi({
               a.ten.localeCompare(b.ten, "vi", { numeric: true })
             );
           if (sortRows === "asc" || sortRows === "desc") {
-            const col = columns[0];
+            const col = columns.find((c) => !c.an);
             const dates = col
               ? nhomNgay(col, tu, den).flatMap((b) => b.ngay)
               : [];
@@ -232,7 +253,7 @@ export default function ThongKeThuChi({
         }),
     [scopes, chosenScopes, rowOrder, sortRows, columns, data, tu, den],
   );
-  const expanded = useMemo(
+  const allExpanded = useMemo(
     () =>
       columns.map((c) => {
         const bins = nhomNgay(c, tu, den);
@@ -251,6 +272,10 @@ export default function ThongKeThuChi({
         };
       }),
     [columns, tu, den],
+  );
+  const expanded = useMemo(
+    () => allExpanded.filter((g) => !g.config.an),
+    [allExpanded],
   );
   const leaves = useMemo(
     () =>
@@ -479,7 +504,11 @@ export default function ThongKeThuChi({
             <summary aria-label="Đối tượng thống kê">
               Đối tượng ({chosenScopes.length})
             </summary>
-            <div role="group" aria-label="Chọn nhiều đối tượng thống kê">
+            <div
+              className="tk-object-layout"
+              role="group"
+              aria-label="Chọn nhiều đối tượng thống kê"
+            >
               <details>
                 <summary>Chi nhánh</summary>
                 <div>
@@ -494,8 +523,8 @@ export default function ThongKeThuChi({
                     .filter((p) => p.loai === "tong_phong")
                     .map(scopeInput)}
                   {data?.chi_nhanh.map((b) => (
-                    <details className="tk-room-branch" key={b.id}>
-                      <summary>{b.ten_homestay}</summary>
+                    <section className="tk-room-branch tk-room-all" key={b.id}>
+                      <h5 title={b.ten_homestay}>{b.ten_homestay}</h5>
                       <div>
                         {scopes
                           .filter(
@@ -506,20 +535,18 @@ export default function ThongKeThuChi({
                           (p) => p.loai === "phong" && p.branch === b.id,
                         ) && <small>Chưa có phòng.</small>}
                       </div>
-                    </details>
+                    </section>
                   ))}
                 </div>
               </details>
             </div>
           </details>
-          <details className="stc-check-picker tk-add-column">
-            <summary aria-label="Thêm cột thống kê" title="Thêm cột thống kê">
-              ＋
-            </summary>
+          <details className="stc-check-picker tk-add-column tk-value-picker">
+            <summary aria-label="Chọn giá trị thống kê">Giá trị</summary>
             <div>
               {CALCS.map((group) => (
-                <details key={group.id} className="tk-calc-options">
-                  <summary>{group.ten}</summary>
+                <section className="tk-value-options" key={group.id}>
+                  <h4>{group.ten}</h4>
                   <div>
                     {CHI_SO.map((m) => (
                       <button
@@ -537,7 +564,7 @@ export default function ThongKeThuChi({
                       </button>
                     ))}
                   </div>
-                </details>
+                </section>
               ))}
             </div>
           </details>
@@ -596,9 +623,7 @@ export default function ThongKeThuChi({
         {error && <p role="alert">{error}</p>}
         {loading && <p role="status">Đang tổng hợp dữ liệu…</p>}
         <div className="tk-column-list" aria-label="Các cột thống kê">
-          {CALCS.filter((group) =>
-            columns.some((c) => c.cachTinh === group.id),
-          ).map((group) => (
+          {CALCS.map((group) => (
             <section className="tk-calc-group" key={group.id}>
               <h4>{group.ten}</h4>
               <div>
@@ -608,15 +633,47 @@ export default function ThongKeThuChi({
                     <div
                       className="tk-value-chip"
                       key={c.id}
+                      data-visible={!c.an}
+                      draggable
+                      onDragStart={(e) => {
+                        columnDrag.current = c.id;
+                        e.dataTransfer.setData(
+                          "application/x-thong-ke-column",
+                          c.id,
+                        );
+                      }}
+                      onDragOver={(e) => {
+                        if (columnDrag.current) e.preventDefault();
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        moveColumn(columnDrag.current, c.id);
+                        columnDrag.current = "";
+                      }}
+                      onDragEnd={() => {
+                        columnDrag.current = "";
+                      }}
                       style={{ background: group.mau }}
                     >
                       <button
                         type="button"
-                        title={tenCot(c)}
-                        aria-pressed={editing === c.id}
-                        onClick={() =>
-                          setEditing(editing === c.id ? null : c.id)
+                        title={
+                          tenCot(c) +
+                          " · Bấm để ẩn/hiện; nhấp đúp để sửa; kéo để đổi thứ tự"
                         }
+                        aria-pressed={!c.an}
+                        onClick={() => patch(c.id, { an: !c.an })}
+                        onDoubleClick={() => setEditing(c.id)}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setEditing(c.id);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.altKey && e.key === "Enter") {
+                            e.preventDefault();
+                            setEditing(c.id);
+                          } else columnKeys(e, c.id);
+                        }}
                       >
                         {CHI_SO.find((m) => m[0] === c.chiSo)?.[1]}
                         {c.loaiDat.length ? " · " + c.loaiDat.join(", ") : ""}
@@ -819,6 +876,26 @@ export default function ThongKeThuChi({
                   {expanded.map((g) => (
                     <th
                       key={g.config.id}
+                      data-column-id={g.config.id}
+                      draggable
+                      onDragStart={(e) => {
+                        columnDrag.current = g.config.id;
+                        e.dataTransfer.setData(
+                          "application/x-thong-ke-column",
+                          g.config.id,
+                        );
+                      }}
+                      onDragOver={(e) => {
+                        if (columnDrag.current) e.preventDefault();
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        moveColumn(columnDrag.current, g.config.id);
+                        columnDrag.current = "";
+                      }}
+                      onDragEnd={() => {
+                        columnDrag.current = "";
+                      }}
                       colSpan={g.bins.length}
                       rowSpan={
                         hasSubheaders &&
@@ -830,6 +907,8 @@ export default function ThongKeThuChi({
                     >
                       <button
                         type="button"
+                        title="Sửa tính chất; kéo để đổi vị trí cột"
+                        onKeyDown={(e) => columnKeys(e, g.config.id)}
                         onClick={() => setEditing(g.config.id)}
                       >
                         {tenCot(g.config)}
@@ -1094,7 +1173,7 @@ export default function ThongKeThuChi({
                 <details className="tk-calc-options" key={group.id}>
                   <summary>{group.ten}</summary>
                   <div>
-                    {expanded
+                    {allExpanded
                       .filter((g) => g.config.cachTinh === group.id)
                       .map((g) => (
                         <details key={g.config.id} className="tk-metric-dates">
