@@ -11,6 +11,7 @@ type Props = {
   quickMonth?: boolean;
   disabled?: boolean;
   placeholder?: string;
+  ariaLabel?: string;
   ranges?: { tu: string; den: string }[];
   onRangesChange?: (ranges: { tu: string; den: string }[]) => void;
 };
@@ -24,6 +25,7 @@ export function RangePicker({
   quickMonth = false,
   disabled = false,
   placeholder,
+  ariaLabel,
   ranges,
   onRangesChange,
 }: Props) {
@@ -204,6 +206,7 @@ export function RangePicker({
               new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 7),
           );
         }}
+        aria-label={ariaLabel}
         aria-expanded={open}
         aria-haspopup="dialog"
       >

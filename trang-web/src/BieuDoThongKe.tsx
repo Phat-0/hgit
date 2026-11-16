@@ -8,8 +8,10 @@ export default function BieuDoThongKe({
   unit,
   points,
   comparisonOnly = false,
+  pieReason,
 }: {
   comparisonOnly?: boolean;
+  pieReason?: string;
   title: string;
   unit: string;
   points: {
@@ -296,8 +298,8 @@ export default function BieuDoThongKe({
             <p>Chọn các giá trị cùng đơn vị để xem tỷ trọng.</p>
           ) : comparisonOnly ? (
             <p>
-              Các đối tượng được chọn có dữ liệu bao gồm nhau. Dùng biểu đồ cột
-              để so sánh, hoặc bỏ tổng/chi nhánh bao gồm phòng để xem tỷ trọng.
+              {pieReason ||
+                "Các đối tượng được chọn có dữ liệu bao gồm nhau. Chỉ xem tỷ trọng khi các phần không trùng nhau."}
             </p>
           ) : data.some((p) => p.value! < 0) ? (
             <p>Không tính tỷ trọng hình tròn cho giá trị âm.</p>

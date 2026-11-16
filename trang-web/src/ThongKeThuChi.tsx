@@ -1,3 +1,4 @@
+import { chuCacKhoang, chuKhoangNgay } from "./lich-hien-thi";
 import { SapXepTrucTiep } from "./TuyChonBieuDo";
 import { useLuaChonNoi, useBamNgoai } from "./lua-chon-noi";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -12,7 +13,6 @@ import {
   hienSo,
   ngayNgan,
   nhomNgay,
-  ngayCuaCot,
   tenCot,
   tinhGiaTri,
   khungGioPhoBien,
@@ -47,11 +47,12 @@ function newColumn(metric: string, tu: string, den: string): CotThongKe {
 }
 function period(c: CotThongKe, tu: string, den: string) {
   return c.lichRieng
-    ? c.tu && c.den
-      ? `${ngayNgan(c.tu)}–${ngayNgan(c.den)}` +
-        (c.khoang && c.khoang.length > 1 ? ` · ${c.khoang.length} khoảng` : "")
-      : "Chưa chọn lịch"
-    : `${ngayNgan(tu)}–${ngayNgan(den)}`;
+    ? c.khoang?.length
+      ? chuCacKhoang(c.khoang)
+      : c.tu && c.den
+        ? chuKhoangNgay({ tu: c.tu, den: c.den })
+        : "Chưa chọn lịch"
+    : chuKhoangNgay({ tu, den });
 }
 export default function ThongKeThuChi({
   token,
@@ -85,6 +86,43 @@ export default function ThongKeThuChi({
     [saved, setSaved] = useState(false);
   const dragging = useRef("");
   const columnDrag = useRef("");
+  const [dragColumnID, setDragColumnID] = useState("");
+  const dragGhost = useRef<HTMLCanvasElement | null>(null);
+  function beginColumnDrag(e: React.DragEvent, id: string) {
+    columnDrag.current = id;
+    setDragColumnID(id);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("application/x-thong-ke-column", id);
+    const ghost = document.createElement("canvas");
+    ghost.width = ghost.height = 1;
+    ghost.style.cssText =
+      "position:fixed;left:-1000px;top:0;pointer-events:none";
+    document.body.append(ghost);
+    dragGhost.current?.remove();
+    dragGhost.current = ghost;
+    e.dataTransfer.setDragImage(ghost, 0, 0);
+  }
+  function endColumnDrag() {
+    columnDrag.current = "";
+    setDragColumnID("");
+    dragGhost.current?.remove();
+    dragGhost.current = null;
+  }
+  useEffect(() => {
+    if (!dragColumnID) return;
+    const over = (e: DragEvent) => {
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    };
+    const end = () => endColumnDrag();
+    document.addEventListener("dragover", over, true);
+    document.addEventListener("dragend", end);
+    return () => {
+      document.removeEventListener("dragover", over, true);
+      document.removeEventListener("dragend", end);
+      dragGhost.current?.remove();
+    };
+  }, [dragColumnID]);
   function moveColumn(id: string, target: string) {
     if (!id || id === target) return;
     setColumns((old) => {
@@ -298,23 +336,19 @@ export default function ThongKeThuChi({
           p.loai === "chi_nhanh" &&
           chartRows.some((r) => r.loai === "phong" && r.branch === p.id),
       ));
-  const chartOptions = columns.flatMap((c) => {
-    const days = ngayCuaCot(c, tu, den).filter(
-      (d) => d >= chartTu && d <= chartDen,
-    );
-    return [
-      {
-        key: c.id + ":chung",
-        c,
-        b: { key: "chung", ten: "Cả kỳ", ngay: days },
-      },
-      ...days.map((d) => ({
-        key: c.id + ":" + d,
-        c,
-        b: { key: d, ten: ngayNgan(d), ngay: [d] },
+  const chartOptions = allExpanded.flatMap((g) =>
+    g.bins
+      .filter((b) => b.ngay.length)
+      .map((b) => ({
+        key: g.config.id + ":" + b.key,
+        c: g.config,
+        b: { ...b, ngay: b.ngay.filter((d) => d >= chartTu && d <= chartDen) },
       })),
-    ];
-  });
+  );
+  function fromTable(key?: string) {
+    setChart(true);
+    setChartKeys(key ? [key] : leaves.map((l) => l.key));
+  }
   const chartLeaves = chartOptions.filter(
     (l) =>
       chartKeys.includes(l.key) &&
@@ -327,7 +361,9 @@ export default function ThongKeThuChi({
     setSelectedRows((old) => old.filter((k) => k !== key));
     mark();
   }
-  function toggleRow(key: string) {
+  function toggleRow(key: string, fromSheet = false) {
+    if (fromSheet || !chartKeys.length) fromTable();
+    else setChart(true);
     rowAnchor.current = key;
     setSelectedRows((old) =>
       old.includes(key) ? old.filter((k) => k !== key) : [...old, key],
@@ -635,24 +671,17 @@ export default function ThongKeThuChi({
                       key={c.id}
                       data-visible={!c.an}
                       draggable
-                      onDragStart={(e) => {
-                        columnDrag.current = c.id;
-                        e.dataTransfer.setData(
-                          "application/x-thong-ke-column",
-                          c.id,
-                        );
-                      }}
+                      onDragStart={(e) => beginColumnDrag(e, c.id)}
+                      data-dragging={dragColumnID === c.id}
                       onDragOver={(e) => {
                         if (columnDrag.current) e.preventDefault();
                       }}
                       onDrop={(e) => {
                         e.preventDefault();
                         moveColumn(columnDrag.current, c.id);
-                        columnDrag.current = "";
+                        endColumnDrag();
                       }}
-                      onDragEnd={() => {
-                        columnDrag.current = "";
-                      }}
+                      onDragEnd={endColumnDrag}
                       style={{ background: group.mau }}
                     >
                       <button
@@ -709,7 +738,6 @@ export default function ThongKeThuChi({
               onChange={(e) =>
                 patch(current.id, {
                   chiSo: e.target.value,
-                  cachTinh: "tong",
                   loaiDat: e.target.value === "thoi_gian" ? ["Theo giờ"] : [],
                   khungGio: false,
                 })
@@ -762,9 +790,6 @@ export default function ThongKeThuChi({
                 patch(current.id, {
                   chia,
                   thu: [...allDays],
-                  ...(chia === "tuan" && !current.lichRieng
-                    ? { lichRieng: true, tu: "", den: "", khoang: undefined }
-                    : {}),
                 });
               }}
             >
@@ -772,6 +797,22 @@ export default function ThongKeThuChi({
               <option value="ngay">Theo ngày</option>
               <option value="tuan">Theo tuần</option>
             </select>
+            <label className="tk-common-calendar">
+              <input
+                type="checkbox"
+                aria-label="Sử dụng lịch chung"
+                checked={!current.lichRieng}
+                onChange={(e) =>
+                  patch(current.id, {
+                    lichRieng: !e.target.checked,
+                    khoang: e.target.checked ? undefined : [],
+                    tu: e.target.checked ? tu : "",
+                    den: e.target.checked ? den : "",
+                  })
+                }
+              />
+              Sử dụng lịch chung
+            </label>
             <NhieuKhoangNgay
               ranges={
                 current.lichRieng
@@ -780,32 +821,17 @@ export default function ThongKeThuChi({
                     : current.tu
                       ? [{ tu: current.tu, den: current.den }]
                       : []
-                  : [{ tu, den }]
+                  : []
               }
               onChange={(ranges) =>
                 patch(current.id, {
-                  lichRieng: true,
+                  lichRieng: ranges.length > 0,
                   khoang: ranges,
-                  tu: ranges[0]?.tu || "",
-                  den: ranges.at(-1)?.den || "",
+                  tu: ranges[0]?.tu || tu,
+                  den: ranges.at(-1)?.den || den,
                 })
               }
             />
-            {current.lichRieng && (
-              <button
-                type="button"
-                onClick={() =>
-                  patch(current.id, {
-                    lichRieng: false,
-                    khoang: undefined,
-                    tu,
-                    den,
-                  })
-                }
-              >
-                Dùng lịch chung
-              </button>
-            )}
             {current.chia === "ngay" && (
               <div className="tk-weekdays">
                 {THU.map((t, i) => (
@@ -863,6 +889,7 @@ export default function ThongKeThuChi({
                         rows.every((p) => selectedRows.includes(p.key))
                       }
                       onChange={(e) => {
+                        if (e.target.checked) fromTable();
                         setSelectedRows(
                           e.target.checked ? rows.map((p) => p.key) : [],
                         );
@@ -878,24 +905,17 @@ export default function ThongKeThuChi({
                       key={g.config.id}
                       data-column-id={g.config.id}
                       draggable
-                      onDragStart={(e) => {
-                        columnDrag.current = g.config.id;
-                        e.dataTransfer.setData(
-                          "application/x-thong-ke-column",
-                          g.config.id,
-                        );
-                      }}
+                      onDragStart={(e) => beginColumnDrag(e, g.config.id)}
+                      data-dragging={dragColumnID === g.config.id}
                       onDragOver={(e) => {
                         if (columnDrag.current) e.preventDefault();
                       }}
                       onDrop={(e) => {
                         e.preventDefault();
                         moveColumn(columnDrag.current, g.config.id);
-                        columnDrag.current = "";
+                        endColumnDrag();
                       }}
-                      onDragEnd={() => {
-                        columnDrag.current = "";
-                      }}
+                      onDragEnd={endColumnDrag}
                       colSpan={g.bins.length}
                       rowSpan={
                         hasSubheaders &&
@@ -956,6 +976,11 @@ export default function ThongKeThuChi({
                       )
                         return;
                       e.preventDefault();
+                      fromTable(
+                        (e.target as HTMLElement).closest<HTMLElement>(
+                          "[data-value-key]",
+                        )?.dataset.valueKey,
+                      );
                       const index = rows.findIndex((r) => r.key === p.key);
                       if (e.shiftKey && rowAnchor.current) {
                         const ai = rows.findIndex(
@@ -1042,7 +1067,7 @@ export default function ThongKeThuChi({
                                 .map((r) => r.key),
                             );
                             mark();
-                          } else toggleRow(p.key);
+                          } else toggleRow(p.key, true);
                         }}
                       />
                     </td>
@@ -1075,7 +1100,7 @@ export default function ThongKeThuChi({
                     {leaves.map((l) => {
                       const { n, k } = cellText(p, l.c, l.b.ngay);
                       return (
-                        <td tabIndex={0} key={l.key}>
+                        <td tabIndex={0} key={l.key} data-value-key={l.key}>
                           {hienSo(n)}
                           {l.c.khungGio && (
                             <small
@@ -1101,116 +1126,149 @@ export default function ThongKeThuChi({
             </table>
           </div>
         )}
-        {!columns.length && <p>Nhấn ＋ để thêm cột.</p>}
+        {!columns.length && <p>Chọn Giá trị để thêm cột.</p>}
         <div
           className="tk-chart-controls"
           aria-label="Thiết lập biểu đồ thống kê"
         >
           <span>Đã chọn {chartRows.length} hàng</span>
-          <details className="stc-check-picker tk-scope-picker">
-            <summary>Đối tượng biểu đồ ({chartRows.length})</summary>
-            <div>
-              {[
-                {
-                  ten: "Tổng",
-                  items: rows.filter(
-                    (p) => p.loai === "tong" || p.loai === "tong_phong",
-                  ),
-                },
-                {
-                  ten: "Chi nhánh",
-                  items: rows.filter((p) => p.loai === "chi_nhanh"),
-                },
-              ].map((group) => (
-                <details key={group.ten}>
-                  <summary>{group.ten}</summary>
-                  <div>
-                    {group.items.map((p) => (
-                      <label key={p.key}>
-                        <input
-                          type="checkbox"
-                          checked={selectedRows.includes(p.key)}
-                          onChange={() => toggleRow(p.key)}
-                        />
-                        {p.ten}
-                      </label>
-                    ))}
-                  </div>
-                </details>
-              ))}
-              <details>
-                <summary>Phòng</summary>
+          <section className="tk-inline-objects" aria-label="Đối tượng biểu đồ">
+            {[
+              {
+                ten: "Tổng",
+                items: rows.filter(
+                  (p) => p.loai === "tong" || p.loai === "tong_phong",
+                ),
+              },
+              {
+                ten: "Chi nhánh",
+                items: rows.filter((p) => p.loai === "chi_nhanh"),
+              },
+            ].map((group) => (
+              <div className="tk-inline-row" key={group.ten}>
+                <strong>{group.ten}</strong>
                 <div>
-                  {data?.chi_nhanh.map((b) => (
-                    <details className="tk-room-branch" key={b.id}>
-                      <summary>{b.ten_homestay}</summary>
-                      <div>
-                        {rows
-                          .filter(
-                            (p) => p.loai === "phong" && p.branch === b.id,
-                          )
-                          .map((p) => (
-                            <label key={p.key}>
-                              <input
-                                type="checkbox"
-                                checked={selectedRows.includes(p.key)}
-                                onChange={() => toggleRow(p.key)}
-                              />
-                              {p.ten}
-                            </label>
-                          ))}
-                      </div>
-                    </details>
+                  {group.items.map((p) => (
+                    <button
+                      type="button"
+                      key={p.key}
+                      aria-pressed={selectedRows.includes(p.key)}
+                      onClick={() => toggleRow(p.key)}
+                    >
+                      {p.ten}
+                    </button>
                   ))}
                 </div>
-              </details>
+              </div>
+            ))}
+            <div className="tk-inline-row">
+              <strong>Phòng</strong>
+              <div>
+                {data?.chi_nhanh
+                  .filter((b) =>
+                    rows.some((p) => p.loai === "phong" && p.branch === b.id),
+                  )
+                  .map((b) => (
+                    <div className="tk-inline-branch" key={b.id}>
+                      <small>{b.ten_homestay}</small>
+                      {rows
+                        .filter((p) => p.loai === "phong" && p.branch === b.id)
+                        .map((p) => (
+                          <button
+                            type="button"
+                            key={p.key}
+                            aria-pressed={selectedRows.includes(p.key)}
+                            onClick={() => toggleRow(p.key)}
+                          >
+                            {p.ten}
+                          </button>
+                        ))}
+                    </div>
+                  ))}
+              </div>
             </div>
-          </details>
-          <details className="stc-check-picker tk-scope-picker tk-values-picker">
-            <summary>Giá trị biểu đồ ({chartLeaves.length})</summary>
-            <div>
-              {CALCS.map((group) => (
-                <details className="tk-calc-options" key={group.id}>
-                  <summary>{group.ten}</summary>
-                  <div>
-                    {allExpanded
-                      .filter((g) => g.config.cachTinh === group.id)
-                      .map((g) => (
-                        <details key={g.config.id} className="tk-metric-dates">
-                          <summary>
-                            {CHI_SO.find((m) => m[0] === g.config.chiSo)?.[1]}
-                          </summary>
-                          <div className="tk-date-options">
-                            {chartOptions
-                              .filter(
-                                (l) =>
-                                  l.c.id === g.config.id && l.b.ngay.length,
-                              )
-                              .map((l) => (
-                                <label key={l.key}>
-                                  <input
-                                    type="checkbox"
-                                    checked={chartKeys.includes(l.key)}
-                                    onChange={(e) => {
-                                      setChartKeys((old) =>
-                                        e.target.checked
-                                          ? [...old, l.key]
-                                          : old.filter((k) => k !== l.key),
-                                      );
-                                      mark();
-                                    }}
-                                  />
-                                  {l.b.ten}
-                                </label>
-                              ))}
-                          </div>
-                        </details>
-                      ))}
-                  </div>
-                </details>
-              ))}
-            </div>
-          </details>
+          </section>
+          <section className="tk-inline-values" aria-label="Giá trị biểu đồ">
+            {CALCS.map((group) => (
+              <div className="tk-inline-row" key={group.id}>
+                <strong>{group.ten}</strong>
+                <div>
+                  {columns
+                    .filter((c) => c.cachTinh === group.id)
+                    .map((c) => {
+                      const opts = chartOptions.filter(
+                        (l) => l.c.id === c.id && l.b.ngay.length,
+                      );
+                      return (
+                        <div className="tk-inline-metric" key={c.id}>
+                          <button
+                            type="button"
+                            style={{ background: group.mau }}
+                            aria-pressed={
+                              opts.length > 0 &&
+                              opts.every((l) => chartKeys.includes(l.key))
+                            }
+                            onClick={() => {
+                              const keys = opts.map((l) => l.key);
+                              setChartKeys((old) =>
+                                keys.every((k) => old.includes(k))
+                                  ? old.filter((k) => !keys.includes(k))
+                                  : [...new Set([...old, ...keys])],
+                              );
+                              setChart(true);
+                              mark();
+                            }}
+                          >
+                            {CHI_SO.find((m) => m[0] === c.chiSo)?.[1]}
+                          </button>
+                          {c.chia !== "chung" &&
+                            [
+                              ...new Set(
+                                opts.map((l) => l.b.ngay[0].slice(0, 7)),
+                              ),
+                            ].map((month) => (
+                              <div className="tk-inline-month" key={month}>
+                                <small>
+                                  {month.slice(5, 7)}
+                                  {Number(month.slice(0, 4)) ===
+                                  new Date().getFullYear()
+                                    ? ""
+                                    : "/" + month.slice(0, 4)}
+                                </small>
+                                {opts
+                                  .filter((l) => l.b.ngay[0].startsWith(month))
+                                  .map((l) => (
+                                    <button
+                                      type="button"
+                                      key={l.key}
+                                      aria-pressed={chartKeys.includes(l.key)}
+                                      onClick={() => {
+                                        setChartKeys((old) =>
+                                          old.includes(l.key)
+                                            ? old.filter((k) => k !== l.key)
+                                            : [...old, l.key],
+                                        );
+                                        setChart(true);
+                                        mark();
+                                      }}
+                                    >
+                                      {c.chia === "ngay"
+                                        ? l.b.ngay[0].slice(8)
+                                        : chuKhoangNgay({
+                                            tu: l.b.ngay[0],
+                                            den: l.b.ngay.at(-1)!,
+                                          })}
+                                    </button>
+                                  ))}
+                              </div>
+                            ))}
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            ))}
+          </section>
           <RangePicker
             compact
             quickMonth
@@ -1276,15 +1334,22 @@ export default function ThongKeThuChi({
           <BieuDoThongKe
             comparisonOnly={
               comparisonOnly ||
+              chartLeaves.some(
+                (l) =>
+                  l.c.cachTinh !== "tong" ||
+                  ["so_du", "thoi_gian"].includes(l.c.chiSo),
+              ) ||
+              new Set(chartLeaves.map((l) => l.c.chiSo)).size > 1 ||
               chartLeaves.some((a, i) =>
                 chartLeaves.some(
                   (b, j) =>
                     j > i &&
-                    a.c.id === b.c.id &&
+                    a.c.chiSo === b.c.chiSo &&
                     a.b.ngay.some((d) => b.b.ngay.includes(d)),
                 ),
               )
             }
+            pieReason="Biểu đồ tròn cần cùng chỉ số, các phần cộng được và không trùng nhau. Chọn tổng thu, tổng chi hoặc số lượt; không cộng trực tiếp số trung bình và số dư."
             title="Biểu đồ thống kê"
             unit={
               new Set(
