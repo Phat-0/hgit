@@ -1,3 +1,4 @@
+import { SapXepTrucTiep, XuatBieuDo } from "./TuyChonBieuDo";
 import { useLuaChonNoi } from "./lua-chon-noi";
 import { useRef, useState } from "react";
 import { csvThuChi, taiTep, xlsxThuChi } from "./xuat-so-thu-chi";
@@ -95,17 +96,20 @@ export default function BieuDoThongKe({
         <details className="stc-check-picker stc-chart-menu">
           <summary aria-label="Tùy chọn biểu đồ thống kê">☰</summary>
           <div>
-            <select
-              aria-label="Sắp xếp biểu đồ thống kê"
+            <SapXepTrucTiep
+              label="Sắp xếp biểu đồ thống kê"
               value={sort}
-              onChange={(e) => setSort(e.target.value)}
-            >
-              <option value="default">Thứ tự bảng</option>
-              <option value="az">A–Z</option>
-              <option value="za">Z–A</option>
-              <option value="asc">Nhỏ → lớn</option>
-              <option value="desc">Lớn → nhỏ</option>
-            </select>
+              onChange={(v) => {
+                setSort(v);
+              }}
+              options={[
+                ["default", "Thứ tự bảng"],
+                ["az", "A–Z"],
+                ["za", "Z–A"],
+                ["asc", "Nhỏ → lớn"],
+                ["desc", "Lớn → nhỏ"],
+              ]}
+            />
             <label>
               <input
                 type="checkbox"
@@ -123,18 +127,7 @@ export default function BieuDoThongKe({
               />
               Thêm đường
             </label>
-            <select
-              aria-label="Xuất biểu đồ thống kê"
-              value=""
-              onChange={(e) => exportFile(e.target.value)}
-            >
-              <option value="" disabled>
-                Xuất file…
-              </option>
-              <option value="csv">CSV</option>
-              <option value="xlsx">Excel</option>
-              <option value="svg">SVG</option>
-            </select>
+            <XuatBieuDo label="Xuất biểu đồ thống kê" onExport={exportFile} />
           </div>
         </details>
       </header>
@@ -176,6 +169,7 @@ export default function BieuDoThongKe({
                         .map((p) => (
                           <div
                             className="stc-object-chip"
+                            data-visible={!hidden.includes(p.id)}
                             key={p.id}
                             style={{
                               background:

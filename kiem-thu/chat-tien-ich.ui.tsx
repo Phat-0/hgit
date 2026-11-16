@@ -590,7 +590,7 @@ await click([...document.querySelectorAll('.lp-calendar-month')][0].querySelecto
 assert.ok(uiRequests.some(u=>u.includes('/thu-chi?')&&u.includes('tu_ngay=2028-02-10')&&u.includes('den_ngay=2028-02-12')));
 assert.equal(document.querySelectorAll('.stc-period-total .lp-range-button').length,1);assert.equal(document.querySelectorAll('.stc-period-stats>span').length,3);
 
-const chartSort=document.querySelector('[aria-label="Sắp xếp biểu đồ"]') as HTMLSelectElement;await act(async()=>{chartSort.value='az';chartSort.dispatchEvent(new dom.window.Event('change',{bubbles:true}))});
+await click([...document.querySelectorAll('[aria-label="Sắp xếp biểu đồ"] button')].find(e=>e.textContent==='A–Z')!);
 const chartMetric=document.querySelector('[aria-label="Hiển thị thu hoặc chi"]') as HTMLSelectElement;await act(async()=>{chartMetric.value='chi';chartMetric.dispatchEvent(new dom.window.Event('change',{bubbles:true}))});assert.equal(document.querySelectorAll('svg[data-chart="cot"] rect').length,1);
 assert.ok(chartMetric.querySelector('option[value="both"]'));
 await click(document.querySelector('[aria-label="Vẽ thêm đường trên biểu đồ cột"]'));assert.ok(document.querySelector('svg[data-chart="cot"] polyline'));assert.equal(document.querySelector('svg[data-chart="duong"]'),null);

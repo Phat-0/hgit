@@ -1,3 +1,4 @@
+import { SapXepTrucTiep, XuatBieuDo } from "./TuyChonBieuDo";
 import { useLuaChonNoi } from "./lua-chon-noi";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RangePicker } from "./RangePicker";
@@ -531,17 +532,20 @@ export default function BieuDoThuChi({
                 ☰
               </summary>
               <div>
-                <select
-                  aria-label="Sắp xếp biểu đồ"
+                <SapXepTrucTiep
+                  label="Sắp xếp biểu đồ"
                   value={sort}
-                  onChange={(e) => setSort(e.target.value)}
-                >
-                  <option value="ngay">Theo ngày</option>
-                  <option value="az">A–Z</option>
-                  <option value="za">Z–A</option>
-                  <option value="asc">Nhỏ → lớn</option>
-                  <option value="desc">Lớn → nhỏ</option>
-                </select>
+                  onChange={(v) => {
+                    setSort(v);
+                  }}
+                  options={[
+                    ["ngay", "Theo ngày"],
+                    ["az", "A–Z"],
+                    ["za", "Z–A"],
+                    ["asc", "Nhỏ → lớn"],
+                    ["desc", "Lớn → nhỏ"],
+                  ]}
+                />
                 <label>
                   <input
                     aria-label="Hiện phần trăm biểu đồ"
@@ -586,19 +590,11 @@ export default function BieuDoThuChi({
                     }
                   />
                 </label>
-                <select
-                  aria-label="Xuất biểu đồ"
-                  value=""
-                  onChange={(e) => exportChart(e.target.value)}
+                <XuatBieuDo
+                  label="Xuất biểu đồ"
+                  onExport={exportChart}
                   disabled={loading || pieLoading || !!error || !!pieError}
-                >
-                  <option value="" disabled>
-                    ↗ Xuất biểu đồ
-                  </option>
-                  <option value="svg">SVG · các biểu đồ đang hiện</option>
-                  <option value="csv">CSV · đối tượng</option>
-                  <option value="xlsx">Excel · đối tượng và ngày</option>
-                </select>{" "}
+                />{" "}
               </div>
             </details>
           </div>
@@ -614,6 +610,7 @@ export default function BieuDoThuChi({
           .map((c) => (
             <div
               className="stc-object-chip"
+              data-visible={!hidden.includes(c.key)}
               key={c.key}
               style={{
                 background:
@@ -841,7 +838,7 @@ export default function BieuDoThuChi({
               y="143"
               textAnchor="middle"
               fontSize="12"
-              fill={income}
+              fill="#426b5d"
             >
               Thu{" "}
               {percent
@@ -854,7 +851,7 @@ export default function BieuDoThuChi({
               y="164"
               textAnchor="middle"
               fontSize="12"
-              fill={expense}
+              fill="#6c527c"
             >
               Chi{" "}
               {percent

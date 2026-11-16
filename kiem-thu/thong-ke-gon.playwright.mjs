@@ -238,8 +238,8 @@ export async function kiemTraThuChiGon(page) {
   await page.mouse.click(4, 4);
   await block.getByLabel("Tùy chọn biểu đồ", { exact: true }).click();
   await block
-    .getByLabel("Sắp xếp biểu đồ", { exact: true })
-    .selectOption("desc");
+    .getByRole("group", {name:"Sắp xếp biểu đồ",exact:true})
+    .getByRole("button",{name:"Lớn → nhỏ",exact:true}).click();
   check(
     (await block.locator("[data-chart=cot] rect").count()) === 2,
     "Hiện cả thu và chi",

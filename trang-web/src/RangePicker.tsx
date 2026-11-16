@@ -171,6 +171,13 @@ export function RangePicker({
               </button>
             );
           })}
+          {Array.from({ length: 42 - offset - count }, (_, i) => (
+            <span
+              aria-hidden="true"
+              className="lp-calendar-pad"
+              key={"tail" + i}
+            />
+          ))}
         </div>
       </div>
     );

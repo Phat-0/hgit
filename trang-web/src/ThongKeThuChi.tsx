@@ -1,3 +1,4 @@
+import { SapXepTrucTiep } from "./TuyChonBieuDo";
 import { useLuaChonNoi, useBamNgoai } from "./lua-chon-noi";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NhieuKhoangNgay } from "./NhieuKhoangNgay";
@@ -553,20 +554,21 @@ export default function ThongKeThuChi({
           <details className="stc-check-picker stc-chart-menu">
             <summary aria-label="Lưu hoặc xuất thống kê">☰</summary>
             <div>
-              <select
-                aria-label="Sắp xếp hàng thống kê"
+              <SapXepTrucTiep
+                label="Sắp xếp hàng thống kê"
                 value={sortRows}
-                onChange={(e) => {
-                  setSortRows(e.target.value);
+                onChange={(v) => {
+                  setSortRows(v);
                   mark();
                 }}
-              >
-                <option value="manual">Thứ tự kéo thả</option>
-                <option value="az">A–Z</option>
-                <option value="za">Z–A</option>
-                <option value="asc">Giá trị nhỏ → lớn</option>
-                <option value="desc">Giá trị lớn → nhỏ</option>
-              </select>
+                options={[
+                  ["manual", "Thứ tự kéo thả"],
+                  ["az", "A–Z"],
+                  ["za", "Z–A"],
+                  ["asc", "Giá trị nhỏ → lớn"],
+                  ["desc", "Giá trị lớn → nhỏ"],
+                ]}
+              />
               <small>Sắp xếp giá trị theo cột đầu tiên.</small>
               <select
                 aria-label="Xuất bảng thống kê"
