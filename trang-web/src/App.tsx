@@ -7,8 +7,10 @@ import { ngayVietNam, goiYThoiGian } from "./mac-dinh-thoi-gian";
 import { khoangThoiGianLich } from "./khung-gio-dat-phong";
 import { khachApi } from "./khach-api";
 import TroChuyen from "./TroChuyen";
+import { lichTuTinNhan } from "./dat-phong-tu-tin-nhan";
 import AnhPhongNoi from "./AnhPhongNoi";
 import "./trang-khach.css";
+import "./khach-am.css";
 type Room = {
   id: string;
   ten_phong: string;
@@ -119,6 +121,7 @@ export default function App() {
     [authPassword, setAuthPassword] = useState("");
   useEffect(()=>{if(!login)setAuthPassword('');},[login]);
   const [ready, setReady] = useState(false);
+  const [chatGuests, setChatGuests] = useState(1);
   const serial = useRef(0),
     filterTimer = useRef<number | null>(null);
   const requestKey = useRef(""),
@@ -453,13 +456,7 @@ export default function App() {
               <img src={home.hero.anh} alt={home.hero.tieu_de} />
             </button>
           ) : (
-            <div className="kh-hero-orb" aria-hidden="true">
-              <span>
-                STAY
-                <br />
-                <i>your way.</i>
-              </span>
-            </div>
+            rooms.some(r => r.anh.some(Boolean)) ? <button className="kh-cms-photo kh-room-preview" onClick={() => void choose(rooms.find(r => r.anh.some(Boolean))!)} aria-label="Khám phá phòng phù hợp"><img src={rooms.find(r => r.anh.some(Boolean))!.anh.find(Boolean)!} alt={rooms.find(r => r.anh.some(Boolean))!.ten_phong} /><span>{rooms.find(r => r.anh.some(Boolean))!.ten_phong}</span></button> : <a className="kh-stay-note" href="#phong-khach"><span>Một khoảng riêng</span><strong>Chọn lịch nghỉ.<br />Tìm nơi bạn muốn ở.</strong><span>Xem phòng và giá theo thời gian của bạn ↗</span></a>
           )}
         </section>
       )}
@@ -705,7 +702,15 @@ export default function App() {
           <a href="/quan-tri">Dành cho nhân viên</a>
         </footer>
       )}
-      <TroChuyen token={token || undefined} branch={branch} />
+      <TroChuyen token={token || undefined} branch={branch} phong={rooms.filter(r => r.suc_chua >= chatGuests)} dangTimPhong={loading} khoangDat={searched ? `${new Date(lastSearch.current?.bat_dau || start).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })} – ${new Date(lastSearch.current?.ket_thuc || end).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })} · ${kind === 'gio' ? `${st} – ${et}` : kind === 'dem' ? 'Qua đêm' : 'Theo ngày'}` : ''} onNhapDatPhong={text => {
+        const lich = lichTuTinNhan(text);
+        if (!lich) return;
+        // Calendar ranges store the last occupied day, chat text names checkout day.
+        const lastDay = config[lich.kind + '_den'] <= config[lich.kind + '_tu']
+          ? new Date(new Date(lich.end + 'T12:00:00+07:00').getTime() - 86400000).toISOString().slice(0, 10) : lich.end;
+        setStart(lich.start); setEnd(lastDay); setKind(lich.kind); setChatGuests(lich.guests || 1);
+        if (lich.guests) setForm(f => ({ ...f, so_khach: lich.guests! }));
+      }} onChonPhong={p => { const room = rooms.find(r => r.id === p.id); if (room) void choose(room); }} />
       {modal &&
         createPortal(
           <div

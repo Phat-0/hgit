@@ -13,6 +13,8 @@ import {
 import { khachApi } from "./khach-api";
 import "./tro-chuyen.css";
 import "./chat-bo-cuc.css";
+import "./chat-khach.css";
+export type PhongChat = { id: string; ten_phong: string; ten_loai: string; ten_homestay: string; suc_chua: number; dien_tich_m2: string | null; tien_phong: number; anh: (string | null)[] };
 type Thread = {
   id: string;
   loai: string;
@@ -60,11 +62,21 @@ export default function TroChuyen({
   branch,
   inline = false,
   admin = false,
+  phong = [],
+  khoangDat = "",
+  dangTimPhong = false,
+  onChonPhong,
+  onNhapDatPhong,
 }: {
   token?: string;
   branch?: string;
   inline?: boolean;
   admin?: boolean;
+  phong?: PhongChat[];
+  khoangDat?: string;
+  dangTimPhong?: boolean;
+  onChonPhong?: (phong: PhongChat) => void;
+  onNhapDatPhong?: (text: string) => void;
 }) {
   const [open, setOpen] = useState(false),
     [threads, setThreads] = useState<Thread[]>([]),
@@ -662,10 +674,10 @@ export default function TroChuyen({
           }}
         >
           <header>
-            <div>
-              <h2>{admin ? "Tin nhắn" : "Hỗ trợ HomeStay"}</h2>
-              <small>Kết nối cùng HomeStay</small>
-            </div>
+            {admin ? <div><h2>Tin nhắn</h2><small>Kết nối cùng HomeStay</small></div> :
+              <span className="chat-home-avatar" role="img" aria-label="HomeStay" title="HomeStay">
+                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m5 15 11-10 11 10M9 13v14h14V13M13 27v-9h6v9"/><path d="M23 6c5-1 6-4 6-4 1 5-1 8-5 8"/></svg>
+              </span>}
             {!inline && (
               <button aria-label="Đóng chat" onClick={() => setOpen(false)}>
                 ×
@@ -835,7 +847,7 @@ export default function TroChuyen({
               </aside>
             )}
             <div className="chat-main">
-              <div className="chat-conversation-head">
+              <div className="chat-conversation-head" hidden={!admin}>
                 <span className="chat-avatar">{initials(title)}</span>
                 <div>
                   <strong>{title}</strong>
@@ -872,6 +884,13 @@ export default function TroChuyen({
                   </button>
                 </div>
               </div>
+              {!admin && onChonPhong && (dangTimPhong || khoangDat) && <section className="chat-room-context" aria-label="Phòng theo thông tin đặt phòng">
+                <div className="chat-room-context-label"><strong>Phòng cho chuyến đi của bạn</strong><span>{khoangDat}</span></div>
+                {dangTimPhong ? <p role="status">Đang kiểm tra phòng phù hợp…</p> : phong.length ? <div className="chat-room-options">{phong.map(p => <button type="button" className="chat-room-option" key={p.id} onClick={() => { if (!inline) setOpen(false); onChonPhong(p); }}>
+                  {p.anh.find(Boolean) ? <img src={p.anh.find(Boolean)!} alt={p.ten_phong} loading="lazy" /> : <span className="chat-room-no-photo">Chưa có ảnh phòng</span>}
+                  <span><small>{p.ten_homestay}</small><strong>{p.ten_phong}</strong><small>{p.suc_chua} khách{p.dien_tich_m2 ? ` · ${p.dien_tich_m2} m²` : ""} · {p.ten_loai}</small><b>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(p.tien_phong)}<small> / khoảng đặt</small></b></span>
+                </button>)}</div> : <p>Không có phòng phù hợp trong khoảng đã chọn. Bạn có thể đổi lịch ở phần đặt phòng.</p>}
+              </section>}
               {error && (
                 <p role="alert" className="chat-error">
                   {error}
@@ -1064,7 +1083,7 @@ export default function TroChuyen({
                   disabled={!current}
                   maxLength={4000}
                   value={text}
-                  onChange={(e) => setText(e.target.value)}
+                  onChange={(e) => { setText(e.target.value); if (!admin) onNhapDatPhong?.(e.target.value); }}
                   placeholder="Nhập tin nhắn…"
                 />
                 <button

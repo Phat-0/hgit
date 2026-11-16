@@ -127,8 +127,8 @@ export function useChatPosition(admin: boolean) {
     right: dockRight ? 0 : "auto",
     left: dockRight ? "auto" : 0,
   };
-  const width = Math.max(1, Math.min(admin ? 850 : 390, screen.w - 24)),
-    height = Math.max(1, Math.min(admin ? 640 : 590, screen.h - 115));
+  const width = Math.max(1, Math.min(850, screen.w - 24)),
+    height = Math.max(1, Math.min(admin ? 640 : 680, screen.h - 115));
   let top = position.y - height - 12;
   if (top < 8)
     top =
