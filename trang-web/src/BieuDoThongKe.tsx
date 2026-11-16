@@ -1,3 +1,11 @@
+import {
+  boTriCot,
+  khoaGiaTri,
+  nhomNutAnHien,
+  type DiemBieuDo,
+} from "./nhom-cot-bieu-do";
+import { chuCacKhoang } from "./lich-hien-thi";
+import { gopNgayThanhKhoang } from "./bieu-do-bo-sung";
 import { SapXepTrucTiep, XuatBieuDo } from "./TuyChonBieuDo";
 import { useLuaChonNoi } from "./lua-chon-noi";
 import { useRef, useState } from "react";
@@ -16,15 +24,7 @@ export default function BieuDoThongKe({
   variant?: "bar" | "pie" | "both";
   title: string;
   unit: string;
-  points: {
-    id: string;
-    ten: string;
-    value: number | null;
-    unit?: string;
-    calc?: string;
-    category?: string;
-    branch?: string;
-  }[];
+  points: DiemBieuDo[];
 }) {
   useLuaChonNoi();
   const [percent, setPercent] = useState(false),
@@ -39,12 +39,14 @@ export default function BieuDoThongKe({
           !hidden.includes(p.id) && !removed.includes(p.id) && p.value !== null,
       )
       .sort((a, b) =>
-        sort === "asc" || sort === "desc"
-          ? (sort === "desc" ? -1 : 1) * (a.value! - b.value!)
-          : sort === "az" || sort === "za"
-            ? (sort === "za" ? -1 : 1) *
-              a.ten.localeCompare(b.ten, "vi", { numeric: true })
-            : 0,
+        variant !== "pie"
+          ? 0
+          : sort === "asc" || sort === "desc"
+            ? (sort === "desc" ? -1 : 1) * (a.value! - b.value!)
+            : sort === "az" || sort === "za"
+              ? (sort === "za" ? -1 : 1) *
+                a.ten.localeCompare(b.ten, "vi", { numeric: true })
+              : 0,
       ),
     sum = data.reduce((s, p) => s + Math.abs(p.value!), 0);
   const usePercent = percent && !comparisonOnly && unit !== "nhiều đơn vị";
@@ -54,8 +56,52 @@ export default function BieuDoThongKe({
   const y = (n: number) => 240 - ((value(n) - low) / (high - low)) * 170;
   const txt = (n: number, u = unit) =>
     hienSo(value(n)) + (usePercent ? "%" : " " + u);
-  const width = Math.max(620, data.length * 130 + 90),
-    colors = ["#99cdbd", "#c7b2df", "#e8c79f", "#afc9e8", "#e4b3c8"];
+  const colors = [
+    "#99cdbd",
+    "#c7b2df",
+    "#e8c79f",
+    "#afc9e8",
+    "#e4b3c8",
+    "#b7c792",
+    "#a5cbd1",
+    "#d4b99e",
+  ];
+  const series = [
+    ...new Map(
+      points.map((p) => [
+        khoaGiaTri(p),
+        { key: khoaGiaTri(p), ten: p.seriesName || p.ten },
+      ]),
+    ).values(),
+  ];
+  const color = (p: DiemBieuDo) =>
+    colors[
+      (variant === "pie"
+        ? points.findIndex((x) => x.id === p.id)
+        : series.findIndex((s) => s.key === khoaGiaTri(p))) % colors.length
+    ];
+  const layout = boTriCot(
+      data,
+      sort,
+      series.map((s) => s.key),
+      [...new Set(points.map(p=>p.objectKey||p.id))],
+    ),
+    width = layout.width;
+  const groups = nhomNutAnHien(
+    points.filter((p) => !removed.includes(p.id)),
+    variant === "pie",
+  );
+  function toggle(ids: string[]) {
+    setHidden((old) =>
+      ids.every((id) => old.includes(id))
+        ? old.filter((id) => !ids.includes(id))
+        : [...new Set([...old, ...ids])],
+    );
+  }
+  function periodText(ps: DiemBieuDo[]) {
+    const ranges = gopNgayThanhKhoang(ps.flatMap((p) => p.days || []));
+    return ranges.length ? chuCacKhoang(ranges) : "";
+  }
   let offset = 0;
   const circ = Math.PI * 140;
   function exportFile(format: string) {
@@ -80,9 +126,53 @@ export default function BieuDoThongKe({
       const body = Array.from(ref.current?.querySelectorAll("svg") || [])
         .map((svg) => {
           const copy = svg.cloneNode(true) as SVGSVGElement;
+          const vb = svg.viewBox.baseVal,
+            sw = vb.width || Number(svg.getAttribute("width")) || 380,
+            sh = vb.height || Number(svg.getAttribute("height")) || 300;
+          let extra = 0;
+          const exportSeries = series.filter((s) =>
+            data.some((p) => khoaGiaTri(p) === s.key),
+          );
+          if (
+            svg.getAttribute("aria-label") === "Biểu đồ cột thống kê" &&
+            exportSeries.length
+          ) {
+            extra = Math.ceil(exportSeries.length / 3) * 22 + 10;
+            const ns = "http://www.w3.org/2000/svg",
+              plot = document.createElementNS(ns, "g");
+            while (copy.firstChild) plot.append(copy.firstChild);
+            plot.setAttribute("transform", `translate(0 ${extra})`);
+            copy.append(plot);
+            const legend = document.createElementNS(ns, "g");
+            exportSeries.forEach((s, i) => {
+              const x = 55 + (i % 3) * Math.min(240, (sw - 70) / 3),
+                y = 18 + Math.floor(i / 3) * 22,
+                rect = document.createElementNS(ns, "rect"),
+                text = document.createElementNS(ns, "text");
+              rect.setAttribute("x", String(x));
+              rect.setAttribute("y", String(y - 9));
+              rect.setAttribute("width", "12");
+              rect.setAttribute("height", "10");
+              rect.setAttribute(
+                "fill",
+                colors[
+                  series.findIndex((v) => v.key === s.key) % colors.length
+                ],
+              );
+              text.setAttribute("x", String(x + 17));
+              text.setAttribute("y", String(y));
+              text.setAttribute("font-size", "11");
+              text.textContent = s.ten;
+              legend.append(rect, text);
+            });
+            copy.append(legend);
+          }
+          copy.setAttribute("width", String(sw));
+          copy.setAttribute("height", String(sh + extra));
+          copy.setAttribute("viewBox", `0 0 ${sw} ${sh + extra}`);
           copy.setAttribute("x", "0");
           copy.setAttribute("y", String(height));
-          height += 310;
+          height += sh + extra + 10;
           return copy.outerHTML;
         })
         .join("");
@@ -96,7 +186,6 @@ export default function BieuDoThongKe({
   return (
     <section className="stc-charts tk-chart">
       <header>
-        <h3>{title}</h3>
         <details className="stc-check-picker stc-chart-menu">
           <summary aria-label="Tùy chọn biểu đồ thống kê">☰</summary>
           <div>
@@ -135,87 +224,126 @@ export default function BieuDoThongKe({
           </div>
         </details>
       </header>
-      <div className="stc-selected-objects">
-        {[...new Set(points.map((p) => p.calc || "Tổng"))].map((calc) => (
-          <section className="tk-chart-calc-group" key={calc}>
-            <h4>{calc}</h4>
-            {[
-              ...new Set(
-                points
-                  .filter((p) => (p.calc || "Tổng") === calc)
-                  .map((p) => p.category || "Tổng"),
-              ),
-            ].map((category) => (
-              <div className="tk-chart-category" key={category}>
-                <h5>{category}</h5>
-                {[
-                  ...new Set(
-                    points
-                      .filter(
-                        (p) =>
-                          (p.calc || "Tổng") === calc &&
-                          (p.category || "Tổng") === category,
-                      )
-                      .map((p) => p.branch || ""),
-                  ),
-                ].map((branch) => (
-                  <div className="tk-chart-branch" key={branch}>
-                    {branch && <h6>{branch}</h6>}
+      {variant !== "pie" && (
+        <div
+          className="tk-series-legend"
+          role="group"
+          aria-label="Chú thích màu giá trị"
+        >
+          {series.map((s) => {
+            const ps = points.filter(
+              (p) => khoaGiaTri(p) === s.key && !removed.includes(p.id),
+            );
+            return (
+              <button
+                type="button"
+                key={s.key}
+                aria-pressed={ps.some((p) => !hidden.includes(p.id))}
+                onClick={() => toggle(ps.map((p) => p.id))}
+              >
+                <i
+                  style={{
+                    background: colors[series.indexOf(s) % colors.length],
+                  }}
+                />
+                {s.ten}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <div className="stc-selected-objects tk-compact-point-controls">
+        {groups.map((group) => {
+          const ids = group.points.map((p) => p.id),
+            shown = group.points.filter((p) => !hidden.includes(p.id)).length,
+            label =
+              group.ten +
+              (group.points.length > 1 && periodText(group.points)
+                ? " · " + periodText(group.points)
+                : "");
+          const months = [
+            ...new Set(group.points.map((p) => p.days?.[0]?.slice(0, 7) || "")),
+          ];
+          return (
+            <div className="tk-point-group" key={group.key}>
+              <div
+                className="stc-object-chip"
+                data-visible={shown > 0}
+                style={{
+                  background:
+                    variant === "pie"
+                      ? "#e9dff4"
+                      : color(group.points[0]) + "65",
+                  borderColor:
+                    variant === "pie" ? "#d2bfe2" : color(group.points[0]),
+                }}
+              >
+                <button
+                  type="button"
+                  title={label}
+                  aria-pressed={
+                    shown === ids.length ? true : shown === 0 ? false : "mixed"
+                  }
+                  onClick={() => toggle(ids)}
+                >
+                  {label}
+                </button>
+                {group.points.length > 1 && (
+                  <details className="stc-check-picker tk-point-detail">
+                    <summary aria-label={"Chọn ngày " + group.ten}>▾</summary>
                     <div>
-                      {points
-                        .filter(
-                          (p) =>
-                            !removed.includes(p.id) &&
-                            (p.calc || "Tổng") === calc &&
-                            (p.category || "Tổng") === category &&
-                            (p.branch || "") === branch,
-                        )
-                        .map((p) => (
-                          <div
-                            className="stc-object-chip"
-                            data-visible={!hidden.includes(p.id)}
-                            key={p.id}
-                            style={{
-                              background:
-                                colors[points.indexOf(p) % colors.length] +
-                                "65",
-                              borderColor:
-                                colors[points.indexOf(p) % colors.length],
-                            }}
-                          >
-                            <button
-                              type="button"
-                              title={p.ten}
-                              aria-pressed={!hidden.includes(p.id)}
-                              onClick={() =>
-                                setHidden((old) =>
-                                  old.includes(p.id)
-                                    ? old.filter((x) => x !== p.id)
-                                    : [...old, p.id],
-                                )
-                              }
-                            >
-                              {p.ten}
-                            </button>
-                            <button
-                              type="button"
-                              className="stc-chip-remove"
-                              aria-label={"Bỏ khỏi biểu đồ " + p.ten}
-                              onClick={() =>
-                                setRemoved((old) => [...old, p.id])
-                              }
-                            >
-                              ×
-                            </button>
+                      {months.map((month) => (
+                        <div className="tk-compact-month" key={month}>
+                          {month && (
+                            <span>
+                              {month.slice(5)}
+                              {Number(month.slice(0, 4)) ===
+                              new Date().getFullYear()
+                                ? ""
+                                : "/" + month.slice(0, 4)}
+                            </span>
+                          )}
+                          <div>
+                            {group.points
+                              .filter(
+                                (p) =>
+                                  (p.days?.[0]?.slice(0, 7) || "") === month,
+                              )
+                              .map((p) => (
+                                <button
+                                  type="button"
+                                  key={p.id}
+                                  title={p.ten}
+                                  aria-pressed={!hidden.includes(p.id)}
+                                  style={{ background: color(p) + "55" }}
+                                  onClick={() => toggle([p.id])}
+                                >
+                                  {p.periodKey &&
+                                  /^\d{4}-\d{2}-\d{2}$/.test(p.periodKey)
+                                    ? p.periodKey.slice(8)
+                                    : p.periodName || p.ten}
+                                </button>
+                              ))}
                           </div>
-                        ))}
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                ))}
+                  </details>
+                )}
+                <button
+                  type="button"
+                  className="stc-chip-remove"
+                  aria-label={"Bỏ khỏi biểu đồ " + group.ten}
+                  onClick={() =>
+                    setRemoved((old) => [...new Set([...old, ...ids])])
+                  }
+                >
+                  ×
+                </button>
               </div>
-            ))}
-          </section>
-        ))}
+            </div>
+          );
+        })}
         {removed.length > 0 && (
           <button
             type="button"
@@ -234,7 +362,7 @@ export default function BieuDoThongKe({
             <figcaption>{usePercent ? "Tỷ trọng (%)" : unit}</figcaption>
             <div className="stc-svg-scroll">
               <svg
-                width={data.length > 5 ? width : "100%"}
+                width={width > 620 ? width : "100%"}
                 viewBox={`0 0 ${width} 300`}
                 height="300"
                 role="img"
@@ -247,51 +375,75 @@ export default function BieuDoThongKe({
                   y2={y(0)}
                   stroke="#cbbbdb"
                 />
-                {data.map((p, i) => (
+                {layout.bars.map(({ point: p, x, center, labelOffset }) => (
                   <g key={p.id}>
                     <rect
-                      x={85 + i * 130}
+                      data-object={p.objectKey}
+                      data-series={khoaGiaTri(p)}
+                      data-period={p.periodKey}
+                      x={x}
                       y={Math.min(y(0), y(p.value!))}
-                      width="38"
+                      width="24"
                       height={Math.abs(y(p.value!) - y(0))}
-                      fill={
-                        colors[
-                          points.findIndex((x) => x.id === p.id) % colors.length
-                        ]
-                      }
+                      fill={color(p)}
                       rx="4"
                     >
                       <title>{p.ten + ": " + txt(p.value!, p.unit)}</title>
                     </rect>
                     <text
-                      x={104 + i * 130}
-                      y={y(p.value!) - 8}
+                      x={center}
+                      y={y(p.value!) - 8 - labelOffset}
                       textAnchor="middle"
-                      fontSize="10"
+                      fontSize="9"
                     >
                       {txt(p.value!, p.unit)}
                     </text>
-                    <text
-                      x={104 + i * 130}
-                      y="278"
-                      textAnchor="middle"
-                      fontSize="10"
-                    >
-                      <title>{p.ten}</title>
-                      {p.ten.length > 18 ? p.ten.slice(0, 17) + "…" : p.ten}
-                    </text>
                   </g>
                 ))}
-                {line && (
-                  <polyline
-                    fill="none"
-                    stroke="#745097"
-                    strokeWidth="2"
-                    points={data
-                      .map((p, i) => `${104 + i * 130},${y(p.value!)}`)
-                      .join(" ")}
-                  />
-                )}
+                {layout.periods.map((p) => (
+                  <text
+                    key={p.key}
+                    x={p.x}
+                    y="264"
+                    textAnchor="middle"
+                    fontSize="9"
+                  >
+                    <title>{p.ten}</title>
+                    {p.ten.length > 20 ? p.ten.slice(0, 19) + "…" : p.ten}
+                  </text>
+                ))}
+                {layout.labels.map((p) => (
+                  <text
+                    key={p.key}
+                    data-object-label={p.key}
+                    x={p.x}
+                    y="286"
+                    textAnchor="middle"
+                    fontSize="11"
+                  >
+                    <title>{p.ten + (p.branch ? " · " + p.branch : "")}</title>
+                    {p.ten.length > 22 ? p.ten.slice(0, 21) + "…" : p.ten}
+                  </text>
+                ))}
+                {line &&
+                  series.map((s) => {
+                    const bars = layout.bars.filter(
+                      (b) => khoaGiaTri(b.point) === s.key,
+                    );
+                    return (
+                      bars.length > 0 && (
+                        <polyline
+                          key={s.key}
+                          fill="none"
+                          stroke={colors[series.indexOf(s) % colors.length]}
+                          strokeWidth="2"
+                          points={bars
+                            .map((b) => `${b.center},${y(b.point.value!)}`)
+                            .join(" ")}
+                        />
+                      )
+                    );
+                  })}
               </svg>
             </div>
           </figure>
@@ -337,12 +489,7 @@ export default function BieuDoThongKe({
                         cy="145"
                         r="70"
                         fill="none"
-                        stroke={
-                          colors[
-                            points.findIndex((x) => x.id === p.id) %
-                              colors.length
-                          ]
-                        }
+                        stroke={color(p)}
                         strokeWidth="35"
                         strokeDasharray={`${length} ${circ - length}`}
                         strokeDashoffset={-o}

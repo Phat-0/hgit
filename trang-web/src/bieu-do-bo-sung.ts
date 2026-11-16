@@ -1,7 +1,9 @@
+import type {DiemBieuDo} from "./nhom-cot-bieu-do";
 import {
   nhomNgay,
   tinhGiaTri,
   CHI_SO,
+  tenCot,
   type CotThongKe,
   type DuLieuThongKe,
   type PhamVi,
@@ -38,14 +40,14 @@ export function phamViBiTrung(scopes: PhamViBieuDo[]) {
       ))
   );
 }
-export function diemBoSung(spec: KhungBieuDo, data: DuLieuThongKe) {
+export function diemBoSung(spec: KhungBieuDo, data: DuLieuThongKe):DiemBieuDo[] {
   const cols =
     spec.type === "pie"
       ? [
           spec.columns.find((c) => c.id === spec.metricId) || spec.columns[0],
         ].filter(Boolean)
       : spec.columns;
-  return cols.flatMap((c) => {
+  return cols.flatMap<DiemBieuDo>((c) => {
     const groups =
       spec.group === "cau_hinh" && !spec.customCalendar
         ? spec.bins.filter((b) => b.columnId === c.id)
@@ -61,10 +63,22 @@ export function diemBoSung(spec: KhungBieuDo, data: DuLieuThongKe) {
             "",
             "",
           );
-    return groups.flatMap((b) =>
+    return groups.flatMap<DiemBieuDo>((b) =>
       spec.type === "bar"
         ? spec.scopes.map((p) => ({
             id: c.id + ":" + b.key + ":" + p.id,
+            objectKey: p.loai + ":" + p.id,
+            objectName: p.ten,
+            seriesKey: c.id,
+            seriesName:
+              tenCot(c) +
+              (c.loaiDat.length ? " · " + c.loaiDat.join(", ") : ""),
+            periodKey: b.key,
+            periodName: b.ten,
+            days: b.ngay,
+            branch: p.branch
+              ? data.chi_nhanh.find((v) => v.id === p.branch)?.ten_homestay
+              : undefined,
             ten:
               p.ten +
               " · " +
@@ -91,6 +105,13 @@ export function diemBoSung(spec: KhungBieuDo, data: DuLieuThongKe) {
         : [
             {
               id: c.id + ":" + b.key,
+              objectKey: "time",
+              objectName: "",
+              seriesKey: c.id,
+              seriesName: tenCot(c),
+              periodKey: b.key,
+              periodName: b.ten,
+              days: b.ngay,
               ten: b.ten,
               value: spec.scopes.reduce(
                 (n, p) => n + (tinhGiaTri(data, p, c, b.ngay) || 0),

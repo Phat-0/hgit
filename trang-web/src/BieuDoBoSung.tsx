@@ -84,7 +84,7 @@ export default function BieuDoBoSung({
       active.cachTinh !== "tong" ||
       ["so_du", "thoi_gian"].includes(active.chiSo) ||
       phamViBiTrung(spec.scopes));
-  const units = [...new Set(points.map((p) => p.unit))];
+  const units = [...new Set(points.map((p) => p.unit||""))];
   return (
     <section
       className={"tk-extra-chart tk-extra-" + spec.type}
