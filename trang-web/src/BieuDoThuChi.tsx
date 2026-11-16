@@ -154,7 +154,7 @@ export default function BieuDoThuChi({
     .filter((r) => activeKeys.some((key) => matches(r, key)))
     .filter((r) => r.ngay >= pieStart && r.ngay <= pieEnd);
   const groups = useMemo(() => {
-    if (sort === "ngay") {
+    if (!sort || sort === "ngay") {
       return cacNgay(chartStart, chartEnd)
         .map((day) => {
           const chosen = filtered.filter((r) => r.ngay === day);
@@ -197,7 +197,10 @@ export default function BieuDoThuChi({
       );
   }, [source, selected, hidden, choices, sort, metric, chartStart, chartEnd]);
   const group =
-    sort === "ngay" || activeKeys.length !== 1 || activeKeys[0] !== "tong"
+    !sort ||
+    sort === "ngay" ||
+    activeKeys.length !== 1 ||
+    activeKeys[0] !== "tong"
       ? "chon"
       : "tong";
   function toggleChoice(key: string) {
@@ -288,6 +291,7 @@ export default function BieuDoThuChi({
     [groups, metric, group, income, expense, days],
   );
   const duplicated =
+    !!sort &&
     sort !== "ngay" &&
     filtered.some(
       (r) => activeKeys.filter((key) => matches(r, key)).length > 1,

@@ -36,6 +36,7 @@ export function RangePicker({
         new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 7),
     );
   const [activeRange, setActiveRange] = useState(0);
+  const [months, setMonths] = useState<string[]>([]);
   const commitRange = (tu: string, den: string) => {
     if (onRangesChange) {
       const next = [...(ranges || [])];
@@ -90,7 +91,7 @@ export function RangePicker({
   useLayoutEffect(() => {
     if (!open) return;
     const strip = panel.current?.querySelector<HTMLElement>(".lp-month-strip"),
-      chosen = strip?.querySelector<HTMLElement>('[aria-pressed="true"]');
+      chosen = strip?.querySelector<HTMLElement>('[data-current="true"]');
     if (strip && chosen)
       strip.scrollLeft =
         chosen.offsetLeft -
@@ -201,6 +202,7 @@ export function RangePicker({
           setOpen((v) => !v);
           setFirst(null);
           setActiveRange(0);
+          setMonths([]);
           setMonth(
             start.slice(0, 7) ||
               new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 7),
@@ -273,8 +275,17 @@ export function RangePicker({
                         <button
                           type="button"
                           key={m}
-                          aria-pressed={m === month}
-                          onClick={() => setMonth(m)}
+                          data-current={m===month}
+                          aria-pressed={onRangesChange?months.includes(m):m===month}
+                          onClick={() => {
+                            setMonth(m);
+                            if (onRangesChange)
+                              setMonths((old) =>
+                                old.includes(m)
+                                  ? old.filter((x) => x !== m)
+                                  : [...old, m],
+                              );
+                          }}
                         >
                           T{i + 1}
                         </button>
@@ -289,6 +300,32 @@ export function RangePicker({
                     (!!maxDate && month + "-01" > maxDate)
                   }
                   onClick={() => {
+                    if (onRangesChange && months.length > 0) {
+                      const picked = months
+                        .sort()
+                        .map((m) => ({
+                          tu: m + "-01",
+                          den: new Date(
+                            Date.UTC(
+                              Number(m.slice(0, 4)),
+                              Number(m.slice(5, 7)),
+                              0,
+                            ),
+                          )
+                            .toISOString()
+                            .slice(0, 10),
+                        }))
+                        .map((r) => ({
+                          tu: minDate && r.tu < minDate ? minDate : r.tu,
+                          den: maxDate && r.den > maxDate ? maxDate : r.den,
+                        }))
+                        .filter((r) => r.tu <= r.den);
+                      onRangesChange(picked);
+                      setActiveRange(0);
+                      setMonths([]);
+                      setFirst(null);
+                      return;
+                    }
                     const last = new Date(
                       Date.UTC(
                         Number(month.slice(0, 4)),
@@ -306,7 +343,9 @@ export function RangePicker({
                     );
                   }}
                 >
-                  Chọn tháng
+                  {onRangesChange && months.length > 1
+                    ? `Chọn ${months.length} tháng`
+                    : "Chọn tháng"}
                 </button>
               </div>
             )}

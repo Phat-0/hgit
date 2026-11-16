@@ -90,9 +90,11 @@ export function nhomNgay(c: CotThongKe, tu: string, den: string) {
         ? d
         : c.chia === "thu"
           ? String(thuCuaNgay(d))
-          : c.chia === "tuan"
-            ? dauTuan(d)
-            : "chung";
+          : c.chia === "thang"
+            ? d.slice(0, 7)
+            : c.chia === "tuan"
+              ? dauTuan(d)
+              : "chung";
     if (!groups.has(k))
       groups.set(k, {
         key: k,
@@ -101,9 +103,11 @@ export function nhomNgay(c: CotThongKe, tu: string, den: string) {
             ? ngayNgan(d)
             : c.chia === "thu"
               ? THU[thuCuaNgay(d)]
-              : c.chia === "tuan"
-                ? "Tuần " + ngayNgan(k) + "–" + ngayNgan(congNgay(k, 6))
-                : "Cả kỳ",
+              : c.chia === "thang"
+                ? k.slice(5) + "/" + k.slice(0, 4)
+                : c.chia === "tuan"
+                  ? "Tuần " + ngayNgan(k) + "–" + ngayNgan(congNgay(k, 6))
+                  : "Cả kỳ",
         ngay: [],
       });
     groups.get(k)!.ngay.push(d);

@@ -1,3 +1,5 @@
+import BieuDoBoSung from "./BieuDoBoSung";
+import { gopNgayThanhKhoang, type KhungBieuDo } from "./bieu-do-bo-sung";
 import { chuCacKhoang, chuKhoangNgay } from "./lich-hien-thi";
 import { SapXepTrucTiep } from "./TuyChonBieuDo";
 import { useLuaChonNoi, useBamNgoai } from "./lua-chon-noi";
@@ -70,6 +72,16 @@ export default function ThongKeThuChi({
     [den, setDen] = useState(
       initial?.den_ngay || ngayCuoiThang(ngayVN().slice(0, 7)),
     );
+  const [commonRanges, setCommonRanges] = useState<
+    { tu: string; den: string }[]
+  >([]);
+  const [cards, setCards] = useState<KhungBieuDo[]>([]);
+  const [primaryPie, setPrimaryPie] = useState<{
+    ranges: { tu: string; den: string }[];
+    customCalendar: boolean;
+    group: string;
+    metricId: string;
+  }>({ ranges: [], customCalendar: false, group: "ngay", metricId: "" });
   const [columns, setColumns] = useState<CotThongKe[]>(() =>
     ["thu", "chi", "so_du", "dat", "huy"].map((m) => newColumn(m, tu, den)),
   );
@@ -150,8 +162,15 @@ export default function ThongKeThuChi({
     add: boolean;
   } | null>(null);
   const [sortRows, setSortRows] = useState("manual");
+  const [chartHasPrivate, setChartHasPrivate] = useState(false);
   const [chartTu, setChartTu] = useState(tu),
     [chartDen, setChartDen] = useState(den);
+  useEffect(() => {
+    if (!chartHasPrivate) {
+      setChartTu(tu);
+      setChartDen(den);
+    }
+  }, [tu, den, chartHasPrivate]);
   useEffect(() => {
     const stop = () => {
       selection.current = null;
@@ -174,7 +193,7 @@ export default function ThongKeThuChi({
     onDirtyChange(true);
   };
   const allRanges = [
-    { tu, den },
+    ...(commonRanges.length ? commonRanges : [{ tu, den }]),
     ...columns
       .filter((c) => c.lichRieng && (c.tu || c.den))
       .flatMap((c) =>
@@ -271,7 +290,11 @@ export default function ThongKeThuChi({
               a.ten.localeCompare(b.ten, "vi", { numeric: true })
             );
           if (sortRows === "asc" || sortRows === "desc") {
-            const col = columns.find((c) => !c.an);
+            const raw = columns.find((c) => !c.an);
+            const col =
+              raw && !raw.lichRieng && commonRanges.length
+                ? { ...raw, lichRieng: true, khoang: commonRanges }
+                : raw;
             const dates = col
               ? nhomNgay(col, tu, den).flatMap((b) => b.ngay)
               : [];
@@ -289,11 +312,25 @@ export default function ThongKeThuChi({
             a.ten.localeCompare(b.ten, "vi", { numeric: true })
           );
         }),
-    [scopes, chosenScopes, rowOrder, sortRows, columns, data, tu, den],
+    [
+      scopes,
+      chosenScopes,
+      rowOrder,
+      sortRows,
+      columns,
+      data,
+      tu,
+      den,
+      commonRanges,
+    ],
   );
   const allExpanded = useMemo(
     () =>
-      columns.map((c) => {
+      columns.map((raw) => {
+        const c =
+          !raw.lichRieng && commonRanges.length
+            ? { ...raw, lichRieng: true, khoang: commonRanges, tu, den }
+            : raw;
         const bins = nhomNgay(c, tu, den);
         return {
           config: c,
@@ -309,7 +346,7 @@ export default function ThongKeThuChi({
               ],
         };
       }),
-    [columns, tu, den],
+    [columns, tu, den, commonRanges],
   );
   const expanded = useMemo(
     () => allExpanded.filter((g) => !g.config.an),
@@ -354,6 +391,49 @@ export default function ThongKeThuChi({
       chartKeys.includes(l.key) &&
       l.b.ngay.some((d) => d >= chartTu && d <= chartDen),
   );
+  function specFromSelection(
+    type: "bar" | "pie",
+    id: string = crypto.randomUUID(),
+  ): KhungBieuDo {
+    return {
+      id,
+      type,
+      columns: [...new Map(chartLeaves.map((l) => [l.c.id, l.c])).values()],
+      scopes: chartRows.map((p) => ({ ...p })),
+      bins: chartLeaves.map((l) => ({
+        columnId: l.c.id,
+        key: l.b.key,
+        ten: l.b.ten,
+        ngay: [...l.b.ngay],
+      })),
+      ranges: gopNgayThanhKhoang(
+        chartLeaves
+          .filter((l) => type !== "pie" || l.c.id === chartLeaves[0]?.c.id)
+          .flatMap((l) => l.b.ngay),
+      ),
+      group: type === "pie" ? "ngay" : "cau_hinh",
+      metricId: chartLeaves[0]?.c.id || "",
+      customCalendar: false,
+    };
+  }
+  const livePie = specFromSelection("pie", "primary-pie");
+  const primaryMetric = livePie.columns.some(
+    (c) => c.id === primaryPie.metricId,
+  )
+    ? primaryPie.metricId
+    : livePie.metricId;
+  const primaryPieSpec = {
+    ...livePie,
+    ...primaryPie,
+    metricId: primaryMetric,
+    ranges: primaryPie.customCalendar
+      ? primaryPie.ranges
+      : gopNgayThanhKhoang(
+          livePie.bins
+            .filter((b) => b.columnId === primaryMetric)
+            .flatMap((b) => b.ngay),
+        ),
+  };
   function toggleScope(key: string) {
     setChosenScopes((old) =>
       old.includes(key) ? old.filter((k) => k !== key) : [...old, key],
@@ -483,6 +563,9 @@ export default function ThongKeThuChi({
             thu_tu: rows.map((p) => p.key),
             hang_da_chon: selectedRows,
             cot_bieu_do: chartKeys,
+            lich_chung: commonRanges,
+            bieu_do_them: cards,
+            bieu_do_tron: primaryPie,
             bang: table,
             xuat_luc: new Date().toISOString(),
           },
@@ -530,9 +613,26 @@ export default function ThongKeThuChi({
             quickMonth
             start={tu}
             end={den}
+            ranges={commonRanges.length ? commonRanges : [{ tu, den }]}
+            placeholder={
+              commonRanges.length ? chuCacKhoang(commonRanges) : undefined
+            }
+            onRangesChange={(ranges) => {
+              if (!ranges.length) return;
+              setCommonRanges(ranges);
+              setTu(ranges.map((r) => r.tu).sort()[0]);
+              setDen(
+                ranges
+                  .map((r) => r.den)
+                  .sort()
+                  .at(-1)!,
+              );
+              mark();
+            }}
             onChange={(a, b) => {
               setTu(a);
               setDen(b);
+              setCommonRanges([]);
               mark();
             }}
           />
@@ -796,23 +896,8 @@ export default function ThongKeThuChi({
               <option value="chung">Chung</option>
               <option value="ngay">Theo ngày</option>
               <option value="tuan">Theo tuần</option>
+              <option value="thang">Theo tháng</option>
             </select>
-            <label className="tk-common-calendar">
-              <input
-                type="checkbox"
-                aria-label="Sử dụng lịch chung"
-                checked={!current.lichRieng}
-                onChange={(e) =>
-                  patch(current.id, {
-                    lichRieng: !e.target.checked,
-                    khoang: e.target.checked ? undefined : [],
-                    tu: e.target.checked ? tu : "",
-                    den: e.target.checked ? den : "",
-                  })
-                }
-              />
-              Sử dụng lịch chung
-            </label>
             <NhieuKhoangNgay
               ranges={
                 current.lichRieng
@@ -1131,7 +1216,6 @@ export default function ThongKeThuChi({
           className="tk-chart-controls"
           aria-label="Thiết lập biểu đồ thống kê"
         >
-          <span>Đã chọn {chartRows.length} hàng</span>
           <section className="tk-inline-objects" aria-label="Đối tượng biểu đồ">
             {[
               {
@@ -1275,6 +1359,7 @@ export default function ThongKeThuChi({
             start={chartTu}
             end={chartDen}
             onChange={(a, b) => {
+              setChartHasPrivate(true);
               setChartTu(a);
               setChartDen(b);
               mark();
@@ -1290,6 +1375,30 @@ export default function ThongKeThuChi({
             }}
           >
             {chart ? "Ẩn biểu đồ" : "Hiện biểu đồ"}
+          </button>
+        </div>
+        <div className="tk-add-charts">
+          <button
+            type="button"
+            disabled={!data || !chartRows.length || !chartLeaves.length}
+            onClick={() => {
+              setCards((old) => [...old, specFromSelection("bar")]);
+              setChart(true);
+              mark();
+            }}
+          >
+            ＋ Biểu đồ cột
+          </button>
+          <button
+            type="button"
+            disabled={!data || !chartRows.length || !chartLeaves.length}
+            onClick={() => {
+              setCards((old) => [...old, specFromSelection("pie")]);
+              setChart(true);
+              mark();
+            }}
+          >
+            ＋ Biểu đồ tròn
           </button>
         </div>
         {chart && (!chartRows.length || !chartLeaves.length) && (
@@ -1331,66 +1440,107 @@ export default function ThongKeThuChi({
         !tooLarge &&
         chartRows.length > 0 &&
         chartLeaves.length > 0 && (
-          <BieuDoThongKe
-            comparisonOnly={
-              comparisonOnly ||
-              chartLeaves.some(
-                (l) =>
-                  l.c.cachTinh !== "tong" ||
-                  ["so_du", "thoi_gian"].includes(l.c.chiSo),
-              ) ||
-              new Set(chartLeaves.map((l) => l.c.chiSo)).size > 1 ||
-              chartLeaves.some((a, i) =>
+          <div className="tk-primary-chart-pair">
+            <BieuDoThongKe
+              variant="bar"
+              comparisonOnly={
+                comparisonOnly ||
                 chartLeaves.some(
-                  (b, j) =>
-                    j > i &&
-                    a.c.chiSo === b.c.chiSo &&
-                    a.b.ngay.some((d) => b.b.ngay.includes(d)),
-                ),
-              )
-            }
-            pieReason="Biểu đồ tròn cần cùng chỉ số, các phần cộng được và không trùng nhau. Chọn tổng thu, tổng chi hoặc số lượt; không cộng trực tiếp số trung bình và số dư."
-            title="Biểu đồ thống kê"
-            unit={
-              new Set(
-                chartLeaves.map(
-                  (l) => CHI_SO.find((m) => m[0] === l.c.chiSo)?.[2],
-                ),
-              ).size === 1
-                ? CHI_SO.find((m) => m[0] === chartLeaves[0].c.chiSo)?.[2] || ""
-                : "nhiều đơn vị"
-            }
-            points={chartLeaves.flatMap((l) =>
-              chartRows.map((p) => ({
-                id: l.key + ":" + p.key,
-                calc: CALCS.find((g) => g.id === l.c.cachTinh)?.ten || "Tổng",
-                category:
-                  p.loai === "phong"
-                    ? "Phòng"
-                    : p.loai === "chi_nhanh"
-                      ? "Chi nhánh"
-                      : "Tổng",
-                branch:
-                  p.loai === "phong"
-                    ? data.chi_nhanh.find((b) => b.id === p.branch)
-                        ?.ten_homestay
-                    : undefined,
-                unit: CHI_SO.find((m) => m[0] === l.c.chiSo)?.[2] || "",
-                ten:
-                  p.ten +
-                  " · " +
-                  tenCot(l.c) +
-                  (l.b.key !== "chung" ? " · " + l.b.ten : ""),
-                value: tinhGiaTri(
-                  data,
-                  p,
-                  l.c,
-                  l.b.ngay.filter((d) => d >= chartTu && d <= chartDen),
-                ),
-              })),
-            )}
-          />
+                  (l) =>
+                    l.c.cachTinh !== "tong" ||
+                    ["so_du", "thoi_gian"].includes(l.c.chiSo),
+                ) ||
+                new Set(chartLeaves.map((l) => l.c.chiSo)).size > 1 ||
+                chartLeaves.some((a, i) =>
+                  chartLeaves.some(
+                    (b, j) =>
+                      j > i &&
+                      a.c.chiSo === b.c.chiSo &&
+                      a.b.ngay.some((d) => b.b.ngay.includes(d)),
+                  ),
+                )
+              }
+              pieReason="Biểu đồ tròn cần cùng chỉ số, các phần cộng được và không trùng nhau. Chọn tổng thu, tổng chi hoặc số lượt; không cộng trực tiếp số trung bình và số dư."
+              title="Biểu đồ thống kê"
+              unit={
+                new Set(
+                  chartLeaves.map(
+                    (l) => CHI_SO.find((m) => m[0] === l.c.chiSo)?.[2],
+                  ),
+                ).size === 1
+                  ? CHI_SO.find((m) => m[0] === chartLeaves[0].c.chiSo)?.[2] ||
+                    ""
+                  : "nhiều đơn vị"
+              }
+              points={chartLeaves.flatMap((l) =>
+                chartRows.map((p) => ({
+                  id: l.key + ":" + p.key,
+                  calc: CALCS.find((g) => g.id === l.c.cachTinh)?.ten || "Tổng",
+                  category:
+                    p.loai === "phong"
+                      ? "Phòng"
+                      : p.loai === "chi_nhanh"
+                        ? "Chi nhánh"
+                        : "Tổng",
+                  branch:
+                    p.loai === "phong"
+                      ? data.chi_nhanh.find((b) => b.id === p.branch)
+                          ?.ten_homestay
+                      : undefined,
+                  unit: CHI_SO.find((m) => m[0] === l.c.chiSo)?.[2] || "",
+                  ten:
+                    p.ten +
+                    " · " +
+                    tenCot(l.c) +
+                    (l.b.key !== "chung" ? " · " + l.b.ten : ""),
+                  value: tinhGiaTri(
+                    data,
+                    p,
+                    l.c,
+                    l.b.ngay.filter((d) => d >= chartTu && d <= chartDen),
+                  ),
+                })),
+              )}
+            />
+            <BieuDoBoSung
+              spec={primaryPieSpec}
+              onChange={(spec) => {
+                setPrimaryPie({
+                  ranges: spec.ranges,
+                  customCalendar: spec.customCalendar,
+                  group: spec.group,
+                  metricId: spec.metricId,
+                });
+                mark();
+              }}
+              token={token}
+              data={data}
+              dataStart={from}
+              dataEnd={to}
+            />
+          </div>
         )}
+      {chart &&
+        data &&
+        !tooLarge &&
+        cards.map((spec) => (
+          <BieuDoBoSung
+            key={spec.id}
+            spec={spec}
+            onChange={(next) => {
+              setCards((old) => old.map((c) => (c.id === next.id ? next : c)));
+              mark();
+            }}
+            onRemove={() => {
+              setCards((old) => old.filter((c) => c.id !== spec.id));
+              mark();
+            }}
+            token={token}
+            data={data}
+            dataStart={from}
+            dataEnd={to}
+          />
+        ))}
     </section>
   );
 }

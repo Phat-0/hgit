@@ -1,6 +1,6 @@
 # Các trường hợp biểu đồ tròn — chờ xác nhận
 
-Phạm vi là các chỉ số hiện có của trang Thống kê. Chưa triển khai nút tạo thêm nhiều biểu đồ tròn trong bản cập nhật này.
+Cập nhật theo yêu cầu tiếp theo: đã triển khai tạo thêm biểu đồ cột và tròn, riêng biểu đồ tròn chia theo ngày/tuần/tháng với lịch độc lập. Các điều kiện dưới đây vẫn áp dụng; chưa mở cách cộng trực tiếp các mức trung bình hoặc số dư thành tỷ trọng.
 
 ## Điều kiện chung cho một hình tròn
 

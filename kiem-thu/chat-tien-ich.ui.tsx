@@ -557,7 +557,7 @@ const rowChecks=document.querySelectorAll('.stc-sheet tbody .stc-select-cell inp
 await click(rowChecks[0]);await click(rowChecks[1]);
 assert.equal(document.querySelectorAll('.stc-selected-row').length,2);
 assert.equal(document.querySelector('.stc-selected'),null);
-assert.match(document.querySelector('.stc-row-selection-total strong')!.textContent!,/2 hàng/);assert.doesNotMatch(document.querySelector('.stc-row-selection-total strong')!.textContent!,/250.000/);assert.equal(document.querySelector('.stc-sheet tfoot'),null);
+assert.equal(document.querySelector('.stc-row-selection-total strong'),null);assert.equal(document.querySelector('.stc-sheet tfoot'),null);
 const clearRows=document.querySelector('[aria-label="Bỏ chọn hàng"]')!;assert.doesNotMatch(clearRows.textContent!,/Bỏ chọn/);await click(clearRows);assert.equal(document.querySelectorAll('.stc-selected-row').length,0);
 const columnHandle=document.querySelector('[role="separator"]')!;const oldWidth=Number(columnHandle.getAttribute('aria-valuenow'));
 await act(async()=>columnHandle.dispatchEvent(new dom.window.MouseEvent('pointerdown',{bubbles:true,clientX:100,buttons:1})));
@@ -612,12 +612,12 @@ assert.equal(document.querySelectorAll('.tk-name button').length,0);assert.equal
 await click(document.querySelector('.tk-sheet tbody .tk-row-check input'));assert.equal(document.querySelectorAll('.tk-sheet tr[aria-selected=true]').length,1);
 await click(document.querySelector('.tk-sheet thead th button'));assert.ok(document.querySelector('.tk-column-editor'));assert.equal(document.querySelector('.tk-column-editor legend'),null);
 const statsSplit=document.querySelector('[aria-label="Chia cột thống kê"]') as HTMLSelectElement;await act(async()=>{statsSplit.value='ngay';statsSplit.dispatchEvent(new dom.window.Event('change',{bubbles:true}))});assert.ok(document.querySelector('.tk-weekdays'));
-await act(async()=>{statsSplit.value='tuan';statsSplit.dispatchEvent(new dom.window.Event('change',{bubbles:true}))});assert.equal(document.querySelector('.tk-weekdays'),null);assert.equal((document.querySelector('[aria-label="Sử dụng lịch chung"]') as HTMLInputElement).checked,true);assert.equal(document.querySelector('.tk-column-editor .lp-range-button')!.textContent!.trim(),'▦');assert.equal(document.querySelector('.tk-page [role=alert]'),null);
+await act(async()=>{statsSplit.value='tuan';statsSplit.dispatchEvent(new dom.window.Event('change',{bubbles:true}))});assert.equal(document.querySelector('.tk-weekdays'),null);assert.equal(document.querySelector('[aria-label="Sử dụng lịch chung"]'),null);assert.equal(document.querySelector('.tk-column-editor .lp-range-button')!.textContent!.trim(),'▦');assert.equal(document.querySelector('.tk-page [role=alert]'),null);
 await click(document.querySelector('.tk-column-editor .lp-range-button'));assert.ok(document.querySelector('.lp-range-portal'));await click(document.querySelector('.lp-range-close'));
 await click(document.querySelector('[aria-label="Chọn giá trị thống kê"]'));await click([...document.querySelectorAll('.tk-add-column button')].find(e=>e.textContent==='TB thời gian lưu trú')!);assert.equal(document.querySelectorAll('.tk-value-chip').length,6);
 const statsKind=document.querySelector('[aria-label="Loại đặt của cột"]') as HTMLSelectElement;assert.equal(statsKind.value,'Theo giờ');assert.ok(document.querySelector('[aria-label="Hiện khung giờ phổ biến"]'));assert.doesNotMatch(document.querySelector('.tk-column-editor')!.textContent!,/Giờ nhận phòng/);
 assert.deepEqual([...document.querySelectorAll('[aria-label="Cách tính cột"] option')].map(e=>e.textContent),['Tổng','Trung bình ngày','Trung bình tuần']);
-assert.deepEqual([...document.querySelectorAll('[aria-label="Chia cột thống kê"] option')].map(e=>e.textContent),['Chung','Theo ngày','Theo tuần']);
+assert.deepEqual([...document.querySelectorAll('[aria-label="Chia cột thống kê"] option')].map(e=>e.textContent),['Chung','Theo ngày','Theo tuần','Theo tháng']);
 assert.ok(document.querySelector('.tk-chart-controls [aria-label="Hiển thị biểu đồ thống kê"]'));assert.equal(document.querySelector('.tk-toolbar [aria-label="Hiển thị biểu đồ thống kê"]'),null);
 const previousConfirm=window.confirm;window.confirm=()=>false;assert.equal(window.dispatchEvent(new dom.window.Event('homestay:truoc-chuyen-trang',{cancelable:true})),false);window.confirm=previousConfirm;
 console.log('PASS UI thống kê: tab thứ hai, API riêng, header hai hàng, chọn phạm vi, chia thứ/lịch riêng, thêm cột và cảnh báo rời trang.');

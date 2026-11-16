@@ -904,7 +904,7 @@ export default function SoThuChi({
             >
               ⊠
             </button>
-            <strong>Đã chọn {selectedRows.length} hàng</strong>
+
           </div>
           <div className="stc-period-total">
             <RangePicker

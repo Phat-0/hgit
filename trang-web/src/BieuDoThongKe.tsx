@@ -9,9 +9,11 @@ export default function BieuDoThongKe({
   points,
   comparisonOnly = false,
   pieReason,
+  variant = "both",
 }: {
   comparisonOnly?: boolean;
   pieReason?: string;
+  variant?: "bar" | "pie" | "both";
   title: string;
   unit: string;
   points: {
@@ -226,132 +228,137 @@ export default function BieuDoThongKe({
           </button>
         )}
       </div>
-      <div className="stc-chart-grid" ref={ref}>
-        <figure>
-          <figcaption>{usePercent ? "Tỷ trọng (%)" : unit}</figcaption>
-          <div className="stc-svg-scroll">
-            <svg
-              width={data.length > 5 ? width : "100%"}
-              viewBox={`0 0 ${width} 300`}
-              height="300"
-              role="img"
-              aria-label="Biểu đồ cột thống kê"
-            >
-              <line
-                x1="55"
-                x2={width - 15}
-                y1={y(0)}
-                y2={y(0)}
-                stroke="#cbbbdb"
-              />
-              {data.map((p, i) => (
-                <g key={p.id}>
-                  <rect
-                    x={85 + i * 130}
-                    y={Math.min(y(0), y(p.value!))}
-                    width="38"
-                    height={Math.abs(y(p.value!) - y(0))}
-                    fill={
-                      colors[
-                        points.findIndex((x) => x.id === p.id) % colors.length
-                      ]
-                    }
-                    rx="4"
-                  >
-                    <title>{p.ten + ": " + txt(p.value!, p.unit)}</title>
-                  </rect>
-                  <text
-                    x={104 + i * 130}
-                    y={y(p.value!) - 8}
-                    textAnchor="middle"
-                    fontSize="10"
-                  >
-                    {txt(p.value!, p.unit)}
-                  </text>
-                  <text
-                    x={104 + i * 130}
-                    y="278"
-                    textAnchor="middle"
-                    fontSize="10"
-                  >
-                    <title>{p.ten}</title>
-                    {p.ten.length > 18 ? p.ten.slice(0, 17) + "…" : p.ten}
-                  </text>
-                </g>
-              ))}
-              {line && (
-                <polyline
-                  fill="none"
-                  stroke="#745097"
-                  strokeWidth="2"
-                  points={data
-                    .map((p, i) => `${104 + i * 130},${y(p.value!)}`)
-                    .join(" ")}
+      <div className={"stc-chart-grid tk-chart-variant-" + variant} ref={ref}>
+        {variant !== "pie" && (
+          <figure>
+            <figcaption>{usePercent ? "Tỷ trọng (%)" : unit}</figcaption>
+            <div className="stc-svg-scroll">
+              <svg
+                width={data.length > 5 ? width : "100%"}
+                viewBox={`0 0 ${width} 300`}
+                height="300"
+                role="img"
+                aria-label="Biểu đồ cột thống kê"
+              >
+                <line
+                  x1="55"
+                  x2={width - 15}
+                  y1={y(0)}
+                  y2={y(0)}
+                  stroke="#cbbbdb"
                 />
-              )}
-            </svg>
-          </div>
-        </figure>
-        <figure>
-          <figcaption>Tỷ trọng các đối tượng</figcaption>
-          {unit === "nhiều đơn vị" ? (
-            <p>Chọn các giá trị cùng đơn vị để xem tỷ trọng.</p>
-          ) : comparisonOnly ? (
-            <p>
-              {pieReason ||
-                "Các đối tượng được chọn có dữ liệu bao gồm nhau. Chỉ xem tỷ trọng khi các phần không trùng nhau."}
-            </p>
-          ) : data.some((p) => p.value! < 0) ? (
-            <p>Không tính tỷ trọng hình tròn cho giá trị âm.</p>
-          ) : (
-            <svg
-              width="380"
-              height="300"
-              viewBox="0 0 380 300"
-              role="img"
-              aria-label="Biểu đồ tròn thống kê"
-            >
-              <circle
-                cx="190"
-                cy="145"
-                r="70"
-                fill="none"
-                stroke="#eee6f3"
-                strokeWidth="35"
-              />
-              {data
-                .filter((p) => p.value! > 0)
-                .map((p, i) => {
-                  const length = (p.value! / sum) * circ,
-                    o = offset;
-                  offset += length;
-                  return (
-                    <circle
-                      key={p.id}
-                      cx="190"
-                      cy="145"
-                      r="70"
-                      fill="none"
-                      stroke={
+                {data.map((p, i) => (
+                  <g key={p.id}>
+                    <rect
+                      x={85 + i * 130}
+                      y={Math.min(y(0), y(p.value!))}
+                      width="38"
+                      height={Math.abs(y(p.value!) - y(0))}
+                      fill={
                         colors[
                           points.findIndex((x) => x.id === p.id) % colors.length
                         ]
                       }
-                      strokeWidth="35"
-                      strokeDasharray={`${length} ${circ - length}`}
-                      strokeDashoffset={-o}
-                      transform="rotate(-90 190 145)"
+                      rx="4"
                     >
                       <title>{p.ten + ": " + txt(p.value!, p.unit)}</title>
-                    </circle>
-                  );
-                })}
-              <text x="190" y="150" textAnchor="middle" fontSize="12">
-                {hienSo(sum)} {unit}
-              </text>
-            </svg>
-          )}
-        </figure>
+                    </rect>
+                    <text
+                      x={104 + i * 130}
+                      y={y(p.value!) - 8}
+                      textAnchor="middle"
+                      fontSize="10"
+                    >
+                      {txt(p.value!, p.unit)}
+                    </text>
+                    <text
+                      x={104 + i * 130}
+                      y="278"
+                      textAnchor="middle"
+                      fontSize="10"
+                    >
+                      <title>{p.ten}</title>
+                      {p.ten.length > 18 ? p.ten.slice(0, 17) + "…" : p.ten}
+                    </text>
+                  </g>
+                ))}
+                {line && (
+                  <polyline
+                    fill="none"
+                    stroke="#745097"
+                    strokeWidth="2"
+                    points={data
+                      .map((p, i) => `${104 + i * 130},${y(p.value!)}`)
+                      .join(" ")}
+                  />
+                )}
+              </svg>
+            </div>
+          </figure>
+        )}
+        {variant !== "bar" && (
+          <figure>
+            <figcaption>Tỷ trọng các đối tượng</figcaption>
+            {unit === "nhiều đơn vị" ? (
+              <p>Chọn các giá trị cùng đơn vị để xem tỷ trọng.</p>
+            ) : comparisonOnly ? (
+              <p>
+                {pieReason ||
+                  "Các đối tượng được chọn có dữ liệu bao gồm nhau. Chỉ xem tỷ trọng khi các phần không trùng nhau."}
+              </p>
+            ) : data.some((p) => p.value! < 0) ? (
+              <p>Không tính tỷ trọng hình tròn cho giá trị âm.</p>
+            ) : (
+              <svg
+                width="380"
+                height="300"
+                viewBox="0 0 380 300"
+                role="img"
+                aria-label="Biểu đồ tròn thống kê"
+              >
+                <circle
+                  cx="190"
+                  cy="145"
+                  r="70"
+                  fill="none"
+                  stroke="#eee6f3"
+                  strokeWidth="35"
+                />
+                {data
+                  .filter((p) => p.value! > 0)
+                  .map((p, i) => {
+                    const length = (p.value! / sum) * circ,
+                      o = offset;
+                    offset += length;
+                    return (
+                      <circle
+                        key={p.id}
+                        cx="190"
+                        cy="145"
+                        r="70"
+                        fill="none"
+                        stroke={
+                          colors[
+                            points.findIndex((x) => x.id === p.id) %
+                              colors.length
+                          ]
+                        }
+                        strokeWidth="35"
+                        strokeDasharray={`${length} ${circ - length}`}
+                        strokeDashoffset={-o}
+                        transform="rotate(-90 190 145)"
+                      >
+                        <title>{p.ten + ": " + txt(p.value!, p.unit)}</title>
+                      </circle>
+                    );
+                  })}
+                <text x="190" y="150" textAnchor="middle" fontSize="12">
+                  {hienSo(sum)} {unit}
+                </text>
+              </svg>
+            )}
+          </figure>
+        )}
       </div>
     </section>
   );

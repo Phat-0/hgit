@@ -13,16 +13,18 @@ export function SapXepTrucTiep({
     <section className="bd-sort" role="group" aria-label={label}>
       <h4>Sắp xếp</h4>
       <div>
-        {options.map(([id, ten]) => (
-          <button
-            type="button"
-            key={id}
-            aria-pressed={value === id}
-            onClick={() => onChange(id)}
-          >
-            {ten}
-          </button>
-        ))}
+        {options
+          .filter(([id]) => !["manual", "default"].includes(id))
+          .map(([id, ten]) => (
+            <button
+              type="button"
+              key={id}
+              aria-pressed={value === id}
+              onClick={() => onChange(value === id ? "" : id)}
+            >
+              {ten}
+            </button>
+          ))}
       </div>
     </section>
   );
