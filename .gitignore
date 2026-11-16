@@ -1,4 +1,4 @@
-﻿node_modules/
+node_modules/
 dist/
 build/
 .env
@@ -9,3 +9,7 @@ build/
 .flutter-plugins*
 .idea/
 .vscode/settings.json
+
+# Thư mục chuyển đổi nguồn và bản sao lưu cục bộ, không đưa lên Git
+trang-web/nguon-sap-xep/
+trang-web/sao-luu-src-20261117/

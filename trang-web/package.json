@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "kiem-tra:cau-truc": "node scripts/kiem-tra-cau-truc.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview"

@@ -24,9 +24,9 @@ const React = await import("../trang-web/node_modules/react/index.js");
 const { act } = React;
 const { createRoot } =
   await import("../trang-web/node_modules/react-dom/client.js");
-const { default: TroChuyen } = await import("../trang-web/src/TroChuyen.tsx");
+const { default: TroChuyen } = await import("../trang-web/src/dung-chung/tro-chuyen/TroChuyen.tsx");
 const { default: ThongBaoDon } =
-  await import("../trang-web/src/ThongBaoDon.tsx");
+  await import("../trang-web/src/quan-tri/thong-bao/ThongBaoDon.tsx");
 const now = new Date().toISOString();
 const f = {
   id: "f1",
@@ -489,8 +489,8 @@ assert.equal(noticesRead, true);
 assert.equal(document.querySelector(".qt-notice-panel"), null);
 await act(async () => root.unmount());
 // Tạo/sửa đơn dùng chung cho Lịch và Đơn đặt phòng.
-const {default:FormDonDatPhong}=await import('../trang-web/src/FormDonDatPhong.tsx');
-const {tinhGiaDon}=await import('../trang-web/src/tinh-gia-don.ts');
+const {default:FormDonDatPhong}=await import('../trang-web/src/quan-tri/don-dat-phong/FormDonDatPhong.tsx');
+const {tinhGiaDon}=await import('../trang-web/src/quan-tri/don-dat-phong/tinh-gia-don.ts');
 const roomPrices={so_gio_toi_thieu:2,gia_moi_gio:200000,gia_moi_dem:500000,gia_moi_ngay:700000,gia_phu_thu_gio:50000};
 const hours={gio_tu:'08:00',gio_den:'22:00',ngay_tu:'14:00',ngay_den:'12:00',dem_tu:'20:00',dem_den:'08:00'};
 assert.equal(tinhGiaDon(roomPrices,'gio',new Date('2030-01-01T08:00:00+07:00'),new Date('2030-01-01T11:00:00+07:00'),hours),250000);
@@ -526,12 +526,12 @@ let routeHandler:any;
 const fixtures=await duLieuGiaoDien({context:()=>({addInitScript:async()=>{}}),route:async(_p:any,handler:any)=>{routeHandler=handler}} as any);
 const uiRequests:string[]=[];
 globalThis.fetch=async(url:any,init:any={})=>new Promise(resolve=>{const full=new URL(url,'https://home.test').href;uiRequests.push(full);void routeHandler({request:()=>({url:()=>full,method:()=>init.method||'GET',postDataJSON:()=>init.body?JSON.parse(init.body):null}),fulfill:async({status,body}:any)=>resolve({ok:status<400,json:async()=>JSON.parse(body)} as any)});});
-const {default:TongQuan}=await import('../trang-web/src/TongQuan.tsx');
-const {default:BaoCao}=await import('../trang-web/src/BaoCao.tsx');
-const {default:DanhGia}=await import('../trang-web/src/DanhGia.tsx');
-const {default:ComboPage}=await import('../trang-web/src/GoiGiaCombo.tsx');
-const {default:TrangChuQuanTri}=await import('../trang-web/src/TrangChuQuanTri.tsx');
-const {default:VaiTroNhanVien}=await import('../trang-web/src/VaiTroNhanVien.tsx');
+const {default:TongQuan}=await import('../trang-web/src/quan-tri/tong-quan/TongQuan.tsx');
+const {default:BaoCao}=await import('../trang-web/src/quan-tri/bao-cao/BaoCao.tsx');
+const {default:DanhGia}=await import('../trang-web/src/quan-tri/danh-gia/DanhGia.tsx');
+const {default:ComboPage}=await import('../trang-web/src/quan-tri/combo/GoiGiaCombo.tsx');
+const {default:TrangChuQuanTri}=await import('../trang-web/src/quan-tri/trang-chu/TrangChuQuanTri.tsx');
+const {default:VaiTroNhanVien}=await import('../trang-web/src/quan-tri/nhan-vien/VaiTroNhanVien.tsx');
 const goCalls:any[]=[];
 const go=(page:string,filter?:any)=>{goCalls.push([page,filter]);};
 root=createRoot(document.getElementById('root')!);
@@ -546,7 +546,7 @@ assert.equal(document.querySelectorAll('.stc-sheet tbody tr').length,2);
 assert.equal(document.querySelectorAll('.stc-sheet th').length,9);assert.equal(document.querySelector('.stc-row-actions'),null);assert.ok(document.querySelector('.stc-add-row'));assert.equal([...document.querySelectorAll('button')].some(e=>e.textContent==='Thay đổi'),false);
 await edit(document.querySelector('[aria-label="Tiền tồn đầu tháng"]') as HTMLInputElement,'1500');assert.ok([...document.querySelectorAll('button')].some(e=>e.textContent==='Thay đổi'));await edit(document.querySelector('[aria-label="Tiền tồn đầu tháng"]') as HTMLInputElement,'1000');assert.equal([...document.querySelectorAll('button')].some(e=>e.textContent==='Thay đổi'),false);
 
-const {csvThuChi,xlsxThuChi}=await import('../trang-web/src/xuat-so-thu-chi.ts');
+const {csvThuChi,xlsxThuChi}=await import('../trang-web/src/quan-tri/bao-cao/thu-chi/xuat-so-thu-chi.ts');
 assert.match(csvThuChi([['=cmd',-50000]]),/"'=cmd","-50000"/);
 const exportBuffer=xlsxThuChi([{name:'Sổ thu chi',rows:[['Tên','Tiền'],['=không thực thi',-50000]]}]);
 const fsExport=await import('node:fs');fsExport.writeFileSync('/tmp/hgit-kiem-thu-xuat.xlsx',new Uint8Array(exportBuffer));
@@ -566,7 +566,7 @@ await act(async()=>window.dispatchEvent(new dom.window.MouseEvent('pointerup')))
 assert.equal(Number(columnHandle.getAttribute('aria-valuenow')),oldWidth+60);
 await act(async()=>columnHandle.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Home',bubbles:true})));
 assert.equal(Number(columnHandle.getAttribute('aria-valuenow')),oldWidth);
-const {lapDayCot}=await import('../trang-web/src/ChinhDoRongCot.tsx');assert.equal(Math.round(lapDayCot([70,70],500).reduce((a,b)=>a+b,36)),500);assert.equal(lapDayCot([300,300],400).reduce((a,b)=>a+b,36),636);
+const {lapDayCot}=await import('../trang-web/src/dung-chung/bieu-mau/ChinhDoRongCot.tsx');assert.equal(Math.round(lapDayCot([70,70],500).reduce((a,b)=>a+b,36)),500);assert.equal(lapDayCot([300,300],400).reduce((a,b)=>a+b,36),636);
 const heightHandle=document.querySelector('[aria-label="Chiều cao bảng"]')!;const oldHeight=Number(heightHandle.getAttribute('aria-valuenow'));await act(async()=>heightHandle.dispatchEvent(new dom.window.MouseEvent('pointerdown',{bubbles:true,clientY:100,buttons:1})));await act(async()=>window.dispatchEvent(new dom.window.MouseEvent('pointermove',{clientY:180,buttons:1})));await act(async()=>window.dispatchEvent(new dom.window.MouseEvent('pointerup')));assert.equal(Number(heightHandle.getAttribute('aria-valuenow')),oldHeight+80);await act(async()=>heightHandle.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Home',bubbles:true})));
 
 const firstKind=document.querySelector('.stc-sheet [aria-label="Thu hoặc chi"]') as HTMLSelectElement;
@@ -575,7 +575,7 @@ assert.equal((document.querySelector('.stc-sheet [aria-label="Số tiền thu ch
 assert.match(document.querySelector('.stc-kind-tabs')!.textContent!,/1.250.000/);
 await click(document.querySelector('[aria-label="Hiện phần trăm biểu đồ"]'));
 assert.match(document.querySelector('.stc-chart-grid figcaption')!.textContent!,/%/);
-const {tongDong}=await import('../trang-web/src/so-thu-chi.ts');
+const {tongDong}=await import('../trang-web/src/quan-tri/bao-cao/thu-chi/so-thu-chi.ts');
 assert.deepEqual(tongDong([{so_tien:300000},{so_tien:-50000}] as any),{tong:250000,thu:300000,chi:-50000});
 await click(document.querySelector('.stc-compact-toolbar .lp-range-button'));
 assert.ok(document.querySelector('.lp-calendar-pair'));assert.equal(document.querySelectorAll('.lp-month-strip button').length,12);
@@ -598,7 +598,7 @@ assert.equal(document.querySelector('.stc-chart-legend'),null);assert.equal(docu
 assert.match(document.querySelector('svg[data-chart="tron"]')!.textContent!,/Thu/);assert.match(document.querySelector('svg[data-chart="tron"]')!.textContent!,/Chi/);
 const chartScope=document.querySelector('[aria-label="Loại đối tượng biểu đồ"]') as HTMLSelectElement;await act(async()=>{chartScope.value='phong';chartScope.dispatchEvent(new dom.window.Event('change',{bubbles:true}))});assert.equal(document.querySelector('[aria-label="Chọn chi nhánh biểu đồ"]'),null);await click(document.querySelector('[aria-label="Chọn phòng biểu đồ"] input'));assert.equal(document.querySelectorAll('svg[data-chart="cot"] rect').length,1);
 await click(document.querySelector('.stc-charts .lp-range-button'));await click(document.querySelector('[aria-label="Năm sau"]'));await click([...document.querySelectorAll('.lp-month-strip button')].find(e=>e.textContent==='T1')!);await click([...document.querySelectorAll('.lp-range-portal button')].find(e=>e.textContent==='Chọn tháng')!);await wait();assert.ok(uiRequests.some(u=>u.includes('/thu-chi?')&&u.includes('tu_ngay=2027-01-01')));assert.match(document.querySelector('.stc-compact-toolbar .lp-range-button')!.textContent!,/10\/02\/2028/);
-const {nhomThuChi,cacNgay}=await import('../trang-web/src/bieu-do-thu-chi.ts');
+const {nhomThuChi,cacNgay}=await import('../trang-web/src/quan-tri/bao-cao/thu-chi/bieu-do-thu-chi.ts');
 const grouped=nhomThuChi([{id:'a',ngay:'2028-02-01',homestay_id:'b1',phong_id:'p1',ten:'A',ghi_chu:'',so_tien:100},{id:'b',ngay:'2028-02-01',homestay_id:'b1',phong_id:'p1',ten:'B',ghi_chu:'',so_tien:-40},{id:'c',ngay:'2028-02-02',homestay_id:null,phong_id:null,ten:'Khác',ghi_chu:'',so_tien:10}] as any,'chi_nhanh',[{id:'b1',ten_homestay:'Một'},{id:'b2',ten_homestay:'Hai'}],[],[]);
 assert.deepEqual(grouped.map(g=>[g.key,g.thu,g.chi]),[['b1',100,40],['b2',0,0],['chung',10,0]]);assert.equal(cacNgay('2028-02-01','2028-02-29').length,29);
 console.log('PASS UI biểu đồ: một loại đối tượng, thu hoặc chi, menu tùy chọn, đường chồng cột, tròn thu/chi và lịch độc lập.');
@@ -635,7 +635,7 @@ await act(async()=>root.render(<TrangChuQuanTri token="admin"/>));await wait();a
 await act(async()=>root.unmount());root=createRoot(document.getElementById('root')!);
 await act(async()=>root.render(<VaiTroNhanVien token="admin" onChanged={async()=>{}}/>));await wait();assert.match(document.querySelector('.nv-roles')!.textContent!,/toàn hệ thống/);assert.ok(document.querySelector('.nv-role-list button'));
 await act(async()=>root.unmount());
-const {default:DonDatPhongMoi}=await import('../trang-web/src/DonDatPhong.tsx');
+const {default:DonDatPhongMoi}=await import('../trang-web/src/quan-tri/don-dat-phong/DonDatPhong.tsx');
 let openedThread:any;
 root=createRoot(document.getElementById('root')!);
 await act(async()=>root.render(<DonDatPhongMoi token="admin" onOpenChat={x=>{openedThread=x}}/>));await wait();
@@ -650,7 +650,7 @@ assert.equal(document.querySelector('.don-lifecycle button.don-action-checkin')?
 assert.equal(document.querySelector('.don-lifecycle button.don-action-off')?.hasAttribute('disabled'),true);
 assert.match(document.querySelector('.don-lich-dialog dl')!.textContent!,/Nhận → Trả/);
 await act(async()=>root.unmount());
-const {default:ThietLapTrangThaiMoi,hienThiMacDinh}=await import('../trang-web/src/ThietLapTrangThai.tsx');
+const {default:ThietLapTrangThaiMoi,hienThiMacDinh}=await import('../trang-web/src/quan-tri/lich/ThietLapTrangThai.tsx');
 root=createRoot(document.getElementById('root')!);
 await act(async()=>root.render(<ThietLapTrangThaiMoi token="admin" value={{...hienThiMacDinh,phien_ban:1}} onSaved={()=>{}}/>));await wait();
 assert.equal(document.querySelectorAll('.lp-state-group').length,2);

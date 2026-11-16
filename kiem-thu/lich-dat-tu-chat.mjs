@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { lichTuTinNhan } from '../trang-web/src/dat-phong-tu-tin-nhan.ts';
+import { lichTuTinNhan } from '../trang-web/src/khach/thanh-phan/dat-phong-tu-tin-nhan.ts';
 const now = new Date('2026-11-16T12:00:00+07:00');
 assert.deepEqual(lichTuTinNhan('Nhận 20/11 trả 22/11, 2 người', now), {
   start: '2026-11-20', end: '2026-11-22', kind: 'ngay', guests: 2,

@@ -8,7 +8,7 @@ try {
   await build({
     entryPoints: [
       fileURLToPath(
-        new URL("../trang-web/src/thong-ke-thu-chi.ts", import.meta.url),
+        new URL("../trang-web/src/quan-tri/bao-cao/thong-ke/thong-ke-thu-chi.ts", import.meta.url),
       ),
     ],
     outfile: temp + "/engine.mjs",

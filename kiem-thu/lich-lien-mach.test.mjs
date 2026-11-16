@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { viTriDoanLich } from '../trang-web/src/quan-tri/lich/hinh-hoc-lich.ts';
+const time = value => new Date(value+'+07:00').getTime();
+const a=time('2026-11-17T00:00:00'),b=time('2026-11-19T00:00:00');
+const first=viTriDoanLich(time('2026-11-17T20:00:00'),time('2026-11-18T08:00:00'),a,b);
+const next=viTriDoanLich(time('2026-11-18T08:00:00'),time('2026-11-18T10:30:00'),a,b);
+assert.ok(Math.abs(first.left+first.width-next.left)<1e-10,'Hai khoảng sát nhau không có khe thời gian');
+assert.deepEqual(viTriDoanLich(a-3600000,b+3600000,a,b),{left:0,width:100});
+assert.equal(viTriDoanLich(b,b+3600000,a,b),null);
+assert.equal(viTriDoanLich(a,a,a,b),null);
+assert.equal(viTriDoanLich(a,b,a,a),null);
+assert.ok(Math.abs(next.width-2.5/48*100)<1e-10,'Giờ kết thúc lẻ nửa giờ được giữ chính xác');
+console.log('PASS lịch: qua đêm, tiếp giáp, kết thúc nửa giờ, cắt biên và khoảng rỗng');

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {chuKhoangNgay} from '../trang-web/src/lich-hien-thi.ts';
+import {chuKhoangNgay} from '../trang-web/src/dung-chung/lich/lich-hien-thi.ts';
 assert.equal(chuKhoangNgay({tu:'2026-11-01',den:'2026-11-05'},2026),'01–05/11');
 assert.equal(chuKhoangNgay({tu:'2025-11-01',den:'2025-11-05'},2026),'01–05/11/2025');
 assert.equal(chuKhoangNgay({tu:'2026-11-28',den:'2026-12-02'},2026),'28/11–02/12');

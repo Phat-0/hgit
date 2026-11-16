@@ -16,7 +16,7 @@ export async function duLieuGiaoDien(page){
  const home={hero:{hien:true,tieu_de:'Đổi không gian. Chạm cảm hứng.',noi_dung:'Một buổi hẹn, một đêm nghỉ.',anh:''},gioi_thieu:{hien:false,tieu_de:'Giới thiệu',noi_dung:'',anh:''},the:[],hien_phong:true,chan_trang:{hien:true,tieu_de:'HomeStay',noi_dung:'Đặt phòng linh hoạt.',anh:''}};
  const pages=['tong-quan','lich','chi-nhanh','phong','loai-phong','goi-combo','dat-phong','trang-chu','nhan-vien','tin-nhan','danh-gia','bao-cao'];
  let chartSettings={doi_tuong:[],phien_ban:0};
- await page.route('**/api/**',async route=>{const path=new URL(route.request().url()).pathname,method=route.request().method();let data={};
+ await page.route(url=>url.pathname.startsWith('/api/'),async route=>{const path=new URL(route.request().url()).pathname,method=route.request().method();let data={};
  if(path.endsWith('/lam-moi'))data={access_token:'fixture-access',refresh_token:'fixture-refresh',nguoi_dung:{email:'kiem-thu@example.invalid'}};
  else if(path.endsWith('/toi'))data={duoc_phep:true,quan_tri_he_thong:true,trang:pages};
  else if(path.endsWith('/tong-quan-moi'))data={...report,tong_homestay:2,tong_phong:10,tong_dat_phong:20,tong_nguoi_dung:30,tong_danh_gia:6,sao_trung_binh:"4.5",danh_gia_tuan:2,chenh_lech_hom_qua:'200000',danh_gia_moi:[review]};
