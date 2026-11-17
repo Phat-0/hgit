@@ -14,7 +14,7 @@ export async function duLieuGiaoDien(page){
  const picture='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320"><rect width="480" height="320" fill="#6a38a0"/><circle cx="240" cy="160" r="100" fill="#a174c9"/><text x="130" y="170" fill="white" font-size="28">COMBO DEMO</text></svg>');
  const combos=Array.from({length:8},(_,i)=>({id:'combo'+i,ten_combo:'Chương trình nghỉ dưỡng '+(i+1),gia_combo:'150000',so_gio_bao_gom:null,mo_ta:'Dịch vụ trang trí phòng và đồ uống. Chi tiết kiểm thử bố cục.',trang_thai:'Đang bán',anh_dai_dien:picture,anh:[{key:'demo',url:picture}],bat_dau:null,ket_thuc:null,pham_vi:'toan_he_thong',chi_nhanh_ids:[],phong_ids:[]}));
  const home={hero:{hien:true,tieu_de:'Đổi không gian. Chạm cảm hứng.',noi_dung:'Một buổi hẹn, một đêm nghỉ.',anh:''},gioi_thieu:{hien:false,tieu_de:'Giới thiệu',noi_dung:'',anh:''},the:[],hien_phong:true,chan_trang:{hien:true,tieu_de:'HomeStay',noi_dung:'Đặt phòng linh hoạt.',anh:''}};
- const pages=['tong-quan','lich','chi-nhanh','phong','loai-phong','goi-combo','dat-phong','trang-chu','nhan-vien','tin-nhan','danh-gia','bao-cao'];
+ const pages=['tong-quan','lich','chi-nhanh','phong','loai-phong','goi-combo','dat-phong','trang-chu','nhan-vien','chatbot','tin-nhan','danh-gia','bao-cao'];
  let chartSettings={doi_tuong:[],phien_ban:0};
  await page.route(url=>url.pathname.startsWith('/api/'),async route=>{const path=new URL(route.request().url()).pathname,method=route.request().method();let data={};
  if(path.endsWith('/lam-moi'))data={access_token:'fixture-access',refresh_token:'fixture-refresh',nguoi_dung:{email:'kiem-thu@example.invalid'}};

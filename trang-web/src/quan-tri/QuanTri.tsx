@@ -1,3 +1,4 @@
+import Chatbot from "./chatbot/Chatbot";
 import BieuTuong, {type TenBieuTuong} from "../dung-chung/giao-dien/BieuTuong";
 import { useBamNgoai } from "../dung-chung/bieu-mau/lua-chon-noi";
 import TongQuan from "./tong-quan/TongQuan";
@@ -55,6 +56,7 @@ type Muc =
   | "goi-combo"
   | "dat-phong"
   | "trang-chu"
+  | "chatbot"
   | "nhan-vien"
   | "danh-gia"
   | "bao-cao"
@@ -69,6 +71,7 @@ const danhMuc: { id: Muc; nhan: string; icon: string }[] = [
   { id: "goi-combo", nhan: "Combo", icon: "gift" },
   { id: "dat-phong", nhan: "Đơn đặt phòng", icon: "calendar" },
   { id: "trang-chu", nhan: "Trang chủ", icon: "home" },
+  { id: "chatbot", nhan: "Chatbot AI", icon: "message" },
   { id: "nhan-vien", nhan: "Nhân viên", icon: "users" },
   { id: "tin-nhan", nhan: "Tin nhắn", icon: "message" },
   { id: "danh-gia", nhan: "Đánh giá", icon: "star" },
@@ -575,7 +578,9 @@ export default function QuanTri() {
               {thongBao}
             </div>
           )}
-          {muc === "trang-chu" ? (
+          {muc === "chatbot" ? (
+            <Chatbot token={token} />
+          ) : muc === "trang-chu" ? (
             <TrangChuQuanTri token={token} />
           ) : muc === "tin-nhan" ? null : muc === "nhan-vien" ? (
             <NhanVien token={token} />

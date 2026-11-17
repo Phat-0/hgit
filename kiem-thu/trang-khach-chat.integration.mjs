@@ -171,6 +171,7 @@ const { ChatService } = await import(
   root + "/may-chu/dist/khach-hang/chat.service.js"
 );
 await db.query('UPDATE public.loai_phong SET mo_ta=$1 WHERE id=$2',['Mô tả chuyển từ loại',type]);
+await db.exec(fs.readFileSync(root+'/co-so-du-lieu/migrations/20261118-chatbot.sql','utf8'));
 const descriptionMigration=fs.readFileSync(root+'/co-so-du-lieu/migrations/chuyen-mo-ta-loai-phong-sang-phong.sql','utf8');
 await db.exec(descriptionMigration);
 assert.equal((await db.query('SELECT mo_ta FROM public.phong WHERE id=$1',[room])).rows[0].mo_ta,'Mô tả chuyển từ loại');
@@ -1193,4 +1194,6 @@ await db.query("UPDATE public.dat_phong SET trang_thai='Đã xác nhận' WHERE 
 const comboUsage=(await service.catalog()).combo;
 assert.ok(serviceCombos.every(id=>comboUsage.find(c=>c.id===id)?.luot_dat===1));
 console.log('PASS phụ thu và nhiều combo: tổng tiền server, snapshot, phạm vi, lượt dùng và chống trùng lịch.');
+const {kiemTraChatbot}=await import('./chatbot.integration.mjs');
+await kiemTraChatbot({db,conn,chat,root,admin,direct});
 await db.close();

@@ -150,7 +150,7 @@ export class ChatService {
         }
       }
       const r = await c.query(
-        "INSERT INTO public.cuoc_tro_chuyen(khach_hang_id,homestay_id,khach_vang_lai_hash,che_do_xu_ly) VALUES($1,$2,$3,'Nhân viên tiếp quản') RETURNING id",
+        "INSERT INTO public.cuoc_tro_chuyen(khach_hang_id,homestay_id,khach_vang_lai_hash,che_do_xu_ly) VALUES($1,$2,$3,CASE WHEN EXISTS(SELECT 1 FROM public.chatbot_cau_hinh WHERE id=true AND bat) THEN 'AI hỗ trợ' ELSE 'Nhân viên tiếp quản' END) RETURNING id",
         [user?.id ?? null, branch, guestHash],
       );
       if (user)
@@ -343,6 +343,8 @@ export class ChatService {
             cua_toi: own,
             ten_nguoi_gui: own
               ? 'Bạn'
+              : m.loai_nguoi_gui === 'AI'
+                ? 'Trợ lý HomeStay · AI'
               : thread.loai === 'ho_tro' && !staff
                 ? 'Hỗ trợ HomeStay'
                 : m.ten_nguoi_gui === 'Khách vãng lai'
@@ -401,6 +403,7 @@ export class ChatService {
       commitAttempted = false;
     try {
       await c.query('BEGIN');
+      await c.query('SELECT id FROM public.cuoc_tro_chuyen WHERE id=$1 FOR UPDATE',[id]);
       const { t, staff } = await this.access(c, id, user?.id, token);
       if (t.trang_thai !== 'Đang mở')
         throw new BadRequestException('Hội thoại đã đóng');
@@ -457,6 +460,10 @@ export class ChatService {
         'UPDATE public.cuoc_tro_chuyen SET ngay_cap_nhat=now() WHERE id=$1',
         [id],
       );
+      if(t.loai==='ho_tro'){
+        await c.query("UPDATE public.cuoc_tro_chuyen SET che_do_xu_ly='Nhân viên tiếp quản' WHERE id=$1",[id]);
+        if(!staff&&t.che_do_xu_ly==='AI hỗ trợ') await c.query("INSERT INTO public.tin_nhan(cuoc_tro_chuyen_id,loai_nguoi_gui,noi_dung) VALUES($1,'Hệ thống','Ảnh hoặc tệp của bạn đã được chuyển đến nhân viên để xem và hỗ trợ.')",[id]);
+      }
       commitAttempted = true;
       await c.query('COMMIT');
       return { ok: true, id: message };
@@ -585,6 +592,7 @@ export class ChatService {
       c = await this.conn.db();
     try {
       await c.query('BEGIN');
+      await c.query('SELECT id FROM public.cuoc_tro_chuyen WHERE id=$1 FOR UPDATE',[id]);
       const { t, staff } = await this.access(c, id, user?.id, token);
       if (t.trang_thai !== 'Đang mở')
         throw new BadRequestException('Hội thoại đã đóng');
@@ -603,6 +611,20 @@ export class ChatService {
           'UPDATE public.cuoc_tro_chuyen SET ngay_cap_nhat=now() WHERE id=$1',
           [id],
         );
+      if(r.rowCount && t.loai==='ho_tro') {
+        if(staff) await c.query("UPDATE public.cuoc_tro_chuyen SET che_do_xu_ly='Nhân viên tiếp quản' WHERE id=$1",[id]);
+        else if(t.che_do_xu_ly==='AI hỗ trợ') {
+          // Serialize the budget check across processes; enqueue and customer send commit together.
+          await c.query('SELECT pg_advisory_xact_lock(776635)');
+          const cfg=(await c.query('SELECT bat,gioi_han_ngay FROM public.chatbot_cau_hinh WHERE id=true')).rows[0];
+          const budget=(await c.query("SELECT count(*)::int AS total,count(*) FILTER(WHERE cuoc_tro_chuyen_id=$1 AND ngay_tao>now()-interval '1 minute')::int AS recent FROM public.chatbot_tac_vu WHERE ngay_tao>=date_trunc('day',now() AT TIME ZONE 'Asia/Ho_Chi_Minh') AT TIME ZONE 'Asia/Ho_Chi_Minh'",[id])).rows[0];
+          if(cfg?.bat && budget.total<cfg.gioi_han_ngay && budget.recent<6) await c.query('INSERT INTO public.chatbot_tac_vu(cuoc_tro_chuyen_id,tin_nhan_id) VALUES($1,$2) ON CONFLICT(tin_nhan_id) DO NOTHING',[id,r.rows[0].id]);
+          else if(cfg?.bat) {
+            await c.query("UPDATE public.cuoc_tro_chuyen SET che_do_xu_ly='Nhân viên tiếp quản' WHERE id=$1",[id]);
+            await c.query("INSERT INTO public.tin_nhan(cuoc_tro_chuyen_id,loai_nguoi_gui,noi_dung) VALUES($1,'Hệ thống','Yêu cầu đã được chuyển đến nhân viên để hỗ trợ bạn.')",[id]);
+          }
+        }
+      }
       await c.query('COMMIT');
       return { ok: true, id: r.rows[0]?.id };
     } catch (e) {
