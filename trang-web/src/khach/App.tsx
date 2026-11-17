@@ -25,6 +25,8 @@ import BanDoChanTrang from './thanh-phan/BanDoChanTrang';
 import './giao-dien/trang-chu-trai-nghiem.css';
 import './giao-dien/trang-chu-anh-noi.css';
 import './giao-dien/trang-chu-gon.css';
+import './giao-dien/font-tieng-viet.css';
+import './giao-dien/can-chinh-khach.css';
 type Receipt = {
   ma_dat_phong: string;
   tong_tien: number | string;
@@ -376,7 +378,7 @@ export default function App() {
   const rgb=[1,3,5].map(i=>parseInt(ui.mau_nhan.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
   const buttonText=rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722>.179?'#20142b':'#fff';
   return (
-    <main className={"kh-site kh-cms-custom kh-page-"+page+" "+(ui.anh_ben_trai?"kh-hero-left":"")} style={{'--kh-font':({georgia:'Georgia, serif',palatino:'Palatino Linotype, Palatino, serif',tahoma:'Tahoma, sans-serif',system:'system-ui, sans-serif'}[ui.font_chu||'georgia']||'Georgia, serif'),'--kh-bg':ui.mau_nen,'--kh-site-image':ui.anh_nen_chung?`url(${JSON.stringify(ui.anh_nen_chung)})`:'none','--kh-accent':ui.mau_nhan,'--kh-button-text':buttonText,'--kh-columns':ui.so_cot,'--kh-hero-image':home?.hero?.anh_nen?`url(${JSON.stringify(home.hero.anh_nen)})`:'none'} as CSSProperties}>
+    <main className={"kh-site kh-cms-custom kh-page-"+page+" "+(ui.anh_ben_trai?"kh-hero-left":"")} style={{'--kh-font':'"Home Serif", Georgia, serif','--kh-bg':ui.mau_nen,'--kh-site-image':ui.anh_nen_chung?`url(${JSON.stringify(ui.anh_nen_chung)})`:'none','--kh-accent':ui.mau_nhan,'--kh-button-text':buttonText,'--kh-columns':ui.so_cot,'--kh-hero-image':home?.hero?.anh_nen?`url(${JSON.stringify(home.hero.anh_nen)})`:'none'} as CSSProperties}>
 
       <header className="kh-nav" ref={navRef}>
         <a className="kh-brand" href="/">

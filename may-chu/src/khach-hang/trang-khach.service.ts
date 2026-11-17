@@ -16,6 +16,7 @@ import {
   kiemTraThoiGianDat,
   type HinhThucDat,
 } from '../quan-tri/khung-gio.js';
+import { docGioPhuThu, tinhTienPhuThu } from './phu-thu-khach.js';
 import { COMBO_THEO_PHONG } from '../quan-tri/combo.input.js';
 const ROOM = `SELECT p.*,h.ten_homestay,h.dia_chi,h.tinh_thanh,l.ten_loai,l.mo_ta,l.suc_chua,l.dien_tich_m2 FROM public.phong p JOIN public.homestay h ON h.id=p.homestay_id JOIN public.loai_phong l ON l.id=p.loai_phong_id WHERE h.trang_thai='Đang hoạt động' AND ${TRANG_THAI_PHONG}='Trống'`;
 @Injectable()
@@ -233,7 +234,8 @@ export class TrangKhachService {
     if (!r.rowCount) throw new NotFoundException('Phòng không còn mở bán');
     const p = r.rows[0],
       config = await this.config(c);
-    kiemTraThoiGianDat(kind, start, end, config, Number(p.so_gio_toi_thieu));
+    const extra = docGioPhuThu(x, kind, start, end);
+    kiemTraThoiGianDat(kind, extra.coreStart, extra.coreEnd, config, Number(p.so_gio_toi_thieu));
     if (
       !p[
         kind === 'Theo giờ'
@@ -274,13 +276,16 @@ export class TrangKhachService {
         )
       ).rows[0];
     }
+    const baseAmount = await this.price(c, p, extra.coreStart, extra.coreEnd, kind, combo);
+    const surcharge = tinhTienPhuThu(extra.early, extra.late, p.gia_phu_thu_gio);
     return {
+      extra, baseAmount, surcharge,
       p,
       start,
       end,
       kind,
       config,
-      amount: await this.price(c, p, start, end, kind, combo),
+      amount: baseAmount + surcharge,
     };
   }
   async quote(x: Record<string, unknown>) {
@@ -288,7 +293,7 @@ export class TrangKhachService {
     try {
       await this.expire(c);
       const q = await this.prepare(c, x);
-      return { tien_phong: q.amount, don_vi: 'VND' };
+      return { tien_phong: q.amount, gia_co_ban: q.baseAmount, tien_phu_thu: q.surcharge, don_vi: 'VND' };
     } finally {
       await c.end();
     }
@@ -318,7 +323,7 @@ export class TrangKhachService {
   async combos(x: Record<string, unknown>) {
     const c = await this.conn.db();
     try {
-      const { p, start, end, kind } = await this.prepare(c, x);
+      const { p, start, end, kind, extra, surcharge } = await this.prepare(c, {...x, combo_id: null});
       const r = await c.query(
         `SELECT co.*,ARRAY(SELECT homestay_id FROM public.combo_chi_nhanh WHERE combo_id=co.id) AS chi_nhanh_ids FROM public.combo co WHERE co.trang_thai='Đang bán' AND (co.bat_dau IS NULL OR co.bat_dau<=$2) AND (co.ket_thuc IS NULL OR co.ket_thuc>=$3) AND (co.so_gio_bao_gom IS NULL OR $4='Theo giờ') AND (co.pham_vi='toan_he_thong' OR co.pham_vi='chi_nhanh' AND EXISTS(SELECT 1 FROM public.combo_chi_nhanh cc WHERE cc.combo_id=co.id AND cc.homestay_id=$5) OR co.pham_vi='phong' AND EXISTS(SELECT 1 FROM public.combo_phong cp WHERE cp.combo_id=co.id AND cp.phong_id=$1)) ORDER BY co.ten_combo`,
         [p.id, start.toISOString(), end.toISOString(), kind, p.homestay_id],
@@ -333,7 +338,7 @@ export class TrangKhachService {
           bat_dau: co.bat_dau,
           ket_thuc: co.ket_thuc,
           trang_thai: co.trang_thai,
-          tong_gia: await this.price(c, p, start, end, kind, co),
+          tong_gia: (await this.price(c, p, extra.coreStart, extra.coreEnd, kind, co)) + surcharge,
           anh: await Promise.all(
             (co.anh_combo?.length
               ? co.anh_combo
@@ -397,6 +402,8 @@ export class TrangKhachService {
           x.combo_id || null,
           JSON.stringify({
             khung_gio: q.config,
+            gio_nhan_som: q.extra.early, gio_tra_muon: q.extra.late,
+            gia_co_ban: q.baseAmount, tien_phu_thu: q.surcharge,
             tien_phong_chot: q.amount,
             gia_moi_gio: q.p.gia_moi_gio,
             gia_moi_ngay: q.p.gia_moi_ngay,

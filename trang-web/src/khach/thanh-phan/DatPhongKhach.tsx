@@ -24,6 +24,8 @@ export type MucDatPhong = {
 };
 type Kind = "" | "gio" | "ngay" | "dem";
 type Combo = {
+  anh?: string[];
+  mo_ta?: string;
   id: string;
   ten_combo: string;
   tong_gia: number;
@@ -82,6 +84,11 @@ export default function DatPhongKhach({
     [st, setSt] = useState(seed ? clock(seed.bat_dau) : initial.start),
     [et, setEt] = useState(seed ? clock(seed.ket_thuc) : initial.end),
     [comboId, setComboId] = useState(target.comboId || ""),
+    [showCombos, setShowCombos] = useState(false),
+    [guestConfirm, setGuestConfirm] = useState(false),
+    [early, setEarly] = useState(0),
+    [late, setLate] = useState(0),
+    [surcharge, setSurcharge] = useState(0),
     [combos, setCombos] = useState<Combo[]>([]),
     [price, setPrice] = useState<number | null>(null),
     [quoteKey, setQuoteKey] = useState(""),
@@ -114,6 +121,10 @@ export default function DatPhongKhach({
       kind === "gio" ? st : config[kind + "_tu"],
       kind === "gio" ? et : config[kind + "_den"],
     );
+    if (kind !== "gio") {
+      time.start = new Date(+time.start - early * 3600000);
+      time.end = new Date(+time.end + late * 3600000);
+    }
     if (
       !Number.isFinite(+time.start) ||
       !Number.isFinite(+time.end) ||
@@ -145,10 +156,12 @@ export default function DatPhongKhach({
               ? "Theo ngày"
               : "Theo đêm",
         combo_id: comboId || null,
+        gio_nhan_som: kind === "gio" ? 0 : early,
+        gio_tra_muon: kind === "gio" ? 0 : late,
       },
       message: "",
     };
-  }, [roomId, kind, start, end, st, et, config, comboId, room]);
+  }, [roomId, kind, start, end, st, et, config, comboId, room, early, late]);
   const serialized = JSON.stringify(request.q),
     key = useRef(crypto.randomUUID()),
     inFlight = useRef(false),
@@ -165,7 +178,9 @@ export default function DatPhongKhach({
     setPrice(null);
     setQuoteKey("");
     setError("");
-    setCombos([]);
+    if (!request.q) {
+      setCombos([]);
+    }
     if (!request.q) {
       setQuoting(false);
       return;
@@ -176,7 +191,11 @@ export default function DatPhongKhach({
     const timer = setTimeout(() => {
       void Promise.all([
         khachApi<Combo[]>("/combo", "POST", q),
-        khachApi<{ tien_phong: number }>("/bao-gia", "POST", q),
+        khachApi<{ tien_phong: number; tien_phu_thu?: number }>(
+          "/bao-gia",
+          "POST",
+          q,
+        ),
       ])
         .then(([list, total]) => {
           if (!active) return;
@@ -192,6 +211,7 @@ export default function DatPhongKhach({
               "Combo không áp dụng cho phòng hoặc lịch này. Vui lòng chọn lại combo.",
             );
           setPrice(Number(total.tien_phong));
+          setSurcharge(Number(total.tien_phu_thu || 0));
           setQuoteKey(serialized);
         })
         .catch((e) => {
@@ -240,6 +260,8 @@ export default function DatPhongKhach({
   }, []);
   function changeKind(next: Kind) {
     setKind(next);
+    setEarly(0);
+    setLate(0);
     if (!next) return;
     const t = goiYThoiGian(next, config);
     if (next === "gio") {
@@ -273,8 +295,9 @@ export default function DatPhongKhach({
     setSt(t.start);
     setEt(t.end);
   }
-  async function submit(e: FormEvent) {
-    e.preventDefault();
+  async function submit(e?: FormEvent, allowGuest = false) {
+    e?.preventDefault();
+    if (!dialog.current?.querySelector("form")?.reportValidity()) return;
     if (
       inFlight.current ||
       !room ||
@@ -283,6 +306,10 @@ export default function DatPhongKhach({
       quoteKey !== serialized
     )
       return;
+    if (!token && !allowGuest) {
+      setGuestConfirm(true);
+      return;
+    }
     const fingerprint = JSON.stringify({ ...request.q, ...form });
     if (fingerprintRef.current !== fingerprint) {
       key.current = crypto.randomUUID();
@@ -340,6 +367,46 @@ export default function DatPhongKhach({
           </button>
         </header>
         <form onSubmit={submit}>
+          <div className="kh-reserve-combo-toolbar">
+            <button
+              type="button"
+              aria-expanded={showCombos}
+              onClick={() => setShowCombos(!showCombos)}
+            >
+              Combo {combos.length ? `(${combos.length})` : ""}{" "}
+              {showCombos ? "−" : "+"}
+            </button>
+          </div>
+          {showCombos && (
+            <div
+              className="kh-reserve-combo-list"
+              aria-label="Danh sách combo phù hợp"
+            >
+              {!combos.length && (
+                <p>
+                  {request.q
+                    ? "Chưa có combo phù hợp với lịch này."
+                    : "Chọn phòng, loại đặt và lịch để xem combo phù hợp."}
+                </p>
+              )}
+              {combos.map((c) => (
+                <button
+                  type="button"
+                  key={c.id}
+                  aria-pressed={comboId === c.id}
+                  onClick={() => setComboId(comboId === c.id ? "" : c.id)}
+                >
+                  {c.anh?.[0] && <img src={c.anh[0]} alt="" />}
+                  <span>
+                    <strong>{c.ten_combo}</strong>
+                    {c.mo_ta && <small>{c.mo_ta}</small>}
+                  </span>
+                  <b>{money(Number(c.tong_gia))}</b>
+                  <span>{comboId === c.id ? "✓" : "+"}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <fieldset disabled={busy} className="kh-reserve-fields">
             <label>
               Chi nhánh
@@ -379,26 +446,37 @@ export default function DatPhongKhach({
                   ))}
               </select>
             </label>
-            <label>
-              Loại đặt phòng
-              <select
-                aria-label="Loại đặt phòng của khách"
-                required
-                value={kind}
-                onChange={(e) => changeKind(e.target.value as Kind)}
-              >
-                <option value="">Chọn giờ, ngày hoặc đêm</option>
-                {(!room || room.cho_dat_theo_gio !== false) && (
-                  <option value="gio">Theo giờ</option>
-                )}
-                {(!room || room.cho_dat_theo_ngay !== false) && (
-                  <option value="ngay">Theo ngày</option>
-                )}
-                {(!room || room.cho_dat_theo_dem !== false) && (
-                  <option value="dem">Qua đêm</option>
-                )}
-              </select>
-            </label>
+            <div
+              className="kh-reserve-kind"
+              role="group"
+              aria-label="Loại đặt phòng của khách"
+            >
+              <span>Loại đặt phòng</span>
+              <div>
+                {(
+                  [
+                    ["gio", "Theo giờ"],
+                    ["ngay", "Theo ngày"],
+                    ["dem", "Qua đêm"],
+                  ] as const
+                )
+                  .filter(
+                    ([k]) =>
+                      !room ||
+                      room[("cho_dat_theo_" + k) as keyof PhongKhach] !== false,
+                  )
+                  .map(([k, title]) => (
+                    <button
+                      type="button"
+                      key={k}
+                      aria-pressed={kind === k}
+                      onClick={() => changeKind(k)}
+                    >
+                      {title}
+                    </button>
+                  ))}
+              </div>
+            </div>
             <div className="kh-reserve-dates">
               <span>Ngày lưu trú</span>
               <RangePicker
@@ -431,16 +509,48 @@ export default function DatPhongKhach({
               </div>
             )}
             {kind && kind !== "gio" && (
-              <p className="kh-reserve-slot">
-                Nhận {config[kind + "_tu"]} · Trả {config[kind + "_den"]}
-                {config[kind + "_den"] <= config[kind + "_tu"]
-                  ? " hôm sau"
-                  : ""}
-              </p>
+              <div className="kh-reserve-extra">
+                <p className="kh-reserve-slot">
+                  Nhận {config[kind + "_tu"]} · Trả {config[kind + "_den"]}
+                  {config[kind + "_den"] <= config[kind + "_tu"]
+                    ? " hôm sau"
+                    : ""}
+                </p>
+                <div>
+                  {(
+                    [
+                      ["Nhận sớm", early, setEarly],
+                      ["Trả muộn", late, setLate],
+                    ] as const
+                  ).map(([title, value, setter]) => (
+                    <label key={title}>
+                      {title}
+                      <select
+                        aria-label={title + " (giờ phụ thu)"}
+                        value={value}
+                        onChange={(e) => setter(Number(e.target.value))}
+                      >
+                        {Array.from({ length: 25 }, (_, i) => i / 2).map(
+                          (n) => (
+                            <option key={n} value={n}>
+                              {n ? n.toLocaleString("vi-VN") + " giờ" : "Không"}
+                            </option>
+                          ),
+                        )}
+                      </select>
+                    </label>
+                  ))}
+                </div>
+                <small>
+                  Phụ thu {money(Number(room?.gia_phu_thu_gio || 0))}/giờ · Tổng
+                  giờ lẻ làm tròn lên.
+                </small>
+              </div>
             )}
             <label className="kh-reserve-wide">
               Combo phù hợp
               <select
+                aria-label="Combo phù hợp"
                 value={comboId}
                 onChange={(e) => setComboId(e.target.value)}
                 disabled={!request.q || quoting}
@@ -523,7 +633,31 @@ export default function DatPhongKhach({
                     : "Chọn phòng, loại đặt và lịch"}
               </strong>
             </div>
-            {!token && (
+            {request.q && (
+              <p className="kh-reserve-time">
+                {new Date(request.q.bat_dau).toLocaleString("vi-VN", {
+                  timeZone: "Asia/Ho_Chi_Minh",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  day: "2-digit",
+                  month: "2-digit",
+                })}{" "}
+                →{" "}
+                {new Date(request.q.ket_thuc).toLocaleString("vi-VN", {
+                  timeZone: "Asia/Ho_Chi_Minh",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  day: "2-digit",
+                  month: "2-digit",
+                })}
+              </p>
+            )}
+            {price !== null && surcharge > 0 && (
+              <small>
+                Đã gồm phụ thu nhận sớm/trả muộn: {money(surcharge)}
+              </small>
+            )}
+            {!token && guestConfirm && (
               <div className="kh-reserve-notice" role="note">
                 Xin hãy đăng nhập hoặc tạo tài khoản để theo dõi đơn, tránh gặp
                 phải các tình huống đáng tiếc.
@@ -534,9 +668,13 @@ export default function DatPhongKhach({
                 >
                   Đăng nhập / Tạo tài khoản
                 </button>
-                <small>
-                  Bạn vẫn có thể gửi yêu cầu đặt phòng khi chưa đăng nhập.
-                </small>
+                <button
+                  type="button"
+                  disabled={busy || quoting || quoteKey !== serialized}
+                  onClick={() => void submit(undefined, true)}
+                >
+                  Tiếp tục đặt không đăng nhập
+                </button>
               </div>
             )}
             {(error || request.message) && (

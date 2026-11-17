@@ -168,7 +168,8 @@ export async function duLieuPhongGia(page) {
                 : room?.tien_phong || 720000) +
             (q.combo_id
               ? 150000 + Number(q.combo_id.split("-")[1]) * 50000
-              : 0),
+              : 0) + Math.ceil((q.gio_nhan_som||0)+(q.gio_tra_muon||0))*50000,
+          tien_phu_thu: Math.ceil((q.gio_nhan_som||0)+(q.gio_tra_muon||0))*50000,
         };
       } else if (path.endsWith("/chat/khach")) data = {};
       if (
@@ -363,14 +364,14 @@ export async function kiemTraDatPhongKhach(
     .getByRole("button", { name: "Đặt phòng này", exact: true })
     .click();
   check(
-    (await page.getByLabel("Loại đặt phòng của khách").inputValue()) === "",
+    (await page.locator(".kh-reserve-kind button[aria-pressed=true]").count()) === 0,
     "Ảnh giới thiệu không gán loại đặt",
   );
   check(
-    await page.locator(".kh-reserve-notice").isVisible(),
-    "Nhắc đăng nhập trước khi đặt",
+    !(await page.locator(".kh-reserve-notice").count()),
+    "Không hiện cảnh báo khi chưa nhấn đặt",
   );
-  await page.getByLabel("Loại đặt phòng của khách").selectOption("ngay");
+  await page.locator(".kh-reserve-kind").getByRole("button",{name:"Theo ngày",exact:true}).click();
   await page
     .locator(".kh-reserve-total strong")
     .filter({ hasText: "720.000" })
@@ -383,6 +384,9 @@ export async function kiemTraDatPhongKhach(
     form.requestSubmit();
     form.requestSubmit();
   });
+  await page.locator(".kh-reserve-notice").waitFor();
+  check(requests === 0,"Chưa ghi đơn khi chỉ mở cảnh báo");
+  await page.getByRole("button",{name:"Tiếp tục đặt không đăng nhập"}).dblclick();
   await page.locator(".kh-receipt").waitFor();
   check(requests === 1, "Không gửi trùng đơn");
   check(
@@ -399,7 +403,7 @@ export async function kiemTraDatPhongKhach(
     .getByRole("button", { name: "Đặt phòng này", exact: true })
     .click();
   check(
-    (await page.getByLabel("Loại đặt phòng của khách").inputValue()) === "ngay",
+    (await page.locator(".kh-reserve-kind button[aria-pressed=true]").innerText()) === "Theo ngày",
     "Kết quả tìm kiếm mang theo loại đặt",
   );
   await page.getByRole("button", { name: "Đóng đặt phòng" }).click();
@@ -452,20 +456,12 @@ export async function kiemTraAnhVaBanDo(page, base = "http://localhost:5173") {
     .locator(".kh-cms-hero>div")
     .evaluateAll((es) => es.map((e) => e.getBoundingClientRect().x));
   check(boxes[0] < boxes[1], "Chữ và ảnh xếp hai bên");
-  await page.locator(".kh-footer-route").click();
-  check(
-    (await page.locator(".kh-footer-map [role=alert]").innerText()).includes(
-      "chọn một chi nhánh",
-    ),
-    "Tìm đường bắt buộc một chi nhánh",
-  );
-  await page.getByRole("button", { name: "Lấy vị trí", exact: true }).click();
-  await page
-    .locator(".kh-footer-distances li strong")
-    .filter({ hasText: "1,2 km" })
-    .waitFor();
-  await page.getByLabel("Chi nhánh trong footer").selectOption("branch2");
-  await page.locator(".kh-footer-route").click();
+  check(await page.locator(".kh-footer-map select").count() === 0, "Ngoài footer chỉ có bản đồ");
+  await page.getByRole("button", {name:"Mở bản đồ chi nhánh",exact:true}).click();
+  check(await page.locator(".kh-map-layout aside>.kh-map-group").count()===3,"Sidebar đúng ba nhóm");
+  await page.getByRole("button", {name:"Cho phép tìm vị trí hiện tại",exact:true}).click();
+  await page.locator(".kh-map-distances li strong").filter({hasText:"1,2 km"}).waitFor();
+  await page.getByRole("button",{name:"Dẫn đường →",exact:true}).click();
   await page.locator(".kh-route-summary").waitFor();
   check(
     (await page.locator(".kh-route-summary").innerText()).includes("2,5 km"),

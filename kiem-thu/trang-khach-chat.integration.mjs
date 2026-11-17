@@ -1157,4 +1157,16 @@ assert.deepEqual((await db.query('SELECT (SELECT count(*) FROM public.so_thu_chi
 const expectedMinutes=await db.query(`SELECT coalesce(sum(extract(hour FROM nhan_phong_luc AT TIME ZONE 'Asia/Ho_Chi_Minh')*60+extract(minute FROM nhan_phong_luc AT TIME ZONE 'Asia/Ho_Chi_Minh')) FILTER(WHERE trang_thai IN ('Đã xác nhận','Đã nhận phòng','Đã trả phòng')),0) AS minutes FROM public.dat_phong WHERE ngay_tao >= '2026-11-01'::date AT TIME ZONE 'Asia/Ho_Chi_Minh' AND ngay_tao < '2027-01-01'::date AT TIME ZONE 'Asia/Ho_Chi_Minh'`);
 assert.equal(stats.don.reduce((s,r)=>s+Number(r.phut_bat_dau),0),Number(expectedMinutes.rows[0].minutes));
 console.log('PASS Thống kê: quyền backend, ngày và giới hạn khoảng, tổng nguồn thu/chi và đơn đặt/hủy, tiền tồn, không trả thông tin khách, không ghi DB.');
+// Extra hours are charged by the server and included in the occupancy window.
+await db.query('UPDATE public.phong SET gia_moi_ngay=600000,gia_moi_dem=400000 WHERE id=$1',[room2]);
+const extraDay = new Date(Date.now()+70*86400000).toISOString().slice(0,10);
+const nextExtraDay = new Date(Date.parse(extraDay)+86400000).toISOString().slice(0,10);
+const extraQuery={phong_id:room2,hinh_thuc_dat:'Theo ngày',bat_dau:extraDay+'T13:30:00+07:00',ket_thuc:nextExtraDay+'T13:00:00+07:00',gio_nhan_som:.5,gio_tra_muon:1};
+const extraQuote=await service.quote(extraQuery);
+assert.equal(extraQuote.gia_co_ban,600000);assert.equal(extraQuote.tien_phu_thu,100000);assert.equal(extraQuote.tien_phong,700000);
+const extraOrder=await service.create({...extraQuery,ten_khach:'Khách phụ thu',so_dien_thoai:'0901234567',so_khach:1,khoa_yeu_cau:randomUUID(),tien_phong:1});
+const extraStored=(await db.query('SELECT nhan_phong_luc,tra_phong_luc,cau_hinh_gia_chot FROM public.dat_phong WHERE ma_dat_phong=$1',[extraOrder.ma_dat_phong])).rows[0];
+assert.equal(+new Date(extraStored.nhan_phong_luc),Date.parse(extraQuery.bat_dau));assert.equal(extraStored.cau_hinh_gia_chot.tien_phu_thu,100000);
+await assert.rejects(()=>service.quote({...extraQuery,hinh_thuc_dat:'Theo giờ',bat_dau:extraDay+'T12:00:00+07:00',ket_thuc:extraDay+'T14:00:00+07:00',gio_nhan_som:0,gio_tra_muon:0}),/vừa được đặt/);
+console.log('PASS phụ thu ngày/đêm: giá server, lịch thực tế, snapshot và chống trùng giờ nhận sớm.');
 await db.close();
