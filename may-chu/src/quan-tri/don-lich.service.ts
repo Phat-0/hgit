@@ -65,6 +65,11 @@ export class DonLichService{
    }
    const comboId=x.combo_id===undefined?d.combo_id:x.combo_id;
    if(comboId&&(changedSchedule||comboId!==d.combo_id)){this.id(String(comboId));const combo=await c.query(COMBO_THEO_PHONG+" AND co.trang_thai='Đang bán' AND (co.bat_dau IS NULL OR co.bat_dau<=$4) AND (co.ket_thuc IS NULL OR co.ket_thuc>=$5) AND (co.so_gio_bao_gom IS NULL OR $6='Theo giờ') FOR SHARE OF co",[comboId,p.homestay_id,room,start.toISOString(),end.toISOString(),kind]);if(!combo.rowCount)throw new BadRequestException('Combo của đơn không áp dụng cho phòng hoặc thời gian mới');}
+   const storedComboIds=Array.isArray(d.cau_hinh_gia_chot?.combo_ids)?d.cau_hinh_gia_chot.combo_ids:[];
+   if(changedSchedule&&comboId===d.combo_id)for(const extraId of storedComboIds.filter((v:unknown)=>typeof v==='string'&&v!==comboId)){
+    this.id(extraId);const valid=await c.query(COMBO_THEO_PHONG+" AND co.trang_thai='Đang bán' AND (co.bat_dau IS NULL OR co.bat_dau<=$4) AND (co.ket_thuc IS NULL OR co.ket_thuc>=$5) AND (co.so_gio_bao_gom IS NULL OR $6='Theo giờ') FOR SHARE OF co",[extraId,p.homestay_id,room,start.toISOString(),end.toISOString(),kind]);
+    if(!valid.rowCount)throw new BadRequestException('Một combo dịch vụ của đơn không áp dụng cho lịch mới');
+   }
    const payment=x.trang_thai_thanh_toan===undefined?d.trang_thai_thanh_toan:String(x.trang_thai_thanh_toan);
    const received=x.tien_da_thanh_toan===undefined&&x.trang_thai_thanh_toan===undefined?Number(d.tien_da_thanh_toan):soTienDaGhiNhan(payment,x.tien_da_thanh_toan,amount+Number(d.tien_dich_vu)-Number(d.tien_giam));
    if(x.trang_thai_thanh_toan===undefined&&x.tien_da_thanh_toan===undefined&&payment==='Đủ'&&received!==amount+Number(d.tien_dich_vu)-Number(d.tien_giam))throw new ConflictException('Tổng tiền thay đổi; hãy kiểm tra và cập nhật lại trạng thái thanh toán trong form sửa');
@@ -73,6 +78,7 @@ export class DonLichService{
    if(received<Number(paid.rows[0]?.tong||0))throw new ConflictException('Không thể giảm tiền đã ghi nhận dưới giao dịch thực thu; xử lý hoàn tiền trước');
    const oldRoom=await c.query('SELECT ten_phong FROM public.phong WHERE id=$1',[d.phong_id]);
    const snapshot={...d.cau_hinh_gia_chot,tien_phong_chot:amount,nguoi_sua_id:uid,gia_moi_gio:p.gia_moi_gio,gia_moi_ngay:p.gia_moi_ngay,gia_moi_dem:p.gia_moi_dem,so_gio_toi_thieu:p.so_gio_toi_thieu,gia_phu_thu_gio:p.gia_phu_thu_gio,khung_gio:savedHours};
+   if(comboId!==d.combo_id){snapshot.combo_ids=comboId?[comboId]:[];snapshot.combo_da_chon=[];}
    await c.query(`UPDATE public.dat_phong SET ten_don=$2,phong_id=$3,homestay_id=$4,hinh_thuc_dat=$5,
     nhan_phong_luc=$6,tra_phong_luc=$7,so_khach=$8,tien_phong=$9,so_dien_thoai_dat=$10,
     nguoi_dung_id=CASE WHEN so_dien_thoai_dat IS DISTINCT FROM $10 THEN NULL ELSE nguoi_dung_id END,

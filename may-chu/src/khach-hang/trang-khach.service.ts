@@ -101,7 +101,7 @@ export class TrangKhachService {
         FROM public.phong p JOIN public.homestay h ON h.id=p.homestay_id JOIN public.loai_phong l ON l.id=p.loai_phong_id WHERE h.trang_thai='Đang hoạt động' ORDER BY h.ten_homestay,p.ma_phong LIMIT 200`);
       const photos=await c.query('SELECT id,phong_id,duong_dan FROM public.hinh_anh_phong WHERE phong_id=ANY($1::uuid[]) ORDER BY la_anh_dai_dien DESC,thu_tu,id',[roomRows.rows.map(p=>p.id)]);
       const amenities=await c.query('SELECT pt.phong_id,t.ten_tien_nghi FROM public.phong_tien_nghi pt JOIN public.tien_nghi t ON t.id=pt.tien_nghi_id WHERE pt.phong_id=ANY($1::uuid[]) ORDER BY t.ten_tien_nghi',[roomRows.rows.map(p=>p.id)]);
-      const comboRows=await c.query(`SELECT id,ten_combo,mo_ta,gia_combo,so_gio_bao_gom,bat_dau,ket_thuc,pham_vi,(SELECT count(*)::int FROM public.dat_phong d WHERE d.combo_id=combo.id AND d.trang_thai IN ('Đã xác nhận','Đã nhận phòng','Đã trả phòng')) AS luot_dat,ARRAY(SELECT homestay_id FROM public.combo_chi_nhanh WHERE combo_id=combo.id) AS chi_nhanh_ids,ARRAY(SELECT phong_id FROM public.combo_phong WHERE combo_id=combo.id) AS phong_ids,anh_combo,anh_dai_dien FROM public.combo WHERE trang_thai='Đang bán' AND (ket_thuc IS NULL OR ket_thuc>now()) ORDER BY ten_combo LIMIT 100`);
+      const comboRows=await c.query(`SELECT id,ten_combo,mo_ta,gia_combo,so_gio_bao_gom,bat_dau,ket_thuc,pham_vi,(SELECT count(*)::int FROM public.dat_phong d WHERE (d.combo_id=combo.id OR coalesce(d.cau_hinh_gia_chot->'combo_ids','[]'::jsonb) ? combo.id::text) AND d.trang_thai IN ('Đã xác nhận','Đã nhận phòng','Đã trả phòng')) AS luot_dat,ARRAY(SELECT homestay_id FROM public.combo_chi_nhanh WHERE combo_id=combo.id) AS chi_nhanh_ids,ARRAY(SELECT phong_id FROM public.combo_phong WHERE combo_id=combo.id) AS phong_ids,anh_combo,anh_dai_dien FROM public.combo WHERE trang_thai='Đang bán' AND (ket_thuc IS NULL OR ket_thuc>now()) ORDER BY ten_combo LIMIT 100`);
       const reviews=await c.query(`SELECT dg.id,dg.so_sao,dg.noi_dung,dg.ngay_tao,split_part(trim(n.ho_ten),' ',1)||' · Khách lưu trú' AS ten_khach,p.ten_phong,h.ten_homestay FROM public.danh_gia dg JOIN public.nguoi_dung n ON n.id=dg.nguoi_dung_id JOIN public.dat_phong d ON d.id=dg.dat_phong_id JOIN public.phong p ON p.id=d.phong_id JOIN public.homestay h ON h.id=d.homestay_id WHERE dg.trang_thai='Hiển thị' AND h.trang_thai='Đang hoạt động' ORDER BY dg.ngay_tao DESC LIMIT 20`);
       const summary=(await c.query("SELECT (SELECT count(*)::int FROM public.homestay WHERE trang_thai='Đang hoạt động') AS so_homestay,(SELECT count(*)::int FROM public.phong p JOIN public.homestay h ON h.id=p.homestay_id WHERE h.trang_thai='Đang hoạt động') AS so_phong,(SELECT coalesce(sum(so_khach),0)::bigint FROM public.dat_phong WHERE trang_thai IN ('Đã nhận phòng','Đã trả phòng')) AS luot_khach")).rows[0];
       const branches=await c.query("SELECT id,ten_homestay,dia_chi,tinh_thanh,vi_do,kinh_do FROM public.homestay WHERE trang_thai='Đang hoạt động' ORDER BY ten_homestay");
@@ -251,36 +251,27 @@ export class TrangKhachService {
       throw new ConflictException(
         'Phòng vừa được đặt. Hãy chọn phòng hoặc thời gian khác',
       );
-    let combo;
-    if (x.combo_id) {
-      this.conn.id(String(x.combo_id));
-      const r = await c.query(
-        COMBO_THEO_PHONG +
-          " AND co.trang_thai='Đang bán' AND (co.bat_dau IS NULL OR co.bat_dau<=$4) AND (co.ket_thuc IS NULL OR co.ket_thuc>=$5) AND (co.so_gio_bao_gom IS NULL OR $6='Theo giờ') FOR SHARE OF co",
-        [
-          x.combo_id,
-          p.homestay_id,
-          p.id,
-          start.toISOString(),
-          end.toISOString(),
-          kind,
-        ],
-      );
-      if (!r.rowCount)
-        throw new BadRequestException(
-          'Combo không áp dụng cho phòng và thời gian này',
-        );
-      combo = (
-        await c.query(
-          'SELECT gia_combo,so_gio_bao_gom FROM public.combo WHERE id=$1',
-          [x.combo_id],
-        )
-      ).rows[0];
+    const rawIds = x.combo_ids === undefined ? (x.combo_id ? [x.combo_id] : []) : x.combo_ids;
+    if (!Array.isArray(rawIds) || rawIds.length > 10 || rawIds.some(v=>typeof v!=='string') || new Set(rawIds).size!==rawIds.length)
+      throw new BadRequestException('Danh sách combo không hợp lệ, tối đa 10 combo khác nhau');
+    const comboIds=rawIds.map(v=>this.conn.id(String(v)));
+    if(x.combo_id && String(x.combo_id)!==comboIds[0])throw new BadRequestException('Combo chính không khớp danh sách');
+    const selectedCombos: {id:string;ten_combo:string;gia_combo:number;so_gio_bao_gom:number|null}[]=[];
+    for(const comboId of comboIds){
+      const found=await c.query(COMBO_THEO_PHONG+" AND co.trang_thai='Đang bán' AND (co.bat_dau IS NULL OR co.bat_dau<=$4) AND (co.ket_thuc IS NULL OR co.ket_thuc>=$5) AND (co.so_gio_bao_gom IS NULL OR $6='Theo giờ') FOR SHARE OF co",[comboId,p.homestay_id,p.id,start.toISOString(),end.toISOString(),kind]);
+      if(!found.rowCount)throw new BadRequestException('Combo không áp dụng cho phòng và thời gian này');
+      const co=(await c.query('SELECT id,ten_combo,gia_combo,so_gio_bao_gom FROM public.combo WHERE id=$1',[comboId])).rows[0];
+      selectedCombos.push({...co,gia_combo:Number(co.gia_combo)});
     }
-    const baseAmount = await this.price(c, p, extra.coreStart, extra.coreEnd, kind, combo);
+    const hourCombos=selectedCombos.filter(co=>co.so_gio_bao_gom!=null);
+    if(hourCombos.length>1)throw new BadRequestException('Mỗi lịch nghỉ chỉ dùng một combo giờ');
+    const serviceAmount=selectedCombos.filter(co=>co.so_gio_bao_gom==null).reduce((sum,co)=>sum+co.gia_combo,0);
+    const baseAmount=(await this.price(c,p,extra.coreStart,extra.coreEnd,kind,hourCombos[0]))+serviceAmount;
+    if(!Number.isSafeInteger(baseAmount)||baseAmount<0||baseAmount>1e12)throw new BadRequestException('Tổng giá combo không hợp lệ');
     const surcharge = tinhTienPhuThu(extra.early, extra.late, p.gia_phu_thu_gio);
+    if(!Number.isSafeInteger(baseAmount+surcharge)||baseAmount+surcharge>1e12)throw new BadRequestException("Tổng tiền không hợp lệ");
     return {
-      extra, baseAmount, surcharge,
+      extra, baseAmount, surcharge, comboIds, selectedCombos,
       p,
       start,
       end,
@@ -324,7 +315,7 @@ export class TrangKhachService {
   async combos(x: Record<string, unknown>) {
     const c = await this.conn.db();
     try {
-      const { p, start, end, kind, extra, surcharge } = await this.prepare(c, {...x, combo_id: null});
+      const { p, start, end, kind, extra, surcharge } = await this.prepare(c, {...x, combo_id: null,combo_ids:[]});
       const r = await c.query(
         `SELECT co.*,ARRAY(SELECT homestay_id FROM public.combo_chi_nhanh WHERE combo_id=co.id) AS chi_nhanh_ids FROM public.combo co WHERE co.trang_thai='Đang bán' AND (co.bat_dau IS NULL OR co.bat_dau<=$2) AND (co.ket_thuc IS NULL OR co.ket_thuc>=$3) AND (co.so_gio_bao_gom IS NULL OR $4='Theo giờ') AND (co.pham_vi='toan_he_thong' OR co.pham_vi='chi_nhanh' AND EXISTS(SELECT 1 FROM public.combo_chi_nhanh cc WHERE cc.combo_id=co.id AND cc.homestay_id=$5) OR co.pham_vi='phong' AND EXISTS(SELECT 1 FROM public.combo_phong cp WHERE cp.combo_id=co.id AND cp.phong_id=$1)) ORDER BY co.ten_combo`,
         [p.id, start.toISOString(), end.toISOString(), kind, p.homestay_id],
@@ -400,8 +391,9 @@ export class TrangKhachService {
           q.amount,
           note,
           phone,
-          x.combo_id || null,
+          q.comboIds[0] || null,
           JSON.stringify({
+            combo_ids:q.comboIds,combo_da_chon:q.selectedCombos,
             khung_gio: q.config,
             gio_nhan_som: q.extra.early, gio_tra_muon: q.extra.late,
             gia_co_ban: q.baseAmount, tien_phu_thu: q.surcharge,

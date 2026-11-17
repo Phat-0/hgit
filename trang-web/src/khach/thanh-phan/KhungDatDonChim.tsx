@@ -3,8 +3,12 @@ import { useLayoutEffect, useRef, type ReactNode } from "react";
 export default function KhungDatDonChim({
   open,
   children,
+  duration = 750,
+  animate = true,
 }: {
   open: boolean;
+  duration?: number;
+  animate?: boolean;
   children: ReactNode;
 }) {
   const node = useRef<HTMLDivElement>(null),
@@ -18,7 +22,7 @@ export default function KhungDatDonChim({
     }
     previousOpen.current = open;
     el.hidden = false;
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (!animate || matchMedia("(prefers-reduced-motion: reduce)").matches) {
       el.hidden = !open;
       return;
     }
@@ -29,7 +33,10 @@ export default function KhungDatDonChim({
         { height: (open ? 0 : height) + "px", opacity: open ? 0.4 : 1 },
         { height: (open ? height : 0) + "px", opacity: open ? 1 : 0.4 },
       ],
-      { duration: 320, easing: "cubic-bezier(.2,.65,.3,1)" },
+      {
+        duration: Math.max(300, Math.min(1600, duration)),
+        easing: "cubic-bezier(.2,.65,.3,1)",
+      },
     );
     animation.onfinish = () => {
       el.hidden = !open;
@@ -40,7 +47,7 @@ export default function KhungDatDonChim({
       animation.cancel();
       el.style.overflow = "";
     };
-  }, [open]);
+  }, [open, duration, animate]);
   return (
     <div
       ref={node}

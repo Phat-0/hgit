@@ -7,8 +7,12 @@ export default function ChiTietPhongKhach({
   onDat,
   onMo,
   dangKiemTra = false,
+  phongKhac = [],
+  onXem,
 }: {
   dangKiemTra?: boolean;
+  phongKhac?: PhongKhach[];
+  onXem?: (phong: PhongKhach) => void;
   phong: PhongKhach;
   onDat: () => void;
   onMo: (url: string) => void;
@@ -80,6 +84,47 @@ export default function ChiTietPhongKhach({
           </div>
         )}
       </section>
+      {!!phongKhac.length && (
+        <section className="kh-room-related">
+          <header>
+            <h2>Các phòng khác</h2>
+            <a href="/phong-gia">Xem tất cả →</a>
+          </header>
+          <div>
+            {phongKhac.map((p) => (
+              <article key={p.id}>
+                <button
+                  type="button"
+                  aria-label={"Xem phòng " + p.ten_phong}
+                  onClick={() => onXem?.({ ...p, gia_tham_khao: true })}
+                >
+                  {p.anh.find(Boolean) ? (
+                    <img
+                      src={p.anh.find(Boolean)!}
+                      alt={p.ten_phong}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span className="kh-related-no-photo">
+                      Chưa có ảnh phòng
+                    </span>
+                  )}
+                  <span className="kh-related-copy">
+                    <small>{p.ten_homestay}</small>
+                    <strong>{p.ten_phong}</strong>
+                    <span>
+                      {Number(p.gia_moi_ngay) > 0
+                        ? Number(p.gia_moi_ngay).toLocaleString("vi-VN") +
+                          " ₫ / ngày"
+                        : "Xem giá phòng"}
+                    </span>
+                  </span>
+                </button>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
     </article>
   );
 }

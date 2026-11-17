@@ -83,7 +83,9 @@ export default function DatPhongKhach({
     ),
     [st, setSt] = useState(seed ? clock(seed.bat_dau) : initial.start),
     [et, setEt] = useState(seed ? clock(seed.ket_thuc) : initial.end),
-    [comboId, setComboId] = useState(target.comboId || ""),
+    [comboIds, setComboIds] = useState<string[]>(
+      target.comboId ? [target.comboId] : [],
+    ),
     [showCombos, setShowCombos] = useState(false),
     [guestConfirm, setGuestConfirm] = useState(false),
     [early, setEarly] = useState(0),
@@ -155,16 +157,18 @@ export default function DatPhongKhach({
             : kind === "ngay"
               ? "Theo ngày"
               : "Theo đêm",
-        combo_id: comboId || null,
+        combo_id: comboIds[0] || null,
+        combo_ids: comboIds,
         gio_nhan_som: kind === "gio" ? 0 : early,
         gio_tra_muon: kind === "gio" ? 0 : late,
       },
       message: "",
     };
-  }, [roomId, kind, start, end, st, et, config, comboId, room, early, late]);
+  }, [roomId, kind, start, end, st, et, config, comboIds, room, early, late]);
   const serialized = JSON.stringify(request.q),
     key = useRef(crypto.randomUUID()),
     inFlight = useRef(false),
+    comboCache = useRef(new Map<string, Combo>()),
     fingerprintRef = useRef(""),
     dialog = useRef<HTMLElement>(null),
     closeRef = useRef(onClose),
@@ -190,7 +194,13 @@ export default function DatPhongKhach({
     const q = request.q;
     const timer = setTimeout(() => {
       void Promise.all([
-        khachApi<Combo[]>("/combo", "POST", q),
+        khachApi<Combo[]>("/combo", "POST", q).then((list) => {
+          if (active && Array.isArray(list)) {
+            list.forEach((c) => comboCache.current.set(c.id, c));
+            setCombos(list);
+          }
+          return list;
+        }),
         khachApi<{ tien_phong: number; tien_phu_thu?: number }>(
           "/bao-gia",
           "POST",
@@ -206,7 +216,7 @@ export default function DatPhongKhach({
           )
             throw Error("Chưa tính được giá phòng. Vui lòng thử lại.");
           setCombos(list);
-          if (comboId && !list.some((c) => c.id === comboId))
+          if (comboIds.some((id) => !list.some((c) => c.id === id)))
             throw Error(
               "Combo không áp dụng cho phòng hoặc lịch này. Vui lòng chọn lại combo.",
             );
@@ -295,8 +305,24 @@ export default function DatPhongKhach({
     setSt(t.start);
     setEt(t.end);
   }
+  function toggleCombo(c: Combo) {
+    setComboIds((ids) => {
+      if (ids.includes(c.id)) return ids.filter((id) => id !== c.id);
+      const next =
+        c.so_gio_bao_gom != null
+          ? ids.filter(
+              (id) => comboCache.current.get(id)?.so_gio_bao_gom == null,
+            )
+          : ids;
+      return next.length < 10 ? [...next, c.id] : next;
+    });
+  }
   async function submit(e?: FormEvent, allowGuest = false) {
     e?.preventDefault();
+    if (showCombos) {
+      setShowCombos(false);
+      return;
+    }
     if (!dialog.current?.querySelector("form")?.reportValidity()) return;
     if (
       inFlight.current ||
@@ -367,255 +393,250 @@ export default function DatPhongKhach({
           </button>
         </header>
         <form onSubmit={submit}>
-          <div className="kh-reserve-combo-toolbar">
-            <button
-              type="button"
-              aria-expanded={showCombos}
-              onClick={() => setShowCombos(!showCombos)}
-            >
-              Combo {combos.length ? `(${combos.length})` : ""}{" "}
-              {showCombos ? "−" : "+"}
-            </button>
-          </div>
-          {showCombos && (
-            <div
-              className="kh-reserve-combo-list"
-              aria-label="Danh sách combo phù hợp"
-            >
-              {!combos.length && (
-                <p>
-                  {request.q
-                    ? "Chưa có combo phù hợp với lịch này."
-                    : "Chọn phòng, loại đặt và lịch để xem combo phù hợp."}
-                </p>
-              )}
-              {combos.map((c) => (
-                <button
-                  type="button"
-                  key={c.id}
-                  aria-pressed={comboId === c.id}
-                  onClick={() => setComboId(comboId === c.id ? "" : c.id)}
-                >
-                  {c.anh?.[0] && <img src={c.anh[0]} alt="" />}
-                  <span>
-                    <strong>{c.ten_combo}</strong>
-                    {c.mo_ta && <small>{c.mo_ta}</small>}
-                  </span>
-                  <b>{money(Number(c.tong_gia))}</b>
-                  <span>{comboId === c.id ? "✓" : "+"}</span>
-                </button>
-              ))}
-            </div>
-          )}
           <fieldset disabled={busy} className="kh-reserve-fields">
-            <label>
-              Chi nhánh
-              <select
-                value={branch}
-                onChange={(e) => {
-                  setBranch(e.target.value);
-                  setRoomId("");
-                }}
+            <div className="kh-reserve-combo-toolbar">
+              <button
+                type="button"
+                aria-expanded={showCombos}
+                onClick={() => setShowCombos(!showCombos)}
               >
-                <option value="">Tất cả chi nhánh</option>
-                {branches.map(([id, name]) => (
-                  <option key={id} value={id}>
-                    {name}
-                  </option>
+                Combo ({comboIds.length}) {showCombos ? "−" : "+"}
+              </button>
+            </div>
+            {showCombos && (
+              <div
+                className="kh-reserve-combo-list"
+                aria-label="Danh sách combo phù hợp"
+              >
+                {!combos.length && (
+                  <p>
+                    {request.q
+                      ? "Chưa có combo phù hợp với lịch này."
+                      : "Chọn phòng, loại đặt và lịch để xem combo phù hợp."}
+                  </p>
+                )}
+                {combos.map((c) => (
+                  <button
+                    type="button"
+                    key={c.id}
+                    aria-pressed={comboIds.includes(c.id)}
+                    onClick={() => toggleCombo(c)}
+                  >
+                    {c.anh?.[0] && <img src={c.anh[0]} alt="" />}
+                    <span>
+                      <strong>{c.ten_combo}</strong>
+                      <small>
+                        {c.so_gio_bao_gom != null
+                          ? `Gói ${c.so_gio_bao_gom} giờ đầu`
+                          : "Dịch vụ"}
+                        {c.mo_ta ? " · " + c.mo_ta : ""}
+                      </small>
+                    </span>
+                    <b>{money(Number(c.gia_combo))}</b>
+                    <span>{comboIds.includes(c.id) ? "✓" : "+"}</span>
+                  </button>
                 ))}
-              </select>
-            </label>
-            <label>
-              Phòng muốn đặt
-              <select
-                required
-                value={roomId}
-                onChange={(e) => {
-                  setRoomId(e.target.value);
-                  const next = allRooms.find((p) => p.id === e.target.value);
-                  if (next?.homestay_id) setBranch(next.homestay_id);
-                }}
-              >
-                <option value="">Chọn phòng</option>
-                {allRooms
-                  .filter((p) => !branch || p.homestay_id === branch)
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.ma_phong} · {p.ten_phong}
-                    </option>
-                  ))}
-              </select>
-            </label>
-            <div
-              className="kh-reserve-kind"
-              role="group"
-              aria-label="Loại đặt phòng của khách"
-            >
-              <span>Loại đặt phòng</span>
-              <div>
-                {(
-                  [
-                    ["gio", "Theo giờ"],
-                    ["ngay", "Theo ngày"],
-                    ["dem", "Qua đêm"],
-                  ] as const
-                )
-                  .filter(
-                    ([k]) =>
-                      !room ||
-                      room[("cho_dat_theo_" + k) as keyof PhongKhach] !== false,
-                  )
-                  .map(([k, title]) => (
-                    <button
-                      type="button"
-                      key={k}
-                      aria-pressed={kind === k}
-                      onClick={() => changeKind(k)}
-                    >
-                      {title}
-                    </button>
-                  ))}
-              </div>
-            </div>
-            <div className="kh-reserve-dates">
-              <span>Ngày lưu trú</span>
-              <RangePicker
-                start={start}
-                end={end}
-                minDate={ngayVietNam()}
-                onChange={(a, b) => {
-                  setStart(a);
-                  setEnd(b);
-                }}
-                compact
-              />
-            </div>
-            {kind === "gio" && (
-              <div className="kh-reserve-hours">
-                <ChonKhoangGio
-                  minimum={Number(room?.so_gio_toi_thieu) || 1}
-                  date={start}
-                  endDate={end}
-                  start={st}
-                  end={et}
-                  config={config}
-                  onChange={(a, b, x, y) => {
-                    setStart(a);
-                    setEnd(b);
-                    setSt(x);
-                    setEt(y);
-                  }}
-                />
               </div>
             )}
-            {kind && kind !== "gio" && (
-              <div className="kh-reserve-extra">
-                <p className="kh-reserve-slot">
-                  Nhận {config[kind + "_tu"]} · Trả {config[kind + "_den"]}
-                  {config[kind + "_den"] <= config[kind + "_tu"]
-                    ? " hôm sau"
-                    : ""}
-                </p>
+
+            <fieldset
+              className="kh-reserve-form-fields"
+              hidden={showCombos}
+              disabled={showCombos}
+            >
+              <label>
+                Chi nhánh
+                <select
+                  value={branch}
+                  onChange={(e) => {
+                    setBranch(e.target.value);
+                    setRoomId("");
+                  }}
+                >
+                  <option value="">Tất cả chi nhánh</option>
+                  {branches.map(([id, name]) => (
+                    <option key={id} value={id}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Phòng muốn đặt
+                <select
+                  required
+                  value={roomId}
+                  onChange={(e) => {
+                    setRoomId(e.target.value);
+                    const next = allRooms.find((p) => p.id === e.target.value);
+                    if (next?.homestay_id) setBranch(next.homestay_id);
+                  }}
+                >
+                  <option value="">Chọn phòng</option>
+                  {allRooms
+                    .filter((p) => !branch || p.homestay_id === branch)
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.ma_phong} · {p.ten_phong}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <div
+                className="kh-reserve-kind"
+                role="group"
+                aria-label="Loại đặt phòng của khách"
+              >
+                <span>Loại đặt phòng</span>
                 <div>
                   {(
                     [
-                      ["Nhận sớm", early, setEarly],
-                      ["Trả muộn", late, setLate],
+                      ["gio", "Theo giờ"],
+                      ["ngay", "Theo ngày"],
+                      ["dem", "Qua đêm"],
                     ] as const
-                  ).map(([title, value, setter]) => (
-                    <label key={title}>
-                      {title}
-                      <select
-                        aria-label={title + " (giờ phụ thu)"}
-                        value={value}
-                        onChange={(e) => setter(Number(e.target.value))}
+                  )
+                    .filter(
+                      ([k]) =>
+                        !room ||
+                        room[("cho_dat_theo_" + k) as keyof PhongKhach] !==
+                          false,
+                    )
+                    .map(([k, title]) => (
+                      <button
+                        type="button"
+                        key={k}
+                        aria-pressed={kind === k}
+                        onClick={() => changeKind(k)}
                       >
-                        {Array.from({ length: 25 }, (_, i) => i / 2).map(
-                          (n) => (
-                            <option key={n} value={n}>
-                              {n ? n.toLocaleString("vi-VN") + " giờ" : "Không"}
-                            </option>
-                          ),
-                        )}
-                      </select>
-                    </label>
-                  ))}
+                        {title}
+                      </button>
+                    ))}
                 </div>
-                <small>
-                  Phụ thu {money(Number(room?.gia_phu_thu_gio || 0))}/giờ · Tổng
-                  giờ lẻ làm tròn lên.
-                </small>
               </div>
-            )}
-            <label className="kh-reserve-wide">
-              Combo phù hợp
-              <select
-                aria-label="Combo phù hợp"
-                value={comboId}
-                onChange={(e) => setComboId(e.target.value)}
-                disabled={!request.q || quoting}
-              >
-                <option value="">Không dùng combo</option>
-                {comboId && !combos.some((c) => c.id === comboId) && (
-                  <option value={comboId}>
-                    Combo đang chọn · cần kiểm tra lịch
-                  </option>
-                )}
-                {combos.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.ten_combo} · Tổng {money(Number(c.tong_gia))}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Tên khách hàng
-              <input
-                required
-                minLength={2}
-                maxLength={150}
-                autoComplete="name"
-                value={form.ten_khach}
-                onChange={(e) =>
-                  setForm({ ...form, ten_khach: e.target.value })
-                }
-              />
-            </label>
-            <label>
-              Số điện thoại
-              <input
-                required
-                type="tel"
-                autoComplete="tel"
-                maxLength={20}
-                value={form.so_dien_thoai}
-                onChange={(e) =>
-                  setForm({ ...form, so_dien_thoai: e.target.value })
-                }
-              />
-            </label>
-            <label>
-              Số khách
-              <input
-                required
-                type="number"
-                min={1}
-                max={room?.suc_chua || 100}
-                value={form.so_khach}
-                onChange={(e) =>
-                  setForm({ ...form, so_khach: Number(e.target.value) })
-                }
-              />
-            </label>
-            <label>
-              Ghi chú
-              <textarea
-                rows={2}
-                maxLength={2000}
-                value={form.ghi_chu}
-                onChange={(e) => setForm({ ...form, ghi_chu: e.target.value })}
-              />
-            </label>
+              <div className="kh-reserve-dates">
+                <span>Ngày lưu trú</span>
+                <RangePicker
+                  start={start}
+                  end={end}
+                  minDate={ngayVietNam()}
+                  onChange={(a, b) => {
+                    setStart(a);
+                    setEnd(b);
+                  }}
+                  compact
+                />
+              </div>
+              {kind === "gio" && (
+                <div className="kh-reserve-hours">
+                  <ChonKhoangGio
+                    minimum={Number(room?.so_gio_toi_thieu) || 1}
+                    date={start}
+                    endDate={end}
+                    start={st}
+                    end={et}
+                    config={config}
+                    onChange={(a, b, x, y) => {
+                      setStart(a);
+                      setEnd(b);
+                      setSt(x);
+                      setEt(y);
+                    }}
+                  />
+                </div>
+              )}
+              {kind && kind !== "gio" && (
+                <div className="kh-reserve-extra">
+                  <p className="kh-reserve-slot">
+                    Nhận {config[kind + "_tu"]} · Trả {config[kind + "_den"]}
+                    {config[kind + "_den"] <= config[kind + "_tu"]
+                      ? " hôm sau"
+                      : ""}
+                  </p>
+                  <div>
+                    {(
+                      [
+                        ["Nhận sớm", early, setEarly],
+                        ["Trả muộn", late, setLate],
+                      ] as const
+                    ).map(([title, value, setter]) => (
+                      <label key={title}>
+                        {title}
+                        <select
+                          aria-label={title + " (giờ phụ thu)"}
+                          value={value}
+                          onChange={(e) => setter(Number(e.target.value))}
+                        >
+                          {Array.from({ length: 25 }, (_, i) => i / 2).map(
+                            (n) => (
+                              <option key={n} value={n}>
+                                {n
+                                  ? n.toLocaleString("vi-VN") + " giờ"
+                                  : "Không"}
+                              </option>
+                            ),
+                          )}
+                        </select>
+                      </label>
+                    ))}
+                  </div>
+                  <small>
+                    Phụ thu {money(Number(room?.gia_phu_thu_gio || 0))}/giờ ·
+                    Tổng giờ lẻ làm tròn lên.
+                  </small>
+                </div>
+              )}
+              <label>
+                Tên khách hàng
+                <input
+                  required
+                  minLength={2}
+                  maxLength={150}
+                  autoComplete="name"
+                  value={form.ten_khach}
+                  onChange={(e) =>
+                    setForm({ ...form, ten_khach: e.target.value })
+                  }
+                />
+              </label>
+              <label>
+                Số điện thoại
+                <input
+                  required
+                  type="tel"
+                  autoComplete="tel"
+                  maxLength={20}
+                  value={form.so_dien_thoai}
+                  onChange={(e) =>
+                    setForm({ ...form, so_dien_thoai: e.target.value })
+                  }
+                />
+              </label>
+              <label>
+                Số khách
+                <input
+                  required
+                  type="number"
+                  min={1}
+                  max={room?.suc_chua || 100}
+                  value={form.so_khach}
+                  onChange={(e) =>
+                    setForm({ ...form, so_khach: Number(e.target.value) })
+                  }
+                />
+              </label>
+              <label>
+                Ghi chú
+                <textarea
+                  rows={2}
+                  maxLength={2000}
+                  value={form.ghi_chu}
+                  onChange={(e) =>
+                    setForm({ ...form, ghi_chu: e.target.value })
+                  }
+                />
+              </label>
+            </fieldset>
           </fieldset>
           <aside className="kh-reserve-summary">
             {room?.anh.find(Boolean) && (
@@ -623,18 +644,14 @@ export default function DatPhongKhach({
             )}
             <h3>{room?.ten_phong || "Chọn phòng để bắt đầu"}</h3>
             <p>{room?.ten_homestay}</p>
-            <div className="kh-reserve-total">
-              <span>Tổng dự kiến</span>
-              <strong>
-                {quoting
-                  ? "Đang tính giá…"
-                  : price !== null
-                    ? money(price)
-                    : "Chọn phòng, loại đặt và lịch"}
-              </strong>
-            </div>
             {request.q && (
               <p className="kh-reserve-time">
+                {kind === "gio"
+                  ? "Theo giờ"
+                  : kind === "ngay"
+                    ? "Theo ngày"
+                    : "Qua đêm"}{" "}
+                ·
                 {new Date(request.q.bat_dau).toLocaleString("vi-VN", {
                   timeZone: "Asia/Ho_Chi_Minh",
                   hour: "2-digit",
@@ -652,6 +669,44 @@ export default function DatPhongKhach({
                 })}
               </p>
             )}
+            <div className="kh-reserve-selected-combos">
+              <span>Combo đã chọn ({comboIds.length})</span>
+              {!comboIds.length ? (
+                <small>Không dùng combo</small>
+              ) : (
+                comboIds.map((id) => (
+                  <div key={id}>
+                    <span>
+                      {comboCache.current.get(id)?.ten_combo ||
+                        "Combo cần kiểm tra lại"}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label={
+                        "Bỏ combo " +
+                        (comboCache.current.get(id)?.ten_combo || id)
+                      }
+                      disabled={busy}
+                      onClick={() =>
+                        setComboIds((ids) => ids.filter((x) => x !== id))
+                      }
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="kh-reserve-total">
+              <span>Tổng dự kiến</span>
+              <strong>
+                {quoting
+                  ? "Đang tính giá…"
+                  : price !== null
+                    ? money(price)
+                    : "Chọn phòng, loại đặt và lịch"}
+              </strong>
+            </div>
             {price !== null && surcharge > 0 && (
               <small>
                 Đã gồm phụ thu nhận sớm/trả muộn: {money(surcharge)}
@@ -659,14 +714,13 @@ export default function DatPhongKhach({
             )}
             {!token && guestConfirm && (
               <div className="kh-reserve-notice" role="note">
-                Xin hãy đăng nhập hoặc tạo tài khoản để theo dõi đơn, tránh gặp
-                phải các tình huống đáng tiếc.
+                Bạn hãy đăng nhập hoặc đăng ký để xác nhận đơn thêm lần nữa nhé.
                 <button
                   type="button"
                   disabled={busy}
                   onClick={() => onLogin(form.so_dien_thoai)}
                 >
-                  Đăng nhập / Tạo tài khoản
+                  Đăng nhập / Đăng ký
                 </button>
                 <button
                   type="button"
@@ -688,11 +742,19 @@ export default function DatPhongKhach({
             </small>
             <button
               className="kh-reserve-submit"
+              type={showCombos ? "button" : "submit"}
+              onClick={showCombos ? () => setShowCombos(false) : undefined}
               disabled={
-                busy || quoting || price === null || quoteKey !== serialized
+                busy ||
+                (!showCombos &&
+                  (quoting || price === null || quoteKey !== serialized))
               }
             >
-              {busy ? "Đang gửi…" : "Gửi yêu cầu đặt phòng"}
+              {busy
+                ? "Đang gửi…"
+                : showCombos
+                  ? "Tiếp tục thông tin đặt phòng"
+                  : "Gửi yêu cầu đặt phòng"}
             </button>
           </aside>
         </form>

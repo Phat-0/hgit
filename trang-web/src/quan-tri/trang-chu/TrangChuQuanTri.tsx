@@ -413,6 +413,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
           <span style={{ background: ui.mau_nhan }}>Xem trước màu nút</span>
         </div>
       </fieldset>
+      <fieldset className="tc-block tc-home-motion" disabled={busy}><legend>Thống kê và khung đặt đơn</legend><div className="tc-design-grid">{([['nhan_dat_don','Tên nút mở đặt đơn','Đặt đơn'],['tieu_de_thong_ke','Tiêu đề các con số',ui.ten_web],['tieu_de_danh_gia','Tiêu đề đánh giá','Khách hàng nói về HomeStay']] as const).map(([key,label,fallback])=><label key={key}>{label}<input maxLength={150} value={String(ui[key]??fallback)} onChange={e=>setUi(key,e.target.value)}/></label>)}<label>Thời gian mở/khép (ms)<input type="number" min={300} max={1600} step={50} value={ui.toc_do_mo_dat_don||750} onChange={e=>setUi('toc_do_mo_dat_don',Number(e.target.value))}/></label></div>{([['hien_thong_ke','Hiện số Homestay, phòng và lượt khách'],['hien_hoat_anh','Hiện dần các khối khi cuộn tới']] as const).map(([key,label])=><label className="tc-toggle" key={key}><input type="checkbox" checked={ui[key]!==false} onChange={e=>setUi(key,e.target.checked)}/>{label}</label>)}<p>Số liệu lấy từ DB. Nút đặt đơn nằm bên trái; thời gian lớn hơn sẽ mở chậm hơn.</p></fieldset>
       <div className="tc-grid">
         {block(
           "01 · Đầu trang: nội dung và dải ảnh",

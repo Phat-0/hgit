@@ -1,4 +1,4 @@
-export type GiaoDienTrangChu={ten_web:string;khau_hieu:string;tieu_de_phong:string;tieu_de_combo?:string;mau_nen:string;anh_nen_chung?:string;font_chu?:string;phong_noi_bat?:string[];combo_noi_bat?:string[];hien_danh_gia?:boolean;hien_ban_do?:boolean;mau_nhan:string;so_cot:number;anh_ben_trai:boolean};
+export type GiaoDienTrangChu={nhan_dat_don?:string;toc_do_mo_dat_don?:number;tieu_de_thong_ke?:string;tieu_de_danh_gia?:string;hien_thong_ke?:boolean;hien_hoat_anh?:boolean;ten_web:string;khau_hieu:string;tieu_de_phong:string;tieu_de_combo?:string;mau_nen:string;anh_nen_chung?:string;font_chu?:string;phong_noi_bat?:string[];combo_noi_bat?:string[];hien_danh_gia?:boolean;hien_ban_do?:boolean;mau_nhan:string;so_cot:number;anh_ben_trai:boolean};
 export const giaoDienMacDinh:GiaoDienTrangChu={ten_web:'HomeStay',khau_hieu:'Một khoảng riêng dành cho bạn',tieu_de_phong:'Phòng & không gian lưu trú',tieu_de_combo:'Combo & trải nghiệm',mau_nen:'#1e1813',mau_nhan:'#e9bd80',so_cot:3,anh_ben_trai:false};
 export function layGiaoDien(value?:GiaoDienTrangChu) {
   const ui={...giaoDienMacDinh,...value};

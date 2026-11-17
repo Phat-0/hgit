@@ -4,6 +4,11 @@ describe('Cấu hình hình ảnh Trang chủ',()=>{
   afterEach(()=>vi.unstubAllEnvs());
   const validate=(data:unknown)=>new TrangChuService({} as any)['validate'](data);
   const image=(name:string)=>'https://home.supabase.co/storage/v1/object/public/anh-trang-chu/'+name+'.webp';
+  it('lưu các nhãn và hoạt ảnh trên trang chủ, giới hạn tốc độ mở',()=>{
+    const ui={ten_web:'HomeStay',khau_hieu:'Nghỉ ngơi',tieu_de_phong:'Phòng',mau_nen:'#211a14',mau_nhan:'#e9bd80',so_cot:3,anh_ben_trai:false,nhan_dat_don:'Đặt lịch nghỉ',tieu_de_thong_ke:'HomeStay của bạn',tieu_de_danh_gia:'Khách chia sẻ',toc_do_mo_dat_don:900,hien_thong_ke:true,hien_hoat_anh:true};
+    expect(validate({...structuredClone(MAC_DINH_TRANG_CHU),giao_dien:ui}).giao_dien?.toc_do_mo_dat_don).toBe(900);
+    for(const n of [0,299,1601,NaN])expect(()=>validate({...structuredClone(MAC_DINH_TRANG_CHU),giao_dien:{...ui,toc_do_mo_dat_don:n}})).toThrow('Tốc độ mở');
+  });
   it('giữ các thiết lập footer và chặn liên kết thực thi mã',()=>{
     const data={...structuredClone(MAC_DINH_TRANG_CHU),chan_trang:{...MAC_DINH_TRANG_CHU.chan_trang,website:'https://homestay.example',nhan_nut:'Tư vấn phòng',chinh_sach:'https://homestay.example/chinh-sach',loi_ich_1:'Nhận phòng linh hoạt'}};
     expect(validate(data).chan_trang.nhan_nut).toBe('Tư vấn phòng');

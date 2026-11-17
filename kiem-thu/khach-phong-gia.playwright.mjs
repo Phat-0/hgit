@@ -77,6 +77,7 @@ export async function duLieuPhongGia(page) {
       let data = [];
       if (path.endsWith("/gioi-thieu"))
         data = {
+          thong_ke:{so_homestay:2,so_phong:15,luot_khach:30},
           phong: rooms.map((p) => ({ ...p, gia_moi_ngay: p.tien_phong })),
           combo: Array.from({ length: 3 }, (_, i) => ({
             id: "combo-" + i,
@@ -166,9 +167,7 @@ export async function duLieuPhongGia(page) {
               : q.hinh_thuc_dat === "Theo đêm"
                 ? 500000
                 : room?.tien_phong || 720000) +
-            (q.combo_id
-              ? 150000 + Number(q.combo_id.split("-")[1]) * 50000
-              : 0) + Math.ceil((q.gio_nhan_som||0)+(q.gio_tra_muon||0))*50000,
+            (Array.isArray(q.combo_ids)?q.combo_ids.reduce((sum,id)=>sum+150000+Number(id.split("-")[1])*50000,0):q.combo_id?150000+Number(q.combo_id.split("-")[1])*50000:0) + Math.ceil((q.gio_nhan_som||0)+(q.gio_tra_muon||0))*50000,
           tien_phu_thu: Math.ceil((q.gio_nhan_som||0)+(q.gio_tra_muon||0))*50000,
         };
       } else if (path.endsWith("/chat/khach")) data = {};
@@ -478,4 +477,20 @@ export async function kiemTraAnhVaBanDo(page, base = "http://localhost:5173") {
     distances: true,
     directions: true,
   };
+}
+
+export async function kiemTraNhieuCombo(page,base='http://localhost:5173'){
+ await duLieuPhongGia(page);let writes=0,body;
+ await page.route('**/api/khach/dat-phong',async r=>{writes++;body=r.request().postDataJSON();await r.fulfill({json:{ma_dat_phong:'UI-BUNDLE',tong_tien:1070000,trang_thai:'Chờ xác nhận',het_han_giu_cho:new Date(Date.now()+900000).toISOString()}});});
+ const check=(v,m)=>{if(!v)throw Error(m);};
+ await page.goto(base+'/phong/phong-0');await page.getByRole('button',{name:'Đặt phòng này',exact:true}).click();
+ await page.locator('.kh-reserve-kind').getByRole('button',{name:'Theo ngày',exact:true}).click();await page.locator('.kh-reserve-total strong').filter({hasText:'720.000'}).waitFor();
+ await page.locator('.kh-reserve-combo-toolbar button').click();await page.locator('.kh-reserve-combo-list button').nth(0).click();await page.locator('.kh-reserve-combo-list button').nth(1).click();
+ await page.locator('.kh-reserve-total strong').filter({hasText:'1.070.000'}).waitFor();check(await page.locator('.kh-reserve-selected-combos>div').count()===2,'Hai combo trong tóm tắt');
+ check((await page.locator('.kh-reserve-combo-toolbar button').innerText()).includes('(2)'),'Số combo đã chọn');check(!await page.locator('.kh-reserve-form-fields').isVisible(),'Chuyển sang danh sách combo');
+ await page.getByRole('button',{name:'Tiếp tục thông tin đặt phòng',exact:true}).click();await page.getByLabel('Tên khách hàng',{exact:true}).fill('Khách chọn combo');await page.getByLabel('Số điện thoại',{exact:true}).fill('0901234567');
+ check(await page.locator('.kh-reserve-notice').count()===0,'Chưa hiện cảnh báo trước khi gửi');await page.locator('.kh-reserve-submit').click();await page.locator('.kh-reserve-notice').waitFor();
+ check((await page.locator('.kh-reserve-notice').innerText()).includes('đăng nhập hoặc đăng ký để xác nhận đơn thêm lần nữa'),'Nhắc xác nhận bằng tài khoản');check(writes===0,'Không ghi đơn khi mới hiện cảnh báo');
+ await page.getByRole('button',{name:'Tiếp tục đặt không đăng nhập',exact:true}).click();await page.locator('.kh-receipt').waitFor();check(writes===1&&body.combo_ids.length===2,'Gửi đúng danh sách combo một lần');
+ return {selected:2,total:1070000,warningOnSubmit:true,oneWrite:true};
 }

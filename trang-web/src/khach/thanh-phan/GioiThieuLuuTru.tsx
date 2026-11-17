@@ -390,11 +390,11 @@ export default function GioiThieuLuuTru({
     </div>
   );
 }
-export function DanhGiaTrangChu({ items }: { items: DanhGiaKhach[] }) {
+export function DanhGiaTrangChu({ items,title="Khách hàng nói về HomeStay" }: { items: DanhGiaKhach[];title?:string }) {
   return (
     <section className="kh-reviews" aria-label="Đánh giá khách hàng">
       <header>
-        <h2>Khách hàng nói về HomeStay</h2>
+        <h2>{title}</h2>
       </header>
       <div className="kh-review-track">
         {items.map((d) => (

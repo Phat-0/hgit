@@ -5,8 +5,10 @@ import BieuTuong, {
 export default function ConSoLuuTru({
   name,
   stats,
+  animate=true,
 }: {
   name: string;
+  animate?:boolean;
   stats:
     { so_homestay: number; so_phong: number; luot_khach: number } | undefined;
 }) {
@@ -15,6 +17,7 @@ export default function ConSoLuuTru({
   const [progress, setProgress] = useState(0);
   useEffect(() => {
     if (!ref.current || !stats) return;
+    if(!animate){setVisible(true);return;}
     const ob = new IntersectionObserver(
       (entries) => {
         if (entries.some((x) => x.isIntersecting)) {
@@ -26,10 +29,10 @@ export default function ConSoLuuTru({
     );
     ob.observe(ref.current);
     return () => ob.disconnect();
-  }, [!!stats]);
+  }, [!!stats,animate]);
   useEffect(() => {
     if (!visible) return;
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (!animate || matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setProgress(1);
       return;
     }
@@ -42,7 +45,7 @@ export default function ConSoLuuTru({
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [visible]);
+  }, [visible,animate]);
   return (
     <section
       ref={ref}

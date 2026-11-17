@@ -2,7 +2,7 @@ import KhungDatDonChim from "./thanh-phan/KhungDatDonChim";
 import ChanTrangKhach from "./thanh-phan/ChanTrangKhach";
 import ConSoLuuTru from "./thanh-phan/ConSoLuuTru";
 import {layGiaoDien, type NoiDungTrangChu } from "../dung-chung/du-lieu/trang-chu-noi-dung";
-import { useEffect, useRef, useState,type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState,type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { RangePicker } from "../dung-chung/lich/RangePicker";
 import ChonKhoangGio from "./thanh-phan/ChonKhoangGio";
@@ -370,12 +370,12 @@ export default function App() {
     document.addEventListener('mousedown', outside); document.addEventListener('keydown', escape);
     return () => { document.removeEventListener('mousedown', outside); document.removeEventListener('keydown', escape); };
   }, [navOpen]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const observer = new IntersectionObserver(entries => entries.forEach(entry => {
       if (entry.isIntersecting) { entry.target.setAttribute('data-reveal', 'shown'); observer.unobserve(entry.target); }
     }), { threshold: .08 });
-    document.querySelectorAll('.kh-site .kh-room-card, .kh-site .kh-cms-cards article, .kh-site .kh-feature-card, .kh-site .kh-reviews>header, .kh-site .kh-review-track article, .kh-site .kh-cms-intro').forEach(e => {
+    document.querySelectorAll('.kh-site .kh-room-card, .kh-site .kh-cms-cards article, .kh-site .kh-feature-card, .kh-site .kh-reviews>header, .kh-site .kh-review-track article, .kh-site .kh-cms-intro, .kh-site .kh-room-related>header, .kh-site .kh-room-related article').forEach(e => {
       e.setAttribute('data-reveal', 'pending'); observer.observe(e);
     });
     return () => observer.disconnect();
@@ -401,7 +401,7 @@ export default function App() {
   const rgb=[1,3,5].map(i=>parseInt(ui.mau_nhan.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
   const buttonText=rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722>.179?'#20142b':'#fff';
   return (
-    <main className={"kh-site kh-cms-custom kh-page-"+page+" "+(ui.anh_ben_trai?"kh-hero-left":"")} style={{'--kh-font':'"Home Serif", Georgia, serif','--kh-bg':ui.mau_nen,'--kh-site-image':ui.anh_nen_chung?`url(${JSON.stringify(ui.anh_nen_chung)})`:'none','--kh-accent':ui.mau_nhan,'--kh-button-text':buttonText,'--kh-columns':ui.so_cot,'--kh-hero-image':home?.hero?.anh_nen?`url(${JSON.stringify(home.hero.anh_nen)})`:'none'} as CSSProperties}>
+    <main className={"kh-site kh-cms-custom kh-page-"+page+" "+(ui.hien_hoat_anh===false?"kh-no-home-motion ":"")+(ui.anh_ben_trai?"kh-hero-left":"")} style={{'--kh-font':'"Home Serif", Georgia, serif','--kh-bg':ui.mau_nen,'--kh-site-image':ui.anh_nen_chung?`url(${JSON.stringify(ui.anh_nen_chung)})`:'none','--kh-accent':ui.mau_nhan,'--kh-button-text':buttonText,'--kh-columns':ui.so_cot,'--kh-hero-image':home?.hero?.anh_nen?`url(${JSON.stringify(home.hero.anh_nen)})`:'none'} as CSSProperties}>
 
       <header className="kh-nav" ref={navRef}>
         <a className="kh-brand" href="/">
@@ -465,8 +465,8 @@ export default function App() {
       )}
       {home?.hien_phong && page==='home' && (
         <>
-          <ConSoLuuTru name={ui.ten_web} stats={catalog.thong_ke}/>
-          <section id="dat-phong" className="kh-booking-split"><button type="button" className="kh-booking-toggle" aria-expanded={bookingOpen} aria-controls="kh-booking-panel" onClick={()=>setBookingOpen(!bookingOpen)}><BieuTuong ten="calendar"/>Đặt đơn <span aria-hidden="true">{bookingOpen?'−':'+'}</span></button><KhungDatDonChim open={bookingOpen}><section className="kh-search" aria-label="Tìm phòng trống">
+          <>{ui.hien_thong_ke!==false&&<ConSoLuuTru name={ui.tieu_de_thong_ke||ui.ten_web} stats={catalog.thong_ke} animate={ui.hien_hoat_anh!==false}/>}</>
+          <section id="dat-phong" className="kh-booking-split"><button type="button" className="kh-booking-toggle" aria-expanded={bookingOpen} aria-controls="kh-booking-panel" onClick={()=>setBookingOpen(!bookingOpen)}><BieuTuong ten="calendar"/>{ui.nhan_dat_don||"Đặt đơn"} <span aria-hidden="true">{bookingOpen?'−':'+'}</span></button><KhungDatDonChim open={bookingOpen} animate={ui.hien_hoat_anh!==false} duration={ui.hien_hoat_anh===false?300:ui.toc_do_mo_dat_don||750}><section className="kh-search" aria-label="Tìm phòng trống">
             {roomIntent&&<p className="kh-combo-intent">Đang chọn {catalog.phong.find(p=>p.id===roomIntent)?.ten_phong||'phòng'} · Chọn lịch để kiểm tra phòng trống. <button type="button" onClick={()=>setRoomIntent('')}>Bỏ chọn</button></p>}
             {comboChon&&<p className="kh-combo-intent">Đang chọn {catalog.combo.find(c=>c.id===comboChon)?.ten_combo||'combo'} · Kiểm tra lịch để xem phòng áp dụng. <button type="button" onClick={()=>setComboChon('')}>Bỏ chọn</button></p>}
             <form onSubmit={search}>
@@ -545,9 +545,9 @@ export default function App() {
         </>
       )}
       {page==='ket-qua'&&<section className="kh-full-results"><h1>Phòng trống theo chi nhánh</h1>{lastSearch.current&&<p className="kh-results-period">{lastSearch.current.hinh_thuc_dat} · {new Date(lastSearch.current.bat_dau).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})} → {new Date(lastSearch.current.ket_thuc).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})}</p>}{fullError&&<p role="alert" className="kh-error">{fullError}</p>}<KetQuaTimPhong rooms={fullResults.map(p=>({...catalog.phong.find(c=>c.id===p.id),...p}))} loading={fullLoading} full onXem={openRoom}/></section>}
-      {page==='chi-tiet'&&(catalogError?<p role="alert" className="kh-error">{catalogError}</p>:!catalogLoaded?<p role="status">Đang tải thông tin phòng…</p>:detailRoom?<><ChiTietPhongKhach phong={detailRoom} dangKiemTra={fullLoading} onMo={setLightbox} onDat={()=>choose(detailRoom)}/>{fullError&&<p role="alert" className="kh-error">{fullError}</p>}{fullLoading&&<p role="status">Đang kiểm tra lại lịch và giá…</p>}</>:<section className="kh-room-not-found"><h1>Không tìm thấy phòng</h1><a href="/phong-gia">Xem các phòng khác →</a></section>)}
+      {page==='chi-tiet'&&(catalogError?<p role="alert" className="kh-error">{catalogError}</p>:!catalogLoaded?<p role="status">Đang tải thông tin phòng…</p>:detailRoom?<><ChiTietPhongKhach phong={detailRoom} phongKhac={catalog.phong.filter(p=>p.id!==detailRoom.id).sort((a,b)=>Number(b.homestay_id===detailRoom.homestay_id)-Number(a.homestay_id===detailRoom.homestay_id)).slice(0,4)} onXem={openRoom} dangKiemTra={fullLoading} onMo={setLightbox} onDat={()=>choose(detailRoom)}/>{fullError&&<p role="alert" className="kh-error">{fullError}</p>}{fullLoading&&<p role="status">Đang kiểm tra lại lịch và giá…</p>}</>:<section className="kh-room-not-found"><h1>Không tìm thấy phòng</h1><a href="/phong-gia">Xem các phòng khác →</a></section>)}
       {home?.hien_phong&&page!=='ket-qua'&&page!=='chi-tiet'&&<><div className="kh-catalog-error">{catalogError&&<p role="alert">{catalogError}</p>}</div><GioiThieuLuuTru hienCombo={home.hien_combo!==false} data={{...catalog,combo:home.hien_combo===false?[]:catalog.combo}} page={page} phongNoiBat={ui.phong_noi_bat} comboNoiBat={ui.combo_noi_bat} tieuDePhong={ui.tieu_de_phong} tieuDeCombo={ui.tieu_de_combo||'Combo ưu đãi'} onXem={openRoom} onCombo={id=>setComboDetail(id)}/></>}
-      {page==='home'&&ui.hien_danh_gia!==false&&<DanhGiaTrangChu items={catalog.danh_gia}/>}
+      {page==='home'&&ui.hien_danh_gia!==false&&<DanhGiaTrangChu items={catalog.danh_gia} title={ui.tieu_de_danh_gia}/>}
       {home?.chan_trang&&<ChanTrangKhach data={home.chan_trang} name={ui.ten_web} branches={catalog.chi_nhanh} branch={branch} map={ui.hien_ban_do!==false} rooms={home.hien_phong} combos={home.hien_combo!==false}/>}
 
       <TroChuyen token={token || undefined} branch={branch} onNhapDatPhong={text => {
