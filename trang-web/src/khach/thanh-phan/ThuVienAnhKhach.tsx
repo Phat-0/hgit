@@ -9,7 +9,15 @@ export default function ThuVienAnhKhach({
   chiTiet?: boolean;
 }) {
   const [index, setIndex] = useState(0),
-    [offset, setOffset] = useState(0);
+    [offset, setOffset] = useState(0),
+    [settling, setSettling] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    [],
+  );
   const gesture = useRef<{ x: number; y: number; id: number } | null>(null),
     swiped = useRef(false);
   const photos = anh.filter(
@@ -18,6 +26,8 @@ export default function ThuVienAnhKhach({
   useEffect(() => {
     setIndex(0);
     setOffset(0);
+    setSettling(false);
+    if (timer.current) clearTimeout(timer.current);
   }, [anh[0]?.url]);
   const current = Math.min(index, photos.length - 1),
     selected = photos[current];
@@ -56,7 +66,7 @@ export default function ThuVienAnhKhach({
         }
         style={
           {
-            transform: `translateX(${offset}px) rotate(${offset / 60}deg)`,
+            transform: "none",
           } as CSSProperties
         }
         onKeyDown={(e) => {
@@ -67,6 +77,7 @@ export default function ThuVienAnhKhach({
           if (e.key === "Enter") onMo(selected.url);
         }}
         onPointerDown={(e) => {
+          if (settling) return;
           if (e.pointerType === "mouse" && e.button !== 0) return;
           gesture.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
           swiped.current = false;
@@ -84,7 +95,8 @@ export default function ThuVienAnhKhach({
           }
           if (Math.abs(dx) > 8) {
             swiped.current = true;
-            setOffset(Math.max(-140, Math.min(140, dx)));
+            const width = e.currentTarget.clientWidth;
+            setOffset(Math.max(-width, Math.min(width, dx)));
           }
         }}
         onPointerUp={(e) => {
@@ -95,11 +107,25 @@ export default function ThuVienAnhKhach({
               Math.abs(dx) > 40 &&
               Math.abs(dx) > Math.abs(e.clientY - g.y) &&
               photos.length > 1
-            )
-              move(dx < 0 ? 1 : -1);
+            ) {
+              const step = dx < 0 ? 1 : -1;
+              if (
+                window.matchMedia("(prefers-reduced-motion: reduce)").matches
+              ) {
+                move(step);
+                setOffset(0);
+              } else {
+                setSettling(true);
+                setOffset(-step * e.currentTarget.clientWidth);
+                timer.current = setTimeout(() => {
+                  move(step);
+                  setSettling(false);
+                  setOffset(0);
+                }, 240);
+              }
+            } else setOffset(0);
           }
           gesture.current = null;
-          setOffset(0);
           if (e.currentTarget.hasPointerCapture(e.pointerId))
             e.currentTarget.releasePointerCapture(e.pointerId);
         }}
@@ -112,13 +138,23 @@ export default function ThuVienAnhKhach({
           if (!swiped.current) onMo(selected.url);
         }}
       >
-        <img
-          key={selected.url}
-          draggable={false}
-          src={selected.url}
-          alt={selected.ten}
-          fetchPriority="high"
-        />
+        <div
+          className={
+            "kh-gallery-track" + (settling ? " kh-gallery-settling" : "")
+          }
+          style={{ transform: `translateX(calc(-100% + ${offset}px))` }}
+          aria-hidden="true"
+        >
+          {[-1, 0, 1].map((step) => (
+            <img
+              key={step}
+              draggable={false}
+              src={photos[(current + step + photos.length) % photos.length].url}
+              alt=""
+              fetchPriority={step === 0 ? "high" : "auto"}
+            />
+          ))}
+        </div>
         <span className="kh-gallery-caption">
           <span>{selected.ten}</span>
           <small>

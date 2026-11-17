@@ -32,6 +32,11 @@ for(const trang_thai of ['Đã trả phòng','Đã hủy','Hết hạn'])assert.
 assert.equal(donChuaHoanThanh({ma_dat_phong:'x',trang_thai:'Chờ xác nhận',het_han_giu_cho:'2020-01-01'}),false);
 assert.equal(donChuaHoanThanh({ma_dat_phong:'x',trang_thai:'Đã xác nhận',het_han_giu_cho:'2020-01-01'}),true);
 nhoDonCucBo({ma_dat_phong:'local',trang_thai:'Chờ xác nhận',het_han_giu_cho:'2099-01-01'});nhoDonCucBo({ma_dat_phong:'local',trang_thai:'Đã xác nhận'});assert.equal(docDonCucBo().length,1);sessionStorage.setItem(khoaGioHang,'{invalid');assert.equal(docDonCucBo().length,0);sessionStorage.removeItem(khoaGioHang);
+const {xepDanhSach}=await import('../trang-web/src/khach/thanh-phan/GioiThieuLuuTru.tsx');
+const catalogItems=[{id:'a',name:'An',price:100},{id:'b',name:'Bình',price:50}];
+assert.equal(xepDanhSach(catalogItems,'noi-bat',['b'],x=>x.name,x=>x.price)[0].id,'b');
+assert.equal(xepDanhSach(catalogItems,'gia-giam',[],x=>x.name,x=>x.price)[0].id,'a');
+assert.equal(catalogItems[0].id,'a');
 const now = new Date().toISOString();
 const f = {
   id: "f1",
@@ -636,7 +641,7 @@ assert.equal(document.querySelectorAll('.cm-card').length,8);assert.equal(docume
 await click(document.querySelector('.cm-card'));await wait();assert.ok(document.querySelector('.cm-cards>.cm-detail-row'));assert.equal(document.querySelector('.cm-shade'),null);assert.equal(document.querySelectorAll('.cm-card').length,8);
 await click(document.querySelector('.cm-card'));await wait();assert.equal(document.querySelector('.cm-inline-detail'),null);
 await act(async()=>root.unmount());root=createRoot(document.getElementById('root')!);
-await act(async()=>root.render(<TrangChuQuanTri token="admin"/>));await wait();assert.ok(document.querySelector('.tc-design-grid'));assert.ok(document.querySelector('.tc-preview'));assert.equal(document.querySelectorAll('.tc-design-grid>label').length,9);assert.ok(document.querySelector('.tc-hero-background input[type=file]'));assert.equal(document.querySelectorAll('.tc-contact-fields input').length,3);
+await act(async()=>root.render(<TrangChuQuanTri token="admin"/>));await wait();assert.ok(document.querySelector('.tc-design-grid'));assert.ok(document.querySelector('.tc-preview'));assert.ok([...document.querySelectorAll('.tc-design-grid label')].some(e=>e.textContent?.includes('Font chữ')));assert.ok(document.querySelector('.tc-feature-grid'));assert.ok(document.querySelector('.tc-review-settings'));assert.ok(document.querySelector('.tc-footer-settings'));assert.ok(document.querySelector('.tc-design input[type=file]'));assert.equal(document.querySelectorAll('.tc-contact-fields input').length,3);
 
 await act(async()=>root.unmount());root=createRoot(document.getElementById('root')!);
 await act(async()=>root.render(<VaiTroNhanVien token="admin" onChanged={async()=>{}}/>));await wait();assert.match(document.querySelector('.nv-roles')!.textContent!,/toàn hệ thống/);assert.ok(document.querySelector('.nv-role-list button'));

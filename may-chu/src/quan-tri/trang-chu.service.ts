@@ -20,7 +20,7 @@ export type KhoiTrangChu = {
   email?: string;
 };
 export type CauHinhTrangChu = {
-  giao_dien?: {ten_web:string;khau_hieu:string;tieu_de_phong:string;tieu_de_combo?:string;mau_nen:string;anh_nen_chung?:string;mau_nhan:string;so_cot:number;anh_ben_trai:boolean};
+  giao_dien?: {ten_web:string;khau_hieu:string;tieu_de_phong:string;tieu_de_combo?:string;mau_nen:string;anh_nen_chung?:string;font_chu?:string;phong_noi_bat?:string[];combo_noi_bat?:string[];hien_danh_gia?:boolean;hien_ban_do?:boolean;mau_nhan:string;so_cot:number;anh_ben_trai:boolean};
   hero: KhoiTrangChu;
   gioi_thieu: KhoiTrangChu;
   the: KhoiTrangChu[];
@@ -132,8 +132,13 @@ export class TrangChuService {
       };
     };
     const ui=x.giao_dien as Record<string,unknown>|undefined;
-    if(ui&&(typeof ui!=='object'||Array.isArray(ui)||Object.keys(ui).some(k=>!['ten_web','khau_hieu','tieu_de_phong','mau_nen','mau_nhan','so_cot','anh_ben_trai','tieu_de_combo','anh_nen_chung'].includes(k))||['ten_web','khau_hieu','tieu_de_phong'].some(k=>typeof ui[k]!=='string'||!(ui[k] as string).trim()||(ui[k] as string).length>150)||(ui.tieu_de_combo!==undefined&&(typeof ui.tieu_de_combo!=='string'||ui.tieu_de_combo.length>150))||!/^#[0-9a-f]{6}$/i.test(String(ui.mau_nen))||!/^#[0-9a-f]{6}$/i.test(String(ui.mau_nhan))||![2,3,4].includes(Number(ui.so_cot))||typeof ui.anh_ben_trai!=='boolean'))throw new BadRequestException('Thiết lập giao diện trang chủ không hợp lệ');
+    if(ui&&(typeof ui!=='object'||Array.isArray(ui)||Object.keys(ui).some(k=>!['ten_web','khau_hieu','tieu_de_phong','mau_nen','mau_nhan','so_cot','anh_ben_trai','tieu_de_combo','anh_nen_chung','font_chu','phong_noi_bat','combo_noi_bat','hien_danh_gia','hien_ban_do'].includes(k))||['ten_web','khau_hieu','tieu_de_phong'].some(k=>typeof ui[k]!=='string'||!(ui[k] as string).trim()||(ui[k] as string).length>150)||(ui.tieu_de_combo!==undefined&&(typeof ui.tieu_de_combo!=='string'||ui.tieu_de_combo.length>150))||!/^#[0-9a-f]{6}$/i.test(String(ui.mau_nen))||!/^#[0-9a-f]{6}$/i.test(String(ui.mau_nhan))||![2,3,4].includes(Number(ui.so_cot))||typeof ui.anh_ben_trai!=='boolean'))throw new BadRequestException('Thiết lập giao diện trang chủ không hợp lệ');
     if(ui?.anh_nen_chung!==undefined)imageUrl(ui.anh_nen_chung);
+    if(ui){
+      if(ui.font_chu!==undefined&&!['georgia','system','palatino','tahoma'].includes(String(ui.font_chu)))throw new BadRequestException('Font chữ không hợp lệ');
+      for(const key of ['phong_noi_bat','combo_noi_bat'])if(ui[key]!==undefined&&(!Array.isArray(ui[key])||(ui[key] as unknown[]).length>20||(ui[key] as unknown[]).some(v=>typeof v!=='string'||!(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i).test(v))))throw new BadRequestException('Danh sách nổi bật không hợp lệ');
+      for(const key of ['hien_danh_gia','hien_ban_do'])if(ui[key]!==undefined&&typeof ui[key]!=='boolean')throw new BadRequestException('Thiết lập hiển thị không hợp lệ');
+    }
     return {
       ...(ui?{giao_dien:ui as NonNullable<CauHinhTrangChu['giao_dien']>}:{}),
       hero: block(x.hero,'hero'),

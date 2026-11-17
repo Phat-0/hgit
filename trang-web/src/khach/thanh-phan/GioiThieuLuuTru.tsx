@@ -1,0 +1,333 @@
+import { useMemo, useState } from "react";
+export type PhongKhach = {
+  id: string;
+  homestay_id?: string;
+  ten_phong: string;
+  ma_phong: string;
+  ten_homestay: string;
+  dia_chi: string;
+  tinh_thanh: string;
+  ten_loai: string;
+  mo_ta: string | null;
+  suc_chua: number;
+  dien_tich_m2: string | null;
+  tien_phong: number;
+  anh: (string | null)[];
+  tien_nghi?: string[];
+  gia_moi_ngay?: number;
+  gia_moi_dem?: number;
+  gia_moi_gio?: number;
+  luot_dat?: number;
+  gia_tham_khao?: boolean;
+};
+export type ComboGioiThieu = {
+  id: string;
+  ten_combo: string;
+  mo_ta: string | null;
+  gia_combo: number | string;
+  so_gio_bao_gom: number | null;
+  anh: (string | null)[];
+};
+export type ChiNhanhBanDo = {
+  id: string;
+  ten_homestay: string;
+  dia_chi: string;
+  tinh_thanh: string;
+  vi_do: string | null;
+  kinh_do: string | null;
+};
+export type DanhGiaKhach = {
+  id: string;
+  so_sao: number;
+  noi_dung: string | null;
+  ten_khach: string;
+  ten_phong: string;
+  ten_homestay: string;
+  ngay_tao: string;
+};
+export type DuLieuGioiThieu = {
+  phong: PhongKhach[];
+  combo: ComboGioiThieu[];
+  chi_nhanh: ChiNhanhBanDo[];
+  danh_gia: DanhGiaKhach[];
+};
+export type SapXep = "noi-bat" | "gia-tang" | "gia-giam" | "ten";
+export function ChonSapXep({
+  value,
+  onChange,
+  label,
+}: {
+  value: SapXep;
+  onChange: (v: SapXep) => void;
+  label: string;
+}) {
+  return (
+    <label className="kh-sort">
+      Sắp xếp
+      <select
+        aria-label={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value as SapXep)}
+      >
+        <option value="noi-bat">Nổi bật</option>
+        <option value="gia-tang">Giá thấp đến cao</option>
+        <option value="gia-giam">Giá cao đến thấp</option>
+        <option value="ten">Tên A–Z</option>
+      </select>
+    </label>
+  );
+}
+export function xepDanhSach<T extends { id: string }>(
+  items: T[],
+  sort: SapXep,
+  featured: string[],
+  name: (x: T) => string,
+  price: (x: T) => number,
+  popular: (x: T) => number = () => 0,
+) {
+  return [...items].sort((a, b) =>
+    sort === "gia-tang"
+      ? price(a) - price(b)
+      : sort === "gia-giam"
+        ? price(b) - price(a)
+        : sort === "ten"
+          ? name(a).localeCompare(name(b), "vi")
+          : (featured.includes(b.id) ? 1 : 0) -
+              (featured.includes(a.id) ? 1 : 0) ||
+            popular(b) - popular(a) ||
+            name(a).localeCompare(name(b), "vi"),
+  );
+}
+const money = (n: number | string) => Number(n).toLocaleString("vi-VN") + " ₫";
+export default function GioiThieuLuuTru({
+  data,
+  page,
+  phongNoiBat = [],
+  comboNoiBat = [],
+  tieuDePhong,
+  tieuDeCombo,
+  onXem,
+  onCombo,
+  hienCombo = true,
+}: {
+  hienCombo?: boolean;
+  data: DuLieuGioiThieu;
+  page: "home" | "phong" | "combo";
+  phongNoiBat?: string[];
+  comboNoiBat?: string[];
+  tieuDePhong: string;
+  tieuDeCombo: string;
+  onXem: (p: PhongKhach) => void;
+  onCombo: (id: string) => void;
+}) {
+  const [roomSort, setRoomSort] = useState<SapXep>("noi-bat"),
+    [comboSort, setComboSort] = useState<SapXep>("noi-bat"),
+    [search, setSearch] = useState("");
+  const rooms = useMemo(
+    () =>
+      xepDanhSach(
+        data.phong.filter((p) =>
+          (p.ten_phong + " " + p.ten_homestay)
+            .toLocaleLowerCase("vi")
+            .includes(search.toLocaleLowerCase("vi")),
+        ),
+        roomSort,
+        phongNoiBat,
+        (p) => p.ten_phong,
+        (p) => Number(p.gia_moi_ngay) || 0,
+        (p) => Number(p.luot_dat) || 0,
+      ),
+    [data.phong, roomSort, search, phongNoiBat],
+  );
+  const combos = xepDanhSach(
+    data.combo,
+    comboSort,
+    comboNoiBat,
+    (c) => c.ten_combo,
+    (c) => Number(c.gia_combo),
+  );
+  const shownRooms = page === "home" ? rooms.slice(0, Math.max(3,phongNoiBat.length)) : rooms,
+    shownCombos = page === "home" ? combos.slice(0, Math.max(3,comboNoiBat.length)) : combos;
+  return (
+    <div
+      className={"kh-showcases " + (page === "home" ? "kh-showcases-home" : "")}
+    >
+      {page !== "combo" && (
+        <section id="gioi-thieu-phong" className="kh-showcase">
+          <header>
+            <div>
+              <h2>{tieuDePhong}</h2>
+              <p>Không gian lưu trú của HomeStay</p>
+            </div>
+            {page === "home" && <a href="/phong-gia">Xem thêm →</a>}
+          </header>
+          <div className="kh-showcase-tools">
+            <ChonSapXep
+              label="Sắp xếp phòng giới thiệu"
+              value={roomSort}
+              onChange={setRoomSort}
+            />
+            {page === "phong" && (
+              <input
+                aria-label="Tìm phòng giới thiệu"
+                type="search"
+                placeholder="Tên phòng hoặc chi nhánh"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            )}
+          </div>
+          <div className="kh-showcase-cards">
+            {shownRooms.map((p) => (
+              <article key={p.id} className="kh-feature-card">
+                <button
+                  onClick={() => onXem({ ...p, gia_tham_khao: true })}
+                  aria-label={"Xem chi tiết " + p.ten_phong}
+                >
+                  {p.anh.find(Boolean) ? (
+                    <img
+                      draggable={false}
+                      src={p.anh.find(Boolean)!}
+                      alt={p.ten_phong}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span className="kh-feature-no-photo">
+                      Chưa có ảnh phòng
+                    </span>
+                  )}
+                  <div className="kh-feature-caption">
+                    <small>{p.ten_homestay}</small>
+                    <h3>{p.ten_phong}</h3>
+                    <p>
+                      {p.suc_chua} khách
+                      {p.dien_tich_m2 ? " · " + p.dien_tich_m2 + " m²" : ""}
+                    </p>
+                    <strong>
+                      {Number(p.gia_moi_ngay) > 0
+                        ? money(p.gia_moi_ngay!) + " / ngày"
+                        : "Liên hệ để xem giá"}
+                    </strong>
+                    <span>Xem chi tiết →</span>
+                  </div>
+                  {phongNoiBat.includes(p.id) && (
+                    <span className="kh-feature-label">Nổi bật</span>
+                  )}
+                </button>
+              </article>
+            ))}
+          </div>
+          {!shownRooms.length && (
+            <p className="kh-empty">Chưa có phòng phù hợp.</p>
+          )}
+          <small className="kh-reference-price">
+            Giá tham khảo theo ngày. Kiểm tra thời gian để xem giá và phòng
+            trống.
+          </small>
+        </section>
+      )}
+      {page !== "phong" && hienCombo && (
+        <section id="combo-khach" className="kh-showcase">
+          <header>
+            <div>
+              <h2>{tieuDeCombo}</h2>
+              <p>Gói dịch vụ cho kỳ nghỉ của bạn</p>
+            </div>
+            {page === "home" && <a href="/uu-dai-combo">Xem thêm →</a>}
+          </header>
+          <div className="kh-showcase-tools">
+            <ChonSapXep
+              label="Sắp xếp combo giới thiệu"
+              value={comboSort}
+              onChange={setComboSort}
+            />
+          </div>
+          <div className="kh-showcase-cards">
+            {shownCombos.map((c) => (
+              <article key={c.id} className="kh-feature-card">
+                <button
+                  onClick={() => onCombo(c.id)}
+                  aria-label={"Xem combo " + c.ten_combo}
+                >
+                  {c.anh.find(Boolean) ? (
+                    <img
+                      src={c.anh.find(Boolean)!}
+                      alt={c.ten_combo}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span className="kh-feature-no-photo">
+                      Chưa có ảnh combo
+                    </span>
+                  )}
+                  <div className="kh-feature-caption">
+                    <small>
+                      {c.so_gio_bao_gom
+                        ? "Combo " + c.so_gio_bao_gom + " giờ"
+                        : "Combo dịch vụ"}
+                    </small>
+                    <h3>{c.ten_combo}</h3>
+                    <p>{c.mo_ta}</p>
+                    <strong>{money(c.gia_combo)}</strong>
+                    <span>Chọn lịch áp dụng →</span>
+                  </div>
+                  {comboNoiBat.includes(c.id) && (
+                    <span className="kh-feature-label">Nổi bật</span>
+                  )}
+                </button>
+              </article>
+            ))}
+          </div>
+          {!shownCombos.length && (
+            <p className="kh-empty">Chưa có combo đang bán.</p>
+          )}
+          <small className="kh-reference-price">
+            Giá combo; tổng tiền phòng và dịch vụ được xác nhận theo lịch.
+          </small>
+        </section>
+      )}
+    </div>
+  );
+}
+export function DanhGiaTrangChu({ items }: { items: DanhGiaKhach[] }) {
+  return (
+    <section className="kh-reviews" aria-label="Đánh giá khách hàng">
+      <header>
+        <span>Những trải nghiệm được chia sẻ</span>
+        <h2>Khách hàng nói về HomeStay</h2>
+      </header>
+      <div className="kh-review-track">
+        {items.map((d) => (
+          <article key={d.id}>
+            <header>
+              <span className="kh-review-avatar" aria-hidden="true">
+                {d.ten_khach[0]}
+              </span>
+              <div>
+                <h3>{d.ten_khach}</h3>
+                <small>{d.ten_homestay}</small>
+              </div>
+            </header>
+            <div
+              className="kh-review-stars"
+              aria-label={d.so_sao + " trên 5 sao"}
+            >
+              {"★".repeat(d.so_sao)}
+              {"☆".repeat(5 - d.so_sao)}
+            </div>
+            <p>{d.noi_dung || "Khách đã đánh giá trải nghiệm lưu trú."}</p>
+            <footer>
+              <small>{d.ten_phong}</small>
+              <time dateTime={d.ngay_tao}>
+                {new Date(d.ngay_tao).toLocaleDateString("vi-VN")}
+              </time>
+            </footer>
+          </article>
+        ))}
+      </div>
+      {!items.length && (
+        <p className="kh-empty">Chưa có đánh giá được công khai.</p>
+      )}
+    </section>
+  );
+}

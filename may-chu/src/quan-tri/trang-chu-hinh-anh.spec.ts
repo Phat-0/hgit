@@ -22,6 +22,11 @@ describe('Cấu hình hình ảnh Trang chủ',()=>{
     expect(()=>validate({...MAC_DINH_TRANG_CHU,giao_dien:{...ui,anh_nen_chung:'https://evil.test/a.webp'}})).toThrow();
     expect(()=>validate({...MAC_DINH_TRANG_CHU,giao_dien:{...ui,mau_nen:'url(evil)'}})).toThrow();
   });
+  it('giới hạn font, ID nổi bật và các lựa chọn hiển thị',()=>{
+    const ui={ten_web:'HomeStay',khau_hieu:'Nghỉ ngơi',tieu_de_phong:'Phòng',mau_nen:'#18352f',mau_nhan:'#e9bd80',so_cot:3,anh_ben_trai:false,font_chu:'palatino',phong_noi_bat:['11111111-1111-4111-8111-111111111111'],combo_noi_bat:[],hien_ban_do:true,hien_danh_gia:false};
+    expect(new TrangChuService({} as any)['validate']({...MAC_DINH_TRANG_CHU,giao_dien:ui}).giao_dien?.font_chu).toBe('palatino');
+    for(const extra of [{font_chu:'url(evil)'},{phong_noi_bat:['bad-id']},{combo_noi_bat:Array(21).fill('11111111-1111-4111-8111-111111111111')},{hien_ban_do:'yes'}])expect(()=>new TrangChuService({} as any)['validate']({...MAC_DINH_TRANG_CHU,giao_dien:{...ui,...extra}})).toThrow();
+  });
   it('kiểm tra liên hệ và không cho cấy thuộc tính lạ vào khối',()=>{
     expect(()=>validate({...MAC_DINH_TRANG_CHU,chan_trang:{...MAC_DINH_TRANG_CHU.chan_trang,email:'a@x.com\nBcc:evil'}})).toThrow();
     expect(()=>validate({...MAC_DINH_TRANG_CHU,hero:{...MAC_DINH_TRANG_CHU.hero,html:'<script>'}})).toThrow();

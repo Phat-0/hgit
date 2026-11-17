@@ -33,6 +33,7 @@ export class KhachHangController {
     await this.conn.limit(r.ip || 'unknown', 'options', 120);
     return this.rooms.options();
   }
+  @Get('gioi-thieu') async catalog(@Req() r:Request){await this.conn.limit(r.ip||'unknown','catalog',60);return this.rooms.catalog();}
   @Get('phong') async search(
     @Req() r: Request,
     @Query() q: Record<string, unknown>,

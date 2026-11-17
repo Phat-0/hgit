@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import ThuVienAnhKhach from "./ThuVienAnhKhach";
 type Phong = {
   tien_nghi?: string[];
+  gia_tham_khao?:boolean;
   ten_phong: string;
   ten_loai: string;
   ten_homestay: string;
@@ -132,13 +133,13 @@ export default function ChiTietPhongKhach({
                 Trả phòng<strong>{tra}</strong>
               </span>
             </div>
-            <small>Thời gian và giá theo khoảng bạn đang chọn.</small>
+            <small>{phong.gia_tham_khao?'Giá tham khảo theo ngày. Kiểm tra phòng trống trước khi đặt.':'Thời gian và giá theo khoảng bạn đang chọn.'}</small>
           </section>
           <div className="kh-detail-price">
             <strong>
-              {Number(phong.tien_phong).toLocaleString("vi-VN")} ₫
+              {phong.gia_tham_khao&&Number(phong.tien_phong)<=0?'Chưa có giá ngày':Number(phong.tien_phong).toLocaleString("vi-VN")+' ₫'}
             </strong>
-            <small> / khoảng đặt</small>
+            <small>{phong.gia_tham_khao?' / ngày':' / khoảng đặt'}</small>
           </div>
           <button className="kh-detail-book" onClick={onDat}>
             Đặt phòng này <span aria-hidden="true">→</span>
