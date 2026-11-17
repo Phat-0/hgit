@@ -160,6 +160,7 @@ export class TrangKhachService {
       return await Promise.all(
         valid.map(async (p) => ({
           id: p.id,
+          homestay_id: p.homestay_id,
           ten_phong: p.ten_phong,
           ma_phong: p.ma_phong,
           ten_homestay: p.ten_homestay,
@@ -271,6 +272,28 @@ export class TrangKhachService {
     } finally {
       await c.end();
     }
+  }
+  async featuredCombos(x: Record<string, unknown>) {
+    const {start,end,kind}=this.interval(x);
+    const branch=x.chi_nhanh_id ? this.conn.id(String(x.chi_nhanh_id)) : null;
+    const c=await this.conn.db();
+    try {
+      const rows=await c.query(`SELECT co.id,co.ten_combo,co.mo_ta,co.gia_combo,co.so_gio_bao_gom,co.pham_vi,co.anh_combo,co.anh_dai_dien,
+        ARRAY(SELECT homestay_id FROM public.combo_chi_nhanh WHERE combo_id=co.id) AS chi_nhanh_ids,
+        ARRAY(SELECT phong_id FROM public.combo_phong WHERE combo_id=co.id) AS phong_ids
+        FROM public.combo co WHERE co.trang_thai='Đang bán'
+        AND (co.bat_dau IS NULL OR co.bat_dau<=$1) AND (co.ket_thuc IS NULL OR co.ket_thuc>=$2)
+        AND (co.so_gio_bao_gom IS NULL OR $3='Theo giờ')
+        AND ($4::uuid IS NULL OR co.pham_vi='toan_he_thong'
+          OR co.pham_vi='chi_nhanh' AND EXISTS(SELECT 1 FROM public.combo_chi_nhanh cc WHERE cc.combo_id=co.id AND cc.homestay_id=$4)
+          OR co.pham_vi='phong' AND EXISTS(SELECT 1 FROM public.combo_phong cp JOIN public.phong p ON p.id=cp.phong_id WHERE cp.combo_id=co.id AND p.homestay_id=$4))
+        ORDER BY co.ten_combo LIMIT 60`,[start.toISOString(),end.toISOString(),kind,branch]);
+      return await Promise.all(rows.rows.map(async co=>({
+        id:co.id,ten_combo:co.ten_combo,mo_ta:co.mo_ta,gia_combo:co.gia_combo,so_gio_bao_gom:co.so_gio_bao_gom,pham_vi:co.pham_vi,
+        chi_nhanh_ids:co.chi_nhanh_ids,phong_ids:co.phong_ids,
+        anh:await Promise.all((co.anh_combo?.length?co.anh_combo:co.anh_dai_dien?[co.anh_dai_dien]:[]).slice(0,8).map((key:string)=>this.image(key,'anh-combo'))),
+      })));
+    } finally {await c.end();}
   }
   async combos(x: Record<string, unknown>) {
     const c = await this.conn.db();

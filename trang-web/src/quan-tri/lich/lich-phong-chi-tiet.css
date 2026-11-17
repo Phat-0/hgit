@@ -19,3 +19,12 @@
  margin:0!important; border:0!important; border-radius:0!important;
  display:flex!important; align-items:center; box-shadow:none!important;
 }
+/* Viền hàng do ô bảng vẽ một lần; nền nửa giờ không vẽ thêm viền ngang. */
+.qt-layout .lp-page .lp-grid .lp-hour-background>button {
+ border-top:0!important; border-bottom:0!important;
+}
+.qt-layout .lp-page .lp-grid .lp-timeline { border:0!important; box-shadow:none!important; }
+.qt-layout .lp-page .lp-grid tbody>.lp-price-row>.lp-timeline-td,
+.qt-layout .lp-page .lp-grid tbody>tr>.lp-timeline-td { border-top:0!important; border-bottom:1px solid #e3e7ee!important; }
+.qt-layout .lp-page .lp-grid tbody>tr:not(.lp-price-row)>.lp-room { padding:0!important; }
+.qt-layout .lp-page .lp-grid tbody>tr:not(.lp-price-row)>.lp-room .lp-room-name { height:64px!important; min-height:64px!important; margin:0!important; padding:8px 12px!important; }

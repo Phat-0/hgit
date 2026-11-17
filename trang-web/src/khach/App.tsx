@@ -1,4 +1,4 @@
-import {giaoDienMacDinh, type NoiDungTrangChu } from "../dung-chung/du-lieu/trang-chu-noi-dung";
+import {layGiaoDien, type NoiDungTrangChu } from "../dung-chung/du-lieu/trang-chu-noi-dung";
 import { useEffect, useRef, useState,type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { RangePicker } from "../dung-chung/lich/RangePicker";
@@ -13,7 +13,10 @@ import "./giao-dien/trang-khach.css";
 import "./giao-dien/khach-am.css";
 import BieuTuong from "../dung-chung/giao-dien/BieuTuong";
 import ThuVienAnhKhach from "./thanh-phan/ThuVienAnhKhach";
+import DanhSachComboKhach from "./thanh-phan/DanhSachComboKhach";
+import "./giao-dien/trang-chu-bo-cuc.css";
 type Room = {
+  homestay_id?:string;
   id: string;
   ten_phong: string;
   ma_phong: string;
@@ -155,6 +158,7 @@ export default function App() {
     };
   };
   const applyKind = (next: "gio" | "ngay" | "dem", hours = config) => {
+    if (ready && next === kind && hours === config) return;
     setKind(next);
     const t = goiYThoiGian(next, hours);
     setStart(t.day);
@@ -286,7 +290,7 @@ export default function App() {
     if (filterTimer.current !== null) window.clearTimeout(filterTimer.current);
     await loadRooms(++serial.current);
   }
-  async function choose(room: Room) {
+  async function choose(room: Room, comboId?: string) {
     setSelected(room);
     setReceipt(null);
     setTab("don");
@@ -299,8 +303,10 @@ export default function App() {
     try {
       const list = await khachApi<Combo[]>("/combo", "POST", body);
       setCombos(list);
+      if(comboId){const selectedCombo=list.find(c=>c.id===comboId);if(!selectedCombo){setSelected(null);setError('Combo vừa thay đổi hoặc không còn áp dụng. Vui lòng chọn lại.');return;}setCombo(selectedCombo);setPrice(Number(selectedCombo.tong_gia));}
+
     } catch (e) {
-      setFormError((e as Error).message);
+      if(comboId){setSelected(null);setError((e as Error).message);}else setFormError((e as Error).message);
     }
   }
   async function submit(e: React.FormEvent) {
@@ -420,19 +426,23 @@ export default function App() {
     return () => observer.disconnect();
   }, [home, rooms]);
   const modal = selected || login || history !== null;
-  const ui={...giaoDienMacDinh,...home?.giao_dien};
+  const ui=layGiaoDien(home?.giao_dien);
   const rgb=[1,3,5].map(i=>parseInt(ui.mau_nhan.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
   const buttonText=rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722>.179?'#20142b':'#fff';
   return (
-    <main className={"kh-site kh-cms-custom "+(ui.anh_ben_trai?"kh-hero-left":"")} style={{'--kh-bg':ui.mau_nen,'--kh-accent':ui.mau_nhan,'--kh-button-text':buttonText,'--kh-columns':ui.so_cot} as CSSProperties}>
+    <main className={"kh-site kh-cms-custom "+(ui.anh_ben_trai?"kh-hero-left":"")} style={{'--kh-bg':ui.mau_nen,'--kh-accent':ui.mau_nhan,'--kh-button-text':buttonText,'--kh-columns':ui.so_cot,'--kh-hero-image':home?.hero?.anh_nen?`url(${JSON.stringify(home.hero.anh_nen)})`:'none'} as CSSProperties}>
+      <div className="kh-hero-backdrop" aria-hidden="true"/>
       <header className="kh-nav" ref={navRef}>
         <a className="kh-brand" href="/">
           <BieuTuong ten="home" size={28}/><span>{ui.ten_web}</span>
         </a>
         <button className="kh-nav-toggle" aria-label="Menu điều hướng" aria-expanded={navOpen} aria-controls="kh-navigation" onClick={()=>setNavOpen(!navOpen)}><BieuTuong ten={navOpen ? "close" : "menu"}/></button>
         <nav id="kh-navigation" aria-label="Điều hướng chính" className={navOpen ? "kh-nav-open" : ""} onClick={()=>setNavOpen(false)}>
+          <a href="#trang-dau">Trang chủ</a>
           <button onClick={()=>window.dispatchEvent(new Event('homestay:mo-chat'))}>Hỗ trợ</button>
-          {home?.hien_phong && <a href="#phong-khach">Khám phá phòng</a>}
+          {home?.hien_phong && <a href="#phong-khach">Phòng & Giá</a>}
+          {home?.hien_phong&&home.hien_combo!==false&&<a href="#combo-khach">Combo</a>}
+          {home?.gioi_thieu&&<a href="#gioi-thieu">Về chúng tôi</a>}
           <button onClick={() => void myBookings()}>Đơn của tôi</button>
           {token ? (
             <button
@@ -454,6 +464,7 @@ export default function App() {
               Đăng nhập / Tham gia
             </button>
           )}
+          {home?.hien_phong&&<a className="kh-nav-book" href="#dat-phong"><BieuTuong ten="calendar"/>Đặt phòng ngay <span aria-hidden="true">→</span></a>}
         </nav>
       </header>
       {homeError && (
@@ -463,23 +474,25 @@ export default function App() {
       )}
       {!home && !homeError && <p role="status">Đang tải Trang chủ…</p>}
       {home?.hero && (
-        <section className="kh-hero kh-cms-hero">
+        <section id="trang-dau" className="kh-hero kh-cms-hero">
           <div>
             <span className="kh-pill">{ui.khau_hieu}</span>
             <h1>{home.hero.tieu_de}</h1>
             <p>{home.hero.noi_dung}</p>
+            <a className="kh-hero-action" href="#dat-phong">Khám phá kỳ nghỉ <span aria-hidden="true">↗</span></a>
           </div>
-          {home.hero.anh || rooms.some(r=>r.anh.some(Boolean)) ?
+          {home.hero.anh || home.hero.album?.length || rooms.some(r=>r.anh.some(Boolean)) ?
             <ThuVienAnhKhach anh={[
               ...(home.hero.anh ? [{url:home.hero.anh,ten:home.hero.tieu_de}] : []),
-              ...rooms.flatMap(r=>r.anh.filter((url):url is string=>!!url).map(url=>({url,ten:r.ten_phong}))).slice(0,8),
+              ...(home.hero.album||[]).map((url,i)=>({url,ten:`${ui.ten_web} · Không gian ${i+1}`})),
+              ...(!(home.hero.anh||home.hero.album?.length)?rooms.flatMap(r=>r.anh.filter((url):url is string=>!!url).map(url=>({url,ten:r.ten_phong}))).slice(0,8):[]),
             ]} onMo={setLightbox}/> :
             <a className="kh-stay-note" href="#phong-khach"><span>Một khoảng riêng</span><strong>Chọn lịch nghỉ.<br />Tìm nơi bạn muốn ở.</strong><span>Xem phòng và giá theo thời gian của bạn ↗</span></a>}
 
         </section>
       )}
       {home?.gioi_thieu && (
-        <section className="kh-cms-intro">
+        <section id="gioi-thieu" className="kh-cms-intro">
           {home.gioi_thieu.anh && (
             <button
               className="kh-cms-photo"
@@ -514,20 +527,21 @@ export default function App() {
       )}
       {home?.hien_phong && (
         <>
-          <section className="kh-search" aria-label="Tìm phòng trống">
-            <div className="kh-kinds">
+          <section id="dat-phong" className="kh-search" aria-label="Tìm phòng trống">
+            <form onSubmit={search}>
+              <div className="kh-search-field"><span>Hình thức đặt phòng</span><div className="kh-kinds">
               {(["gio", "ngay", "dem"] as const).map((v, i) => (
                 <button
                   key={v}
                   type="button"
+                  aria-label={["Theo giờ", "Theo ngày", "Qua đêm"][i]}
                   className={kind === v ? "active" : ""}
                   onClick={() => applyKind(v)}
                 >
-                  {["Theo giờ", "Theo ngày", "Qua đêm"][i]}
+                  {["Giờ", "Ngày", "Đêm"][i]}
                 </button>
               ))}
-            </div>
-            <form onSubmit={search}>
+            </div></div>
               <label>
                 Chi nhánh
                 <select
@@ -568,20 +582,20 @@ export default function App() {
                 {kind === "gio" ? (
                   <div className="kh-time-pair">
                     <ChonGio
-                      step={30}
                       value={st}
                       label="Giờ nhận phòng"
                       onChange={(v) => {
+                        if (v === st) return;
                         setSt(v);
                         setSearched(false);
                         setRooms([]);
                       }}
                     />
                     <ChonGio
-                      step={30}
                       value={et}
                       label="Giờ trả phòng"
                       onChange={(v) => {
+                        if (v === et) return;
                         setEt(v);
                         setSearched(false);
                         setRooms([]);
@@ -704,19 +718,14 @@ export default function App() {
               </div>
             )}
           </section>
+          {home.hien_combo!==false&&<DanhSachComboKhach query={searched&&lastSearch.current?new URLSearchParams(lastSearch.current).toString():''} phong={rooms} tieuDe={ui.tieu_de_combo||'Combo & trải nghiệm'} onChon={(roomId,comboId)=>{const room=rooms.find(p=>p.id===roomId);if(room)void choose(room,comboId);}}/>}
         </>
       )}
       {home?.chan_trang && (
         <footer className="kh-footer">
-          {home.chan_trang.anh && (
-            <img
-              src={home.chan_trang.anh}
-              alt={home.chan_trang.tieu_de}
-              width="70"
-            />
-          )}
-          <div className="kh-footer-about"><strong>{home.chan_trang.tieu_de}</strong><p>{home.chan_trang.noi_dung}</p></div>
-          <nav aria-label="Liên kết cuối trang">{home.hien_phong&&<a href="#phong-khach">Phòng và giá</a>}<button onClick={()=>window.dispatchEvent(new Event('homestay:mo-chat'))}>Liên hệ HomeStay</button><a href="/quan-tri">Dành cho nhân viên</a></nav>
+          <div className="kh-footer-about">{home.chan_trang.anh?<img className="kh-footer-logo" src={home.chan_trang.anh} alt={home.chan_trang.tieu_de}/>:<BieuTuong ten="home" size={28}/>}<strong>{home.chan_trang.tieu_de}</strong><p>{home.chan_trang.noi_dung}</p></div>
+          <nav aria-label="Liên kết cuối trang"><strong>Khám phá HomeStay</strong>{home.hien_phong&&<a href="#phong-khach">Phòng và giá</a>}{home.hien_phong&&home.hien_combo!==false&&<a href="#combo-khach">Combo & trải nghiệm</a>}<button onClick={()=>window.dispatchEvent(new Event('homestay:mo-chat'))}>Liên hệ HomeStay</button><a href="/quan-tri">Dành cho nhân viên</a></nav>
+          <address className="kh-footer-contact"><strong>Kết nối với chúng tôi</strong>{home.chan_trang.dia_chi&&<span>{home.chan_trang.dia_chi}</span>}{home.chan_trang.dien_thoai&&<a href={'tel:'+home.chan_trang.dien_thoai.replace(/[^+\d]/g,'')}>{home.chan_trang.dien_thoai}</a>}{home.chan_trang.email&&<a href={'mailto:'+home.chan_trang.email}>{home.chan_trang.email}</a>}<button onClick={()=>window.dispatchEvent(new Event('homestay:mo-chat'))}>Nhắn tin cho HomeStay →</button></address>
           <small className="kh-footer-bottom">© {new Date().getFullYear()} {ui.ten_web}</small>
         </footer>
       )}

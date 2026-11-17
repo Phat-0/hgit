@@ -47,6 +47,10 @@ export class KhachHangController {
     await this.conn.limit(r.ip || 'unknown', 'quote', 60);
     return this.rooms.quote(x || {});
   }
+  @Get('combo-noi-bat') async featuredCombos(@Req() r: Request, @Query() q: Record<string, unknown>) {
+    await this.conn.limit(r.ip || 'unknown', 'featured-combos', 60);
+    return this.rooms.featuredCombos(q);
+  }
   @Post('combo') async combos(
     @Req() r: Request,
     @Body() x: Record<string, unknown>,

@@ -1,14 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import BieuTuong from '../../dung-chung/giao-dien/BieuTuong';
 export default function ThuVienAnhKhach({anh,onMo}:{anh:{url:string;ten:string}[];onMo:(url:string)=>void}) {
   const [index,setIndex]=useState(0);
+  const touch=useRef<{x:number;y:number}|null>(null),swiped=useRef(false);
   const photos=anh.filter((p,i,all)=>p.url&&all.findIndex(x=>x.url===p.url)===i);
   useEffect(()=>setIndex(0),[anh[0]?.url]);
   const activeIndex=Math.min(index,photos.length-1);
   const selected=photos[activeIndex];
   if(!selected)return null;
   return <div className="kh-gallery" aria-label="Không gian lưu trú">
-    <button className="kh-cms-photo kh-gallery-main" onClick={()=>onMo(selected.url)} aria-label={'Xem ảnh '+selected.ten}>
+    {photos.length>1&&<div className="kh-gallery-stack" aria-hidden="true"><img src={photos[(activeIndex+1)%photos.length].url} alt=""/><img src={photos[(activeIndex+photos.length-1)%photos.length].url} alt=""/></div>}
+    <button onTouchStart={e=>{touch.current={x:e.touches[0].clientX,y:e.touches[0].clientY};swiped.current=false;}} onTouchEnd={e=>{if(touch.current===null)return;const delta=e.changedTouches[0].clientX-touch.current.x;if(Math.abs(delta)>40&&Math.abs(delta)>Math.abs(e.changedTouches[0].clientY-touch.current.y)&&photos.length>1){swiped.current=true;setIndex((activeIndex+(delta<0?1:photos.length-1))%photos.length);}touch.current=null;requestAnimationFrame(()=>{swiped.current=false;});}} className="kh-cms-photo kh-gallery-main" onClick={()=>{if(swiped.current){swiped.current=false;return;}onMo(selected.url);}} aria-label={'Xem ảnh '+selected.ten}>
       <img key={selected.url} src={selected.url} alt={selected.ten} fetchPriority="high" />
       <span className="kh-gallery-caption"><span>{selected.ten}</span><small>{activeIndex+1} / {photos.length}</small></span>
     </button>

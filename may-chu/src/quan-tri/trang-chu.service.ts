@@ -13,13 +13,19 @@ export type KhoiTrangChu = {
   tieu_de: string;
   noi_dung: string;
   anh: string;
+  anh_nen?: string;
+  album?: string[];
+  dia_chi?: string;
+  dien_thoai?: string;
+  email?: string;
 };
 export type CauHinhTrangChu = {
-  giao_dien?: {ten_web:string;khau_hieu:string;tieu_de_phong:string;mau_nen:string;mau_nhan:string;so_cot:number;anh_ben_trai:boolean};
+  giao_dien?: {ten_web:string;khau_hieu:string;tieu_de_phong:string;tieu_de_combo?:string;mau_nen:string;mau_nhan:string;so_cot:number;anh_ben_trai:boolean};
   hero: KhoiTrangChu;
   gioi_thieu: KhoiTrangChu;
   the: KhoiTrangChu[];
   hien_phong: boolean;
+  hien_combo?: boolean;
   chan_trang: KhoiTrangChu;
 };
 export const MAC_DINH_TRANG_CHU: CauHinhTrangChu = {
@@ -65,10 +71,11 @@ export class TrangChuService {
     if (
       Object.keys(x).some(
         (k) =>
-          !['hero', 'gioi_thieu', 'the', 'hien_phong', 'chan_trang','giao_dien'].includes(
+          !['hero', 'gioi_thieu', 'the', 'hien_phong', 'chan_trang','giao_dien','hien_combo'].includes(
             k,
           ),
       ) ||
+      (x.hien_combo !== undefined && typeof x.hien_combo !== 'boolean') ||
       typeof x.hien_phong !== 'boolean' ||
       !Array.isArray(x.the) ||
       x.the.length > 8
@@ -76,13 +83,19 @@ export class TrangChuService {
       throw new BadRequestException(
         'Cấu hình hoặc số thẻ không hợp lệ (tối đa 8)',
       );
-    const block = (v: unknown): KhoiTrangChu => {
+    const imageUrl = (value: unknown): string => {
+      if (typeof value !== 'string' || value.length > 2048) throw new BadRequestException('Ảnh không hợp lệ');
+      const prefix=(process.env.SUPABASE_URL || '').replace(/\/$/, '')+'/storage/v1/object/public/anh-trang-chu/';
+      if(value && (!value.startsWith('https://') || !value.startsWith(prefix) || !/^\w[\w/-]*\.(jpg|png|webp)$/.test(value.slice(prefix.length)))) throw new BadRequestException('Chỉ dùng ảnh tải lên thư viện Trang chủ');
+      return value;
+    };
+    const block = (v: unknown, role: 'hero'|'footer'|'other'='other'): KhoiTrangChu => {
       if (!v || typeof v !== 'object' || Array.isArray(v))
         throw new BadRequestException('Khối nội dung không hợp lệ');
       const b = v as Record<string, unknown>;
       if (
         Object.keys(b).some(
-          (k) => !['hien', 'tieu_de', 'noi_dung', 'anh'].includes(k),
+          (k) => !['hien', 'tieu_de', 'noi_dung', 'anh', ...(role==='hero'?['anh_nen','album']:[]), ...(role==='footer'?['dia_chi','dien_thoai','email']:[])].includes(k),
         ) ||
         typeof b.hien !== 'boolean' ||
         typeof b.tieu_de !== 'string' ||
@@ -96,19 +109,22 @@ export class TrangChuService {
         );
       if (b.hien && !b.tieu_de.trim())
         throw new BadRequestException('Khối đang hiển thị cần tiêu đề');
-      const prefix =
-        (process.env.SUPABASE_URL || '').replace(/\/$/, '') +
-        '/storage/v1/object/public/anh-trang-chu/';
-      if (
-        b.anh &&
-        (!b.anh.startsWith(prefix) ||
-          !b.anh.startsWith('https://') ||
-          !/^\w[\w/-]*\.(jpg|png|webp)$/.test(b.anh.slice(prefix.length)))
-      )
-        throw new BadRequestException(
-          'Chỉ dùng ảnh tải lên thư viện Trang chủ',
-        );
+      imageUrl(b.anh);
+      const extra: Partial<KhoiTrangChu> = {};
+      if(role==='hero') {
+        if(b.anh_nen!==undefined)extra.anh_nen=imageUrl(b.anh_nen);
+        if(b.album!==undefined) {
+          if(!Array.isArray(b.album)||b.album.length>8)throw new BadRequestException('Bộ ảnh nổi tối đa 8 ảnh');
+          extra.album=[...new Set(b.album.map(imageUrl))].filter(Boolean);
+        }
+      }
+      if(role==='footer') {
+        for(const key of ['dia_chi','dien_thoai','email'] as const)if(b[key]!==undefined){if(typeof b[key]!=='string'||(b[key] as string).length>500)throw new BadRequestException('Thông tin liên hệ không hợp lệ');extra[key]=(b[key] as string).trim();}
+        if(extra.dien_thoai&&!/^[+\d ().-]{3,30}$/.test(extra.dien_thoai))throw new BadRequestException('Số liên hệ không hợp lệ');
+        if(extra.email&&!/^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(extra.email))throw new BadRequestException('Email liên hệ không hợp lệ');
+      }
       return {
+        ...extra,
         hien: b.hien,
         tieu_de: b.tieu_de.trim(),
         noi_dung: b.noi_dung.trim(),
@@ -116,14 +132,15 @@ export class TrangChuService {
       };
     };
     const ui=x.giao_dien as Record<string,unknown>|undefined;
-    if(ui&&(typeof ui!=='object'||Array.isArray(ui)||Object.keys(ui).some(k=>!['ten_web','khau_hieu','tieu_de_phong','mau_nen','mau_nhan','so_cot','anh_ben_trai'].includes(k))||['ten_web','khau_hieu','tieu_de_phong'].some(k=>typeof ui[k]!=='string'||!(ui[k] as string).trim()||(ui[k] as string).length>150)||!['#4d2078','#39205f','#6b329b'].includes(String(ui.mau_nen))||!/^#[0-9a-f]{6}$/i.test(String(ui.mau_nhan))||![2,3,4].includes(Number(ui.so_cot))||typeof ui.anh_ben_trai!=='boolean'))throw new BadRequestException('Thiết lập giao diện trang chủ không hợp lệ');
+    if(ui&&(typeof ui!=='object'||Array.isArray(ui)||Object.keys(ui).some(k=>!['ten_web','khau_hieu','tieu_de_phong','mau_nen','mau_nhan','so_cot','anh_ben_trai','tieu_de_combo'].includes(k))||['ten_web','khau_hieu','tieu_de_phong'].some(k=>typeof ui[k]!=='string'||!(ui[k] as string).trim()||(ui[k] as string).length>150)||(ui.tieu_de_combo!==undefined&&(typeof ui.tieu_de_combo!=='string'||ui.tieu_de_combo.length>150))||!['#1e1813','#292018','#34271c','#4d2078','#39205f','#6b329b'].includes(String(ui.mau_nen))||!/^#[0-9a-f]{6}$/i.test(String(ui.mau_nhan))||![2,3,4].includes(Number(ui.so_cot))||typeof ui.anh_ben_trai!=='boolean'))throw new BadRequestException('Thiết lập giao diện trang chủ không hợp lệ');
     return {
       ...(ui?{giao_dien:ui as NonNullable<CauHinhTrangChu['giao_dien']>}:{}),
-      hero: block(x.hero),
+      hero: block(x.hero,'hero'),
       gioi_thieu: block(x.gioi_thieu),
-      the: x.the.map(block),
+      the: x.the.map(v=>block(v)),
       hien_phong: x.hien_phong,
-      chan_trang: block(x.chan_trang),
+      chan_trang: block(x.chan_trang,'footer'),
+      ...(x.hien_combo===undefined?{}:{hien_combo:x.hien_combo as boolean}),
     };
   }
   async read(uid?: string) {

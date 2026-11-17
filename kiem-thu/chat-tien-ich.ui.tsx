@@ -631,7 +631,8 @@ assert.equal(document.querySelectorAll('.cm-card').length,8);assert.equal(docume
 await click(document.querySelector('.cm-card'));await wait();assert.ok(document.querySelector('.cm-cards>.cm-detail-row'));assert.equal(document.querySelector('.cm-shade'),null);assert.equal(document.querySelectorAll('.cm-card').length,8);
 await click(document.querySelector('.cm-card'));await wait();assert.equal(document.querySelector('.cm-inline-detail'),null);
 await act(async()=>root.unmount());root=createRoot(document.getElementById('root')!);
-await act(async()=>root.render(<TrangChuQuanTri token="admin"/>));await wait();assert.ok(document.querySelector('.tc-design-grid'));assert.ok(document.querySelector('.tc-preview'));assert.equal(document.querySelectorAll('.tc-design-grid>label').length,7);
+await act(async()=>root.render(<TrangChuQuanTri token="admin"/>));await wait();assert.ok(document.querySelector('.tc-design-grid'));assert.ok(document.querySelector('.tc-preview'));assert.equal(document.querySelectorAll('.tc-design-grid>label').length,8);assert.ok(document.querySelector('.tc-hero-background input[type=file]'));assert.equal(document.querySelectorAll('.tc-contact-fields input').length,3);
+
 await act(async()=>root.unmount());root=createRoot(document.getElementById('root')!);
 await act(async()=>root.render(<VaiTroNhanVien token="admin" onChanged={async()=>{}}/>));await wait();assert.match(document.querySelector('.nv-roles')!.textContent!,/toàn hệ thống/);assert.ok(document.querySelector('.nv-role-list button'));
 await act(async()=>root.unmount());

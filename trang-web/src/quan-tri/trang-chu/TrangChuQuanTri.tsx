@@ -3,7 +3,7 @@ import {
   type Khoi,
   type NoiDungTrangChu,
   macDinh,
-  giaoDienMacDinh,
+  layGiaoDien,
 } from "../../dung-chung/du-lieu/trang-chu-noi-dung";
 import "./trang-chu-quan-tri.css";
 const khoiMoi = (): Khoi => ({
@@ -115,7 +115,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
       setBusy(false);
     }
   }
-  function block(title: string, b: Khoi | null, onChange: (v: Khoi) => void) {
+  function block(title: string, b: Khoi | null, onChange: (v: Khoi) => void, role?: 'hero'|'footer') {
     const x = b || { ...khoiMoi(), hien: false };
     return (
       <fieldset className="tc-block" disabled={busy}>
@@ -152,7 +152,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
             <span>Chưa có ảnh</span>
           )}
           <label>
-            Tải ảnh JPEG/PNG/WebP
+            {role === "hero" ? "Ảnh nổi đầu tiên (JPEG/PNG/WebP)" : "Tải ảnh JPEG/PNG/WebP"}
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
@@ -170,10 +170,21 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
             </button>
           )}
         </div>
+        {role==='hero'&&<>
+          <div className="tc-image tc-hero-background">
+            {x.anh_nen?<img src={x.anh_nen} alt="Ảnh nền đầu trang"/>:<span>Chưa có ảnh nền đầu trang</span>}
+            <label>Ảnh nền đầu trang<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>{void image(e.target.files?.[0],url=>onChange({...x,anh_nen:url}));e.target.value='';}}/></label>
+            {x.anh_nen&&<button type="button" onClick={()=>onChange({...x,anh_nen:''})}>Bỏ ảnh nền</button>}
+          </div>
+          <label>Thêm ảnh nổi để lướt (tối đa 8 ảnh bổ sung)<input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={async e=>{const files=Array.from(e.target.files||[]).slice(0,8-(x.album||[]).length);e.target.value='';for(const file of files)await image(file,url=>{setData(prev=>({...prev,hero:{...(prev.hero||khoiMoi()),album:[...(prev.hero?.album||[]),url]}}));setDirty(true);setNotice('');});}}/></label>
+          <div className="tc-hero-album">{(x.album||[]).map((url,i)=><div key={url+String(i)}><img src={url} alt={'Ảnh nổi '+(i+2)}/><div><button type="button" disabled={i===0} aria-label={'Đưa ảnh '+(i+2)+' lên trước'} onClick={()=>{const album=[...x.album!];[album[i-1],album[i]]=[album[i],album[i-1]];onChange({...x,album});}}>←</button><button type="button" aria-label={'Xóa ảnh nổi '+(i+2)} onClick={()=>onChange({...x,album:x.album!.filter((_,n)=>n!==i)})}>×</button></div></div>)}</div>
+          <p>Ảnh nền phủ toàn bộ phần đầu trang. Ảnh nổi được chuyển bằng mũi tên, ảnh nhỏ hoặc vuốt trên điện thoại.</p>
+        </>}
+        {role==='footer'&&<div className="tc-contact-fields">{([['dia_chi','Địa chỉ liên hệ'],['dien_thoai','Số điện thoại liên hệ'],['email','Email liên hệ']] as const).map(([key,label])=><label key={key}>{label}<input type={key==='email'?'email':'text'} maxLength={key==='dien_thoai'?30:500} value={x[key]||''} onChange={e=>onChange({...x,[key]:e.target.value})}/></label>)}</div>}
       </fieldset>
     );
   }
-  const ui = { ...giaoDienMacDinh, ...data.giao_dien };
+  const ui = layGiaoDien(data.giao_dien);
   function setUi(key: keyof typeof ui, value: string | number | boolean) {
     change({ ...data, giao_dien: { ...ui, [key]: value } });
   }
@@ -217,6 +228,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
             ["ten_web", "Tên website"],
             ["khau_hieu", "Dòng giới thiệu ngắn"],
             ["tieu_de_phong", "Tiêu đề danh sách phòng"],
+            ["tieu_de_combo", "Tiêu đề danh sách combo"],
           ].map(([key, label]) => (
             <label key={key}>
               {label}
@@ -233,9 +245,9 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
               value={ui.mau_nen}
               onChange={(e) => setUi("mau_nen", e.target.value)}
             >
-              <option value="#4d2078">Tím đậm</option>
-              <option value="#39205f">Tím đêm</option>
-              <option value="#6b329b">Tím sáng</option>
+              <option value="#1e1813">Nâu gỗ đậm</option>
+              <option value="#292018">Nâu ấm</option>
+              <option value="#34271c">Nâu sáng</option>
             </select>
           </label>
           <label>
@@ -258,7 +270,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
             </select>
           </label>
           <label>
-            Vị trí ảnh banner
+            Vị trí ảnh nổi
             <select
               value={String(ui.anh_ben_trai)}
               onChange={(e) => setUi("anh_ben_trai", e.target.value === "true")}
@@ -268,7 +280,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
             </select>
           </label>
         </div>
-        <div className="tc-preview" style={{ background: ui.mau_nen }}>
+        <div className="tc-preview" style={{ background: ui.mau_nen, backgroundImage:data.hero?.anh_nen?`linear-gradient(90deg,#201a15d9,#201a1570),url(${JSON.stringify(data.hero.anh_nen)})`:undefined,backgroundSize:"cover",backgroundPosition:"center" }}>
           <strong>{ui.ten_web}</strong>
           <small>{ui.khau_hieu}</small>
           <h3>{data.hero?.tieu_de}</h3>
@@ -278,13 +290,13 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
       </fieldset>
       <div className="tc-grid">
         {block("Banner đầu trang", data.hero, (b) =>
-          change({ ...data, hero: b }),
+          change({ ...data, hero: b }), "hero",
         )}
         {block("Giới thiệu", data.gioi_thieu, (b) =>
           change({ ...data, gioi_thieu: b }),
         )}
         {block("Chân trang", data.chan_trang, (b) =>
-          change({ ...data, chan_trang: b }),
+          change({ ...data, chan_trang: b }), "footer",
         )}
         <fieldset className="tc-block" disabled={busy}>
           <legend>Danh sách phòng</legend>
@@ -298,6 +310,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
             />{" "}
             Hiện bộ lọc và phòng trống cho khách đặt
           </label>
+<label className="tc-toggle"><input type="checkbox" checked={data.hien_combo!==false} onChange={e=>change({...data,hien_combo:e.target.checked})}/>Hiện mục Combo bên dưới danh sách phòng</label>
           <p>
             Phòng, giá và ảnh lấy từ dữ liệu Phòng; không nhập lại ở đây. Tắt
             phần này chỉ ẩn khỏi Trang chủ, không ngừng kinh doanh phòng trong
