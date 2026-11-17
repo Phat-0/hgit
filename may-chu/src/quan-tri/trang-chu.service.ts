@@ -16,6 +16,22 @@ export type KhoiTrangChu = {
   anh_nen?: string;
   album?: string[];
   bo_anh?: ({url:string}|{phong_id:string;anh_id:string})[];
+  tieu_de_lien_ket?: string;
+  tieu_de_ket_noi?: string;
+  noi_dung_ket_noi?: string;
+  nhan_nut?: string;
+  zalo?: string;
+  website?: string;
+  facebook?: string;
+  instagram?: string;
+  tiktok?: string;
+  chinh_sach?: string;
+  bao_mat?: string;
+  faq?: string;
+  ban_quyen?: string;
+  loi_ich_1?: string;
+  loi_ich_2?: string;
+  loi_ich_3?: string;
   dia_chi?: string;
   dien_thoai?: string;
   email?: string;
@@ -96,7 +112,7 @@ export class TrangChuService {
       const b = v as Record<string, unknown>;
       if (
         Object.keys(b).some(
-          (k) => !['hien', 'tieu_de', 'noi_dung', 'anh', ...(role==='hero'?['anh_nen','album','bo_anh']:[]), ...(role==='footer'?['dia_chi','dien_thoai','email']:[])].includes(k),
+          (k) => !['hien', 'tieu_de', 'noi_dung', 'anh', ...(role==='hero'?['anh_nen','album','bo_anh']:[]), ...(role==='footer'?['anh_nen','dia_chi','dien_thoai','email','tieu_de_lien_ket','tieu_de_ket_noi','noi_dung_ket_noi','nhan_nut','zalo','website','facebook','instagram','tiktok','chinh_sach','bao_mat','faq','ban_quyen','loi_ich_1','loi_ich_2','loi_ich_3']:[])].includes(k),
         ) ||
         typeof b.hien !== 'boolean' ||
         typeof b.tieu_de !== 'string' ||
@@ -125,6 +141,9 @@ export class TrangChuService {
         }
       }
       if(role==='footer') {
+        if(b.anh_nen!==undefined)extra.anh_nen=imageUrl(b.anh_nen);
+        for(const key of ['tieu_de_lien_ket', 'tieu_de_ket_noi', 'noi_dung_ket_noi', 'nhan_nut', 'zalo', 'website', 'facebook', 'instagram', 'tiktok', 'chinh_sach', 'bao_mat', 'faq', 'ban_quyen', 'loi_ich_1', 'loi_ich_2', 'loi_ich_3'] as const) if(b[key]!==undefined){if(typeof b[key]!=='string'||(b[key] as string).length>500)throw new BadRequestException('Thông tin footer tối đa 500 ký tự');extra[key]=(b[key] as string).trim();}
+        for(const key of ['zalo','website','facebook','instagram','tiktok','chinh_sach','bao_mat','faq'] as const)if(extra[key]){try{const url=new URL(extra[key]!);if(url.protocol!=='https:'||url.username||url.password)throw Error();}catch{throw new BadRequestException('Liên kết footer phải là HTTPS hợp lệ');}}
         for(const key of ['dia_chi','dien_thoai','email'] as const)if(b[key]!==undefined){if(typeof b[key]!=='string'||(b[key] as string).length>500)throw new BadRequestException('Thông tin liên hệ không hợp lệ');extra[key]=(b[key] as string).trim();}
         if(extra.dien_thoai&&!/^[+\d ().-]{3,30}$/.test(extra.dien_thoai))throw new BadRequestException('Số liên hệ không hợp lệ');
         if(extra.email&&!/^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(extra.email))throw new BadRequestException('Email liên hệ không hợp lệ');

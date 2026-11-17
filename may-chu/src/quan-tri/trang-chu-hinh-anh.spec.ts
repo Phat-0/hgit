@@ -4,6 +4,11 @@ describe('Cấu hình hình ảnh Trang chủ',()=>{
   afterEach(()=>vi.unstubAllEnvs());
   const validate=(data:unknown)=>new TrangChuService({} as any)['validate'](data);
   const image=(name:string)=>'https://home.supabase.co/storage/v1/object/public/anh-trang-chu/'+name+'.webp';
+  it('giữ các thiết lập footer và chặn liên kết thực thi mã',()=>{
+    const data={...structuredClone(MAC_DINH_TRANG_CHU),chan_trang:{...MAC_DINH_TRANG_CHU.chan_trang,website:'https://homestay.example',nhan_nut:'Tư vấn phòng',chinh_sach:'https://homestay.example/chinh-sach',loi_ich_1:'Nhận phòng linh hoạt'}};
+    expect(validate(data).chan_trang.nhan_nut).toBe('Tư vấn phòng');
+    for(const bad of ['javascript:alert(1)','data:text/html,test','https://user:pass@example.com'])expect(()=>validate({...data,chan_trang:{...data.chan_trang,website:bad}})).toThrow('HTTPS');
+  });
   it('đọc cấu hình cũ và giữ ảnh nền, album, liên hệ trong cấu hình mới',()=>{
     vi.stubEnv('SUPABASE_URL','https://home.supabase.co');
     expect(validate(structuredClone(MAC_DINH_TRANG_CHU)).hero.anh).toBe('');

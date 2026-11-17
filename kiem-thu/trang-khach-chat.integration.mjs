@@ -170,6 +170,14 @@ await db.exec(fs.readFileSync(root+'/co-so-du-lieu/migrations/20261113111315_tac
 const { ChatService } = await import(
   root + "/may-chu/dist/khach-hang/chat.service.js"
 );
+await db.query('UPDATE public.loai_phong SET mo_ta=$1 WHERE id=$2',['Mô tả chuyển từ loại',type]);
+const descriptionMigration=fs.readFileSync(root+'/co-so-du-lieu/migrations/chuyen-mo-ta-loai-phong-sang-phong.sql','utf8');
+await db.exec(descriptionMigration);
+assert.equal((await db.query('SELECT mo_ta FROM public.phong WHERE id=$1',[room])).rows[0].mo_ta,'Mô tả chuyển từ loại');
+await db.query('UPDATE public.phong SET mo_ta=$1 WHERE id=$2',['Mô tả riêng của phòng',room2]);
+await db.exec(descriptionMigration);
+assert.equal((await db.query('SELECT mo_ta FROM public.phong WHERE id=$1',[room2])).rows[0].mo_ta,'Mô tả riêng của phòng');
+assert.equal((await db.query("SELECT count(*)::int AS n FROM information_schema.columns WHERE table_schema='public' AND table_name='loai_phong' AND column_name='mo_ta'")).rows[0].n,0);
 const service = new TrangKhachService(conn),
   chat = new ChatService(conn);
 const day = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10),

@@ -18,7 +18,7 @@ import {
 } from '../quan-tri/khung-gio.js';
 import { docGioPhuThu, tinhTienPhuThu } from './phu-thu-khach.js';
 import { COMBO_THEO_PHONG } from '../quan-tri/combo.input.js';
-const ROOM = `SELECT p.*,h.ten_homestay,h.dia_chi,h.tinh_thanh,l.ten_loai,l.mo_ta,l.suc_chua,l.dien_tich_m2 FROM public.phong p JOIN public.homestay h ON h.id=p.homestay_id JOIN public.loai_phong l ON l.id=p.loai_phong_id WHERE h.trang_thai='Đang hoạt động' AND ${TRANG_THAI_PHONG}='Trống'`;
+const ROOM = `SELECT p.*,h.ten_homestay,h.dia_chi,h.tinh_thanh,l.ten_loai,coalesce(to_jsonb(p)->>'mo_ta',to_jsonb(l)->>'mo_ta') AS mo_ta,l.suc_chua,l.dien_tich_m2 FROM public.phong p JOIN public.homestay h ON h.id=p.homestay_id JOIN public.loai_phong l ON l.id=p.loai_phong_id WHERE h.trang_thai='Đang hoạt động' AND ${TRANG_THAI_PHONG}='Trống'`;
 @Injectable()
 export class TrangKhachService {
   constructor(private readonly conn: KetNoiKhachService) {}
@@ -96,15 +96,16 @@ export class TrangKhachService {
   async catalog() {
     const c=await this.conn.db();
     try {
-      const roomRows=await c.query(`SELECT p.id,p.homestay_id,p.ten_phong,p.ma_phong,p.gia_moi_gio,p.gia_moi_ngay,p.gia_moi_dem,p.gia_phu_thu_gio,p.so_gio_toi_thieu,p.cho_dat_theo_gio,p.cho_dat_theo_ngay,p.cho_dat_theo_dem,h.ten_homestay,h.dia_chi,h.tinh_thanh,l.ten_loai,l.mo_ta,l.suc_chua,l.dien_tich_m2,
+      const roomRows=await c.query(`SELECT p.id,p.homestay_id,p.ten_phong,p.ma_phong,p.gia_moi_gio,p.gia_moi_ngay,p.gia_moi_dem,p.gia_phu_thu_gio,p.so_gio_toi_thieu,p.cho_dat_theo_gio,p.cho_dat_theo_ngay,p.cho_dat_theo_dem,h.ten_homestay,h.dia_chi,h.tinh_thanh,l.ten_loai,coalesce(to_jsonb(p)->>'mo_ta',to_jsonb(l)->>'mo_ta') AS mo_ta,l.suc_chua,l.dien_tich_m2,
         (SELECT count(*)::int FROM public.dat_phong d WHERE d.phong_id=p.id AND d.trang_thai IN ('Đã xác nhận','Đã nhận phòng','Đã trả phòng')) AS luot_dat
         FROM public.phong p JOIN public.homestay h ON h.id=p.homestay_id JOIN public.loai_phong l ON l.id=p.loai_phong_id WHERE h.trang_thai='Đang hoạt động' ORDER BY h.ten_homestay,p.ma_phong LIMIT 200`);
       const photos=await c.query('SELECT id,phong_id,duong_dan FROM public.hinh_anh_phong WHERE phong_id=ANY($1::uuid[]) ORDER BY la_anh_dai_dien DESC,thu_tu,id',[roomRows.rows.map(p=>p.id)]);
       const amenities=await c.query('SELECT pt.phong_id,t.ten_tien_nghi FROM public.phong_tien_nghi pt JOIN public.tien_nghi t ON t.id=pt.tien_nghi_id WHERE pt.phong_id=ANY($1::uuid[]) ORDER BY t.ten_tien_nghi',[roomRows.rows.map(p=>p.id)]);
       const comboRows=await c.query(`SELECT id,ten_combo,mo_ta,gia_combo,so_gio_bao_gom,bat_dau,ket_thuc,pham_vi,(SELECT count(*)::int FROM public.dat_phong d WHERE d.combo_id=combo.id AND d.trang_thai IN ('Đã xác nhận','Đã nhận phòng','Đã trả phòng')) AS luot_dat,ARRAY(SELECT homestay_id FROM public.combo_chi_nhanh WHERE combo_id=combo.id) AS chi_nhanh_ids,ARRAY(SELECT phong_id FROM public.combo_phong WHERE combo_id=combo.id) AS phong_ids,anh_combo,anh_dai_dien FROM public.combo WHERE trang_thai='Đang bán' AND (ket_thuc IS NULL OR ket_thuc>now()) ORDER BY ten_combo LIMIT 100`);
       const reviews=await c.query(`SELECT dg.id,dg.so_sao,dg.noi_dung,dg.ngay_tao,split_part(trim(n.ho_ten),' ',1)||' · Khách lưu trú' AS ten_khach,p.ten_phong,h.ten_homestay FROM public.danh_gia dg JOIN public.nguoi_dung n ON n.id=dg.nguoi_dung_id JOIN public.dat_phong d ON d.id=dg.dat_phong_id JOIN public.phong p ON p.id=d.phong_id JOIN public.homestay h ON h.id=d.homestay_id WHERE dg.trang_thai='Hiển thị' AND h.trang_thai='Đang hoạt động' ORDER BY dg.ngay_tao DESC LIMIT 20`);
+      const summary=(await c.query("SELECT (SELECT count(*)::int FROM public.homestay WHERE trang_thai='Đang hoạt động') AS so_homestay,(SELECT count(*)::int FROM public.phong p JOIN public.homestay h ON h.id=p.homestay_id WHERE h.trang_thai='Đang hoạt động') AS so_phong,(SELECT coalesce(sum(so_khach),0)::bigint FROM public.dat_phong WHERE trang_thai IN ('Đã nhận phòng','Đã trả phòng')) AS luot_khach")).rows[0];
       const branches=await c.query("SELECT id,ten_homestay,dia_chi,tinh_thanh,vi_do,kinh_do FROM public.homestay WHERE trang_thai='Đang hoạt động' ORDER BY ten_homestay");
-      return {phong:await Promise.all(roomRows.rows.map(async p=>{
+      return {thong_ke:summary,phong:await Promise.all(roomRows.rows.map(async p=>{
         const selectedPhotos=await Promise.all(photos.rows.filter(a=>a.phong_id===p.id).slice(0,16).map(async a=>({id:a.id,url:await this.image(a.duong_dan)})));
         return {...p,anh_chon:selectedPhotos,tien_nghi:amenities.rows.filter(a=>a.phong_id===p.id).map(a=>a.ten_tien_nghi),tien_phong:Number(p.gia_moi_ngay),anh:selectedPhotos.map(a=>a.url)};
       })),

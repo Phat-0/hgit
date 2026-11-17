@@ -1,0 +1,16 @@
+# Trang chủ, footer và mô tả riêng của phòng
+
+- Footer chỉnh tại Quản trị → Trang chủ → Footer: logo, ảnh nền, giới thiệu, ba lợi ích, tiêu đề khám phá/kết nối, nhãn nút chat, liên hệ, mạng xã hội và liên kết chính sách. Liên kết phải dùng HTTPS. Nút chat dùng hội thoại có sẵn.
+- Ảnh nền chung cũ nay chỉ dùng ở đầu trang. Ảnh của Giới thiệu bổ sung là nền của riêng khối đó. Phần còn lại dùng màu nền tối đã cấu hình.
+- Khung đặt đơn mặc định thu lại. Nhấn Đặt đơn để mở khung bên dưới; ba loại đặt giữ cùng chiều cao ở từng kích thước màn hình.
+- Số Homestay/phòng lấy từ chi nhánh hoạt động; lượt khách là tổng số khách của đơn đã nhận/trả phòng, không phải số khách duy nhất.
+
+## Migration đang chờ áp dụng
+
+`co-so-du-lieu/migrations/chuyen-mo-ta-loai-phong-sang-phong.sql` chưa chạy trên Supabase vì thao tác xác nhận đã bị hủy. Kiểm tra trước chuyển: có 2 loại có mô tả, 3 phòng nhận nội dung, không có mô tả của loại chưa gắn phòng, không có đối tượng DB phụ thuộc cột cũ.
+
+Migration thêm `phong.mo_ta`, sao chép mô tả khi phòng chưa có nội dung riêng rồi bỏ `loai_phong.mo_ta` bằng RESTRICT trong cùng transaction. Dừng nếu có mô tả chưa gắn phòng. Chạy lại không ghi đè mô tả riêng. Không đổi khóa ngoại, RLS, lịch đặt hay bảng thanh toán.
+
+Mã đọc public tương thích cả trước và sau migration. Trước migration, các thông tin phòng khác vẫn lưu được; nhập mô tả riêng sẽ báo cần áp dụng migration thay vì làm lỗi SQL. Sau migration, form Phòng lưu mô tả riêng bình thường. Form Loại phòng không còn ô mô tả.
+
+Kiểm tra sau áp dụng: chỉ còn cột `phong.mo_ta`, số phòng nhận nội dung đúng 3, nội dung mô tả cũ được giữ lại, sửa mô tả của một phòng không thay đổi phòng khác.

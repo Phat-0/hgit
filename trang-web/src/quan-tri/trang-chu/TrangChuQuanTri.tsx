@@ -194,7 +194,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
         ) : (
           <div className="tc-image">
             <label>
-              Thêm ảnh
+              {role === "footer" ? "Logo footer" : "Ảnh nền giới thiệu"}
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
@@ -233,22 +233,23 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
             onClick={() =>
               onChange({
                 ...x,
-                tieu_de: "Một khoảng riêng, vừa vặn với nhịp sống của bạn",
+                tieu_de: "Nghỉ yên, tận hưởng từng khoảnh khắc.",
                 noi_dung:
-                  "Một buổi hẹn cần riêng tư, một đêm muốn nghỉ ngơi hay vài ngày đổi không khí — HomeStay giúp bạn tìm không gian phù hợp với thời gian của mình. Xem ảnh phòng, chọn lịch theo giờ, ngày hoặc đêm và kiểm tra giá trước khi đặt. Thêm một combo yêu thích để chuyến nghỉ mang dấu ấn riêng của bạn.",
+                  "Không gian riêng tư, tiện nghi vừa đủ cho một kỳ nghỉ thoải mái.",
               })
             }
           >
             Dùng nội dung giới thiệu gợi ý
           </button>
         )}
+        {role === "footer" && <div className="tc-image"><label>Ảnh nền footer<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>{void image(e.target.files?.[0],url=>onChange({...x,anh_nen:url}));e.target.value="";}}/></label>{x.anh_nen && <div className="tc-image-thumb"><button type="button" onClick={()=>setPreview(x.anh_nen!)}><img src={x.anh_nen} alt="Nền footer"/></button><button type="button" className="tc-image-remove" aria-label="Bỏ nền footer" onClick={()=>onChange({...x,anh_nen:""})}>×</button></div>}</div>}
         {role === "footer" && (
           <div className="tc-contact-fields">
             {(
               [
                 ["dia_chi", "Địa chỉ liên hệ"],
                 ["dien_thoai", "Số điện thoại liên hệ"],
-                ["email", "Email liên hệ"],
+                ["email", "Email liên hệ"],['tieu_de_lien_ket','Tiêu đề khám phá'],['tieu_de_ket_noi','Tiêu đề kết nối'],['noi_dung_ket_noi','Nội dung kết nối'],['nhan_nut','Nhãn nút nhắn tin'],['zalo','Liên kết Zalo (HTTPS)'],['website','Website (HTTPS)'],['facebook','Facebook (HTTPS)'],['instagram','Instagram (HTTPS)'],['tiktok','TikTok (HTTPS)'],['chinh_sach','Chính sách (HTTPS)'],['bao_mat','Bảo mật (HTTPS)'],['faq','FAQ (HTTPS)'],['ban_quyen','Dòng bản quyền'],['loi_ich_1','Lợi ích 1'],['loi_ich_2','Lợi ích 2'],['loi_ich_3','Lợi ích 3']
               ] as const
             ).map(([key, label]) => (
               <label key={key}>
@@ -307,7 +308,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
       )}
       {notice && <p role="status">{notice}</p>}
       <fieldset className="tc-block tc-design" disabled={busy}>
-        <legend>00 · Nền chung và thương hiệu</legend>
+        <legend>00 · Nền đầu trang và thương hiệu</legend>
         <div className="tc-design-grid">
           {[
             ["ten_web", "Tên website"],
@@ -331,7 +332,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
             />
           </label>
           <label>
-            Ảnh nền chung toàn trang
+            Ảnh nền đầu trang
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
@@ -346,7 +347,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
               <>
                 <img
                   src={ui.anh_nen_chung}
-                  alt="Nền chung"
+                  alt="Nền đầu trang"
                   style={{ width: 120, height: 64, objectFit: "cover" }}
                 />
                 <button

@@ -58,6 +58,7 @@ export type DanhGiaKhach = {
   ngay_tao: string;
 };
 export type DuLieuGioiThieu = {
+  thong_ke?:{so_homestay:number;so_phong:number;luot_khach:number};
   phong: PhongKhach[];
   combo: ComboGioiThieu[];
   chi_nhanh: ChiNhanhBanDo[];

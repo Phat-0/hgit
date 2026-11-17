@@ -272,6 +272,7 @@ export async function kiemTraTrangChuMoi(page, base = "http://localhost:5173") {
     .getByLabel("Chi nhánh của phòng giới thiệu")
     .selectOption("branch2");
   const before = await page.locator("#gioi-thieu-phong h3").allTextContents();
+  await page.locator(".kh-booking-toggle").click();
   await page.getByRole("button", { name: "Theo giờ", exact: true }).click();
   const receive = page.getByRole("spinbutton", { name: "Giờ nhận phòng" });
   check(
@@ -294,6 +295,7 @@ export async function kiemTraTrangChuMoi(page, base = "http://localhost:5173") {
     "Các ô tìm phòng cùng một hàng",
   );
   await page.getByRole("button", { name: "Theo ngày", exact: true }).click();
+  if (!(await page.locator("#kh-booking-panel").isVisible())) await page.locator(".kh-booking-toggle").click();
   await page.getByRole("button", { name: "Tìm phòng phù hợp ↗" }).click();
   await page.locator("#ket-qua-phong article").first().waitFor();
   check(
@@ -396,6 +398,7 @@ export async function kiemTraDatPhongKhach(
     "Gửi lịch/loại đúng, máy chủ tự tính giá",
   );
   await page.getByRole("button", { name: "Đóng", exact: true }).click();
+  if (!(await page.locator("#kh-booking-panel").isVisible())) await page.locator(".kh-booking-toggle").click();
   await page.getByRole("button", { name: "Tìm phòng phù hợp ↗" }).click();
   await page.locator("#ket-qua-phong article").first().waitFor();
   await page.locator("#ket-qua-phong article button").first().click();

@@ -35,7 +35,7 @@ export class HomestayService {
   danhSachPhong(homestayId: string) {
     return this.truyVan(`
       SELECT p.id, p.ma_phong, p.ten_phong, p.tang, p.trang_thai_van_hanh,
-             l.id AS loai_phong_id, l.ten_loai, l.mo_ta, l.suc_chua, l.dien_tich_m2,
+             l.id AS loai_phong_id, l.ten_loai, coalesce(to_jsonb(p)->>'mo_ta',to_jsonb(l)->>'mo_ta') AS mo_ta, l.suc_chua, l.dien_tich_m2,
              CASE WHEN p.cho_dat_theo_gio THEN p.gia_moi_gio::text END AS gia_tu_gio,
              CASE WHEN p.cho_dat_theo_dem THEN p.gia_moi_dem::text END AS gia_tu_dem,
              CASE WHEN p.cho_dat_theo_ngay THEN p.gia_moi_ngay::text END AS gia_tu_ngay,
