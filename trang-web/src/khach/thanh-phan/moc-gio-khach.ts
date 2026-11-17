@@ -50,7 +50,7 @@ export function mocTraPhong(
   ) {
     const d = day(t);
     if (
-      d === endDate ||
+      (open>close&&endDate>=date&&endDate<=day(closing)) || d === endDate ||
       (open > close && endDate === date && d === day(at(date, "00:00") + DAY))
     )
       candidates.push({ ngay: d, gio: clock(t), time: t });

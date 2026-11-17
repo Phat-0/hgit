@@ -7,6 +7,7 @@ import {
 } from "../../dung-chung/du-lieu/trang-chu-noi-dung";
 import "./trang-chu-quan-tri.css";
 import AnhDauTrang from "./AnhDauTrang";
+import AnhPhongNoi from "../../dung-chung/giao-dien/AnhPhongNoi";
 const khoiMoi = (): Khoi => ({
   hien: true,
   tieu_de: "Nội dung mới",
@@ -20,6 +21,7 @@ type Row = {
   xuat_ban_luc: string | null;
 };
 export default function TrangChuQuanTri({ token }: { token: string }) {
+  const [preview, setPreview] = useState("");
   const [options, setOptions] = useState<{
       phong: {
         id: string;
@@ -191,13 +193,8 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
           />
         ) : (
           <div className="tc-image">
-            {x.anh ? (
-              <img src={x.anh} alt={x.tieu_de} />
-            ) : (
-              <span>Chưa có ảnh</span>
-            )}
             <label>
-              Tải ảnh JPEG/PNG/WebP
+              Thêm ảnh
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
@@ -210,9 +207,23 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
               />
             </label>
             {x.anh && (
-              <button type="button" onClick={() => onChange({ ...x, anh: "" })}>
-                Bỏ ảnh khỏi phần này
-              </button>
+              <div className="tc-image-thumb">
+                <button
+                  type="button"
+                  onClick={() => setPreview(x.anh)}
+                  aria-label={"Phóng to ảnh " + title}
+                >
+                  <img src={x.anh} alt={x.tieu_de} />
+                </button>
+                <button
+                  type="button"
+                  className="tc-image-remove"
+                  aria-label={"Bỏ ảnh " + title}
+                  onClick={() => onChange({ ...x, anh: "" })}
+                >
+                  ×
+                </button>
+              </div>
             )}
           </div>
         )}
@@ -296,7 +307,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
       )}
       {notice && <p role="status">{notice}</p>}
       <fieldset className="tc-block tc-design" disabled={busy}>
-        <legend>00 · Nền chung, thương hiệu và font chữ</legend>
+        <legend>00 · Nền chung và thương hiệu</legend>
         <div className="tc-design-grid">
           {[
             ["ten_web", "Tên website"],
@@ -311,18 +322,6 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
               />
             </label>
           ))}
-          <label>
-            Font chữ tiêu đề
-            <select
-              value={ui.font_chu || "georgia"}
-              onChange={(e) => setUi("font_chu", e.target.value)}
-            >
-              <option value="georgia">Georgia · Có chân</option>
-              <option value="palatino">Palatino · Có chân</option>
-              <option value="system">Hệ thống · Không chân</option>
-              <option value="tahoma">Tahoma · Không chân</option>
-            </select>
-          </label>
           <label>
             Màu nền
             <input
@@ -615,6 +614,13 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
           </p>
         </fieldset>
       </section>
+      {preview && (
+        <AnhPhongNoi
+          url={preview}
+          title="Ảnh Trang chủ"
+          onClose={() => setPreview("")}
+        />
+      )}
       <small>
         Ảnh marketing được lưu công khai trên Storage; không tải giấy tờ hoặc
         ảnh riêng tư. Bỏ ảnh khỏi phần này không xóa tệp để giữ bản đã xuất bản

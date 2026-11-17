@@ -3,6 +3,8 @@ import { useEffect, useRef, useState,type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { RangePicker } from "../dung-chung/lich/RangePicker";
 import ChonKhoangGio from "./thanh-phan/ChonKhoangGio";
+import DatPhongKhach,{type MucDatPhong} from "./thanh-phan/DatPhongKhach";
+import KetQuaTimPhong from "./thanh-phan/KetQuaTimPhong";
 import ChiTietComboKhach from "./thanh-phan/ChiTietComboKhach";
 import { ngayVietNam, goiYThoiGian } from "../dung-chung/lich/mac-dinh-thoi-gian";
 import { khoangThoiGianLich } from "../dung-chung/lich/khung-gio-dat-phong";
@@ -16,24 +18,13 @@ import BieuTuong from "../dung-chung/giao-dien/BieuTuong";
 import ThuVienAnhKhach from "./thanh-phan/ThuVienAnhKhach";
 import {docDonCucBo,donChuaHoanThanh,nhoDonCucBo} from "./thanh-phan/gio-hang";
 import ChiTietPhongKhach from "./thanh-phan/ChiTietPhongKhach";
-import DanhSachComboKhach from "./thanh-phan/DanhSachComboKhach";
 import "./giao-dien/trang-chu-bo-cuc.css";
 import "./giao-dien/phong-va-combo.css";
-import GioiThieuLuuTru,{DanhGiaTrangChu,ChonSapXep,xepDanhSach,type PhongKhach as Room,type DuLieuGioiThieu,type SapXep} from './thanh-phan/GioiThieuLuuTru';
+import GioiThieuLuuTru,{DanhGiaTrangChu,type PhongKhach as Room,type DuLieuGioiThieu} from './thanh-phan/GioiThieuLuuTru';
 import BanDoChanTrang from './thanh-phan/BanDoChanTrang';
 import './giao-dien/trang-chu-trai-nghiem.css';
 import './giao-dien/trang-chu-anh-noi.css';
-type Combo = {
-  id: string;
-  ten_combo: string;
-  mo_ta: string | null;
-  gia_combo: string;
-  so_gio_bao_gom: number | null;
-  bat_dau: string | null;
-  ket_thuc: string | null;
-  tong_gia: number;
-  anh: (string | null)[];
-};
+import './giao-dien/trang-chu-gon.css';
 type Receipt = {
   ma_dat_phong: string;
   tong_tien: number | string;
@@ -62,10 +53,13 @@ const defaults = {
   dem_den: "08:00",
 };
 export default function App() {
-  const page=location.pathname.startsWith('/phong-gia')?'phong':location.pathname.startsWith('/uu-dai-combo')?'combo':'home';
-  const [catalog,setCatalog]=useState<DuLieuGioiThieu>({phong:[],combo:[],danh_gia:[],chi_nhanh:[]}),[catalogError,setCatalogError]=useState(''),[resultSort,setResultSort]=useState<SapXep>('noi-bat'),[comboChon,setComboChon]=useState(new URLSearchParams(location.search).get('combo')||'');
+  const page=location.pathname.startsWith('/ket-qua-phong')?'ket-qua':location.pathname.startsWith('/phong-gia')?'phong':location.pathname.startsWith('/uu-dai-combo')?'combo':'home';
+  const [fullResults,setFullResults]=useState<Room[]>([]),[fullLoading,setFullLoading]=useState(false),[fullError,setFullError]=useState('');
+  useEffect(()=>{if(page!=='ket-qua')return;let active=true;const q=new URLSearchParams(location.search);const params=new URLSearchParams();for(const k of ['bat_dau','ket_thuc','hinh_thuc_dat','chi_nhanh_id'])if(q.get(k))params.set(k,q.get(k)!);setFullLoading(true);void khachApi<Room[]>('/phong?'+params).then(items=>{if(active){setFullResults(items);lastSearch.current=Object.fromEntries(params);setRooms(items);}}).catch(e=>{if(active)setFullError(e.message);}).finally(()=>{if(active)setFullLoading(false);});return()=>{active=false;};},[page]);
+  const [catalog,setCatalog]=useState<DuLieuGioiThieu>({phong:[],combo:[],danh_gia:[],chi_nhanh:[]}),[catalogError,setCatalogError]=useState(''),[comboChon,setComboChon]=useState(new URLSearchParams(location.search).get('combo')||'');
   const [comboDetail,setComboDetail]=useState(''),[roomIntent,setRoomIntent]=useState(new URLSearchParams(location.search).get('phong')||'');
   useEffect(()=>{let active=true;void khachApi<DuLieuGioiThieu>('/gioi-thieu').then(d=>{if(active)setCatalog(d);}).catch(e=>{if(active)setCatalogError(e.message);});return()=>{active=false;};},[]);
+  const [bookingTarget,setBookingTarget]=useState<MucDatPhong|null>(null),[receiptPhone,setReceiptPhone]=useState(''),[guestCount,setGuestCount]=useState(1);
   const [detailRoom,setDetailRoom]=useState<Room|null>(null),[cartCount,setCartCount]=useState<number|null>(null),[cartOnly,setCartOnly]=useState(false);
   const [config, setConfig] = useState<Record<string, string>>(defaults),
     [branches, setBranches] = useState<Branch[]>([]),
@@ -80,19 +74,7 @@ export default function App() {
     [error, setError] = useState(""),
     [searched, setSearched] = useState(false),
     [selected, setSelected] = useState<Room | null>(null),
-    [tab, setTab] = useState<"don" | "combo">("don"),
-    [combos, setCombos] = useState<Combo[]>([]),
-    [combo, setCombo] = useState<Combo | null>(null),
-    [price, setPrice] = useState<number | null>(null),
-    [busy, setBusy] = useState(false),
-    [formError, setFormError] = useState(""),
-    [receipt, setReceipt] = useState<Receipt | null>(null),
-    [form, setForm] = useState({
-      ten_khach: "",
-      so_dien_thoai: "",
-      so_khach: 1,
-      ghi_chu: "",
-    });
+    [receipt, setReceipt] = useState<Receipt | null>(null);
   const [token, setToken] = useState(""),
     [login, setLogin] = useState(false),
     [phone, setPhone] = useState(""),
@@ -127,8 +109,7 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const serial = useRef(0),
     filterTimer = useRef<number | null>(null);
-  const requestKey = useRef(""),
-    lastSearch = useRef<Record<string, string> | null>(null),
+  const lastSearch = useRef<Record<string, string> | null>(null),
     modalRef = useRef<HTMLDivElement>(null);
   const interval = () => {
     const t = khoangThoiGianLich(
@@ -229,7 +210,7 @@ export default function App() {
     const key = (e: KeyboardEvent) => {
       if (document.querySelector(".lp-range-portal,.cg-portal,.anh-phong-noi"))
         return;
-      if (e.key === "Escape" && !busy) {
+      if (e.key === "Escape" && !authBusy) {
         setSelected(null);
         setLogin(false);
         setHistory(null);
@@ -256,7 +237,7 @@ export default function App() {
       document.removeEventListener("keydown", key);
       before?.focus();
     };
-  }, [selected, login, history, busy]);
+  }, [selected, login, history, authBusy]);
   useEffect(()=>{serial.current++;setRooms([]);setSearched(false);setLoading(false);},[branch,kind,start,end,st,et,config]);
   useEffect(()=>{if(ready&&comboChon&&catalog.combo.find(c=>c.id===comboChon)?.so_gio_bao_gom)applyKind('gio');},[ready,comboChon,catalog.combo]);
   async function loadRooms(current: number) {
@@ -283,51 +264,9 @@ export default function App() {
     await loadRooms(++serial.current);
     requestAnimationFrame(()=>document.getElementById("ket-qua-phong")?.scrollIntoView({block:"start",behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"}));
   }
-  async function choose(room: Room, comboId?: string) {
-    setSelected(room);
-    setReceipt(null);
-    setTab("don");
-    setCombo(null);
-    setPrice(room.tien_phong);
-    setCombos([]);
-    setFormError("");
-    requestKey.current = crypto.randomUUID();
-    const body = { ...lastSearch.current, phong_id: room.id };
-    try {
-      const list = await khachApi<Combo[]>("/combo", "POST", body);
-      setCombos(list);
-      if(comboId){const selectedCombo=list.find(c=>c.id===comboId);if(!selectedCombo){setSelected(null);setError('Combo vừa thay đổi hoặc không còn áp dụng. Vui lòng chọn lại.');return;}setCombo(selectedCombo);setPrice(Number(selectedCombo.tong_gia));}
-
-    } catch (e) {
-      if(comboId){setSelected(null);setError((e as Error).message);}else setFormError((e as Error).message);
-    }
-  }
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selected) return;
-    setBusy(true);
-    setFormError("");
-    try {
-      const r = await khachApi<Receipt>(
-        "/dat-phong",
-        "POST",
-        {
-          ...lastSearch.current,
-          ...form,
-          phong_id: selected.id,
-          combo_id: combo?.id || null,
-          khoa_yeu_cau: requestKey.current,
-        },
-        token,
-      );
-      nhoDonCucBo(r);
-      setReceipt(r);
-      setRooms((v) => v.filter((p) => p.id !== selected.id));
-    } catch (e) {
-      setFormError((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
+  function choose(room:Room,comboId?:string){
+    const fromSearch=!room.gia_tham_khao&&!!lastSearch.current&&(rooms.some(p=>p.id===room.id)||fullResults.some(p=>p.id===room.id));
+    setReceipt(null);setBookingTarget({room:{...catalog.phong.find(p=>p.id===room.id),...room},seed:fromSearch?{...lastSearch.current!}:undefined,comboId});
   }
   async function auth(e: React.FormEvent) {
     e.preventDefault();
@@ -353,7 +292,7 @@ export default function App() {
         sessionStorage.setItem("homestay_guest_refresh", r.refresh_token);
         setAuthPassword("");
         setLogin(false);
-        if (!selected || receipt) setHistory(own);
+        if ((!selected || receipt) && !bookingTarget) setHistory(own);
       } else if (!otpSent) {
         await khachApi("/gui-otp", "POST", { so_dien_thoai: phone });
         setOtpSent(true);
@@ -365,7 +304,7 @@ export default function App() {
         setToken(r.access_token);
         sessionStorage.setItem("homestay_guest_refresh", r.refresh_token);
         setLogin(false);
-        if (!selected || receipt)
+        if ((!selected || receipt) && !bookingTarget)
           setHistory(
             await khachApi<BookingHistory[]>(
               "/don-cua-toi",
@@ -458,7 +397,7 @@ export default function App() {
         </p>
       )}
       {!home && !homeError && <p role="status">Đang tải…</p>}
-      {page!=='home'&&<section className="kh-catalog-heading"><span>Một khoảng riêng dành cho bạn</span><h1>{page==='phong'?'Phòng & Giá':'Ưu đãi Combo'}</h1><p>Chọn không gian và thời gian lưu trú phù hợp với bạn.</p><nav aria-label="Danh mục lưu trú"><a href="/phong-gia" aria-current={page==='phong'?'page':undefined}>Phòng</a><a href="/uu-dai-combo" aria-current={page==='combo'?'page':undefined}>Combo</a></nav></section>}
+      {page!=='home'&&page!=='ket-qua'&&<section className="kh-catalog-heading"><span>Một khoảng riêng dành cho bạn</span><h1>{page==='phong'?'Phòng & Giá':'Ưu đãi Combo'}</h1><p>Chọn không gian và thời gian lưu trú phù hợp với bạn.</p></section>}
       {page==='home'&&home?.hero && (
         <section id="trang-dau" className="kh-hero kh-cms-hero">
           <div>
@@ -582,77 +521,11 @@ export default function App() {
               {error}
             </p>
           )}
-          <section id="ket-qua-phong" className="kh-room-section kh-search-results" hidden={!searched&&!loading} aria-label="Kết quả phòng trống">
-            <div className="kh-section-title">
-              <div>
-                <span>Kết quả kiểm tra phòng</span>
-                <h2>
-                  {searched
-                    ? "Phòng dành cho thời gian của bạn"
-                    : "Bạn muốn nghỉ lúc nào?"}
-                </h2>
-              </div>
-              <small>
-                {searched
-                  ? rooms.length + " phòng phù hợp"
-                  : "Chọn kiểu đặt và thời gian ở phía trên"}
-              </small>
-            </div>
-            {!loading && searched && !rooms.length && (
-              <div className="kh-empty">
-                Chưa có phòng trống phù hợp. Thử chi nhánh hoặc thời gian khác
-                nhé.
-              </div>
-            )}
-            <ChonSapXep value={resultSort} onChange={setResultSort} label="Sắp xếp phòng trống"/>
-            <div className="kh-room-grid">
-              {xepDanhSach(rooms,resultSort,ui.phong_noi_bat||[],r=>r.ten_phong,r=>r.tien_phong).map((r, i) => (
-                <article
-                  className="kh-room-card"
-                  key={r.id}
-                  style={{ animationDelay: Math.min(i, 8) * 55 + "ms" }}
-                >
-                  <button
-                    className="kh-room-photo"
-                    aria-label={"Xem phòng " + r.ten_phong}
-                    onClick={() => setDetailRoom(r)}
-                  >
-                    {r.anh[0] ? (
-                      <img src={r.anh[0]} alt={r.ten_phong} loading="lazy" />
-                    ) : (
-                      <span className="kh-no-photo">
-                        {r.ten_loai}
-                        <small>Không gian chờ bạn khám phá</small>
-                      </span>
-                    )}
-                    <span className="kh-room-chip">{r.ten_loai}</span>
-                    <span className="kh-room-arrow">↗</span>
-                  </button>
-                  <div className="kh-room-info">
-                    <small>
-                      {r.ten_homestay} · {r.tinh_thanh}
-                    </small>
-                    <h3>{r.ten_phong}</h3>
-                    <p>
-                      {r.suc_chua} khách{" "}
-                      {r.dien_tich_m2 ? " · " + r.dien_tich_m2 + " m²" : ""}
-                    </p>
-                    <div>
-                      <strong>
-                        {money(r.tien_phong)}
-                        <small> / khoảng đặt</small>
-                      </strong>
-                      <button onClick={() => setDetailRoom(r)}>Xem chi tiết →</button>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-          {searched&&home.hien_combo!==false&&<DanhSachComboKhach comboChon={comboChon} query={searched&&lastSearch.current?new URLSearchParams(lastSearch.current).toString():''} phong={rooms} tieuDe={ui.tieu_de_combo||'Combo & trải nghiệm'} onChon={(roomId,comboId)=>{const room=rooms.find(p=>p.id===roomId);if(room)void choose(room,comboId);}}/>}
+          {(searched||loading)&&<KetQuaTimPhong rooms={rooms.map(p=>({...catalog.phong.find(c=>c.id===p.id),...p}))} loading={loading} onXem={room=>setDetailRoom(room)} onTatCa={()=>{const q=lastSearch.current;if(q)location.href='/ket-qua-phong?'+new URLSearchParams(q);}}/>}
         </>
       )}
-      {home?.hien_phong&&<><div className="kh-catalog-error">{catalogError&&<p role="alert">{catalogError}</p>}</div><GioiThieuLuuTru hienCombo={home.hien_combo!==false} data={{...catalog,combo:home.hien_combo===false?[]:catalog.combo}} page={page} phongNoiBat={ui.phong_noi_bat} comboNoiBat={ui.combo_noi_bat} tieuDePhong={ui.tieu_de_phong} tieuDeCombo={ui.tieu_de_combo||'Combo ưu đãi'} onXem={setDetailRoom} onCombo={id=>setComboDetail(id)}/></>}
+      {page==='ket-qua'&&<section className="kh-full-results"><h1>Phòng trống theo chi nhánh</h1>{lastSearch.current&&<p className="kh-results-period">{lastSearch.current.hinh_thuc_dat} · {new Date(lastSearch.current.bat_dau).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})} → {new Date(lastSearch.current.ket_thuc).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})}</p>}{fullError&&<p role="alert" className="kh-error">{fullError}</p>}<KetQuaTimPhong rooms={fullResults.map(p=>({...catalog.phong.find(c=>c.id===p.id),...p}))} loading={fullLoading} full onXem={setDetailRoom}/></section>}
+      {home?.hien_phong&&page!=='ket-qua'&&<><div className="kh-catalog-error">{catalogError&&<p role="alert">{catalogError}</p>}</div><GioiThieuLuuTru hienCombo={home.hien_combo!==false} data={{...catalog,combo:home.hien_combo===false?[]:catalog.combo}} page={page} phongNoiBat={ui.phong_noi_bat} comboNoiBat={ui.combo_noi_bat} tieuDePhong={ui.tieu_de_phong} tieuDeCombo={ui.tieu_de_combo||'Combo ưu đãi'} onXem={setDetailRoom} onCombo={id=>setComboDetail(id)}/></>}
       {page==='home'&&ui.hien_danh_gia!==false&&<DanhGiaTrangChu items={catalog.danh_gia}/>}
       {home?.chan_trang && (
         <footer className="kh-footer">
@@ -670,16 +543,17 @@ export default function App() {
         const lastDay = config[lich.kind + '_den'] <= config[lich.kind + '_tu']
           ? new Date(new Date(lich.end + 'T12:00:00+07:00').getTime() - 86400000).toISOString().slice(0, 10) : lich.end;
         setStart(lich.start); setEnd(lastDay); setKind(lich.kind);
-        if (lich.guests) setForm(f => ({ ...f, so_khach: lich.guests! }));
+        if (lich.guests) setGuestCount(lich.guests);
       }} />
-      {comboDetail&&catalog.combo.find(c=>c.id===comboDetail)&&<ChiTietComboKhach combo={catalog.combo.find(c=>c.id===comboDetail)!} phong={catalog.phong} onDong={()=>setComboDetail('')} onMo={setLightbox} onChon={()=>{const id=comboDetail;setComboDetail('');if(page!=='home'){location.href='/?combo='+encodeURIComponent(id)+'#dat-phong';return;}setComboChon(id);if(catalog.combo.find(c=>c.id===id)?.so_gio_bao_gom)applyKind('gio');document.getElementById('dat-phong')?.scrollIntoView({block:'start',behavior:'smooth'});}}/>}
-      {detailRoom&&<ChiTietPhongKhach phong={{...catalog.phong.find(p=>p.id===detailRoom.id),...detailRoom}} nhan={lastSearch.current?.bat_dau?new Date(lastSearch.current.bat_dau).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'}):start+' · '+st} tra={lastSearch.current?.ket_thuc?new Date(lastSearch.current.ket_thuc).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'}):end+' · '+et} onDong={()=>setDetailRoom(null)} onMo={setLightbox} onDat={()=>{const room=detailRoom;if(page!=='home'){location.href='/?phong='+encodeURIComponent(room.id)+'#dat-phong';return;}setDetailRoom(null);if(!room.gia_tham_khao){void choose(room);return;}void loadRooms(++serial.current).then(list=>{const free=list?.find(p=>p.id===room.id);if(free)void choose(free);else {setError('Phòng này chưa trống trong lịch đang chọn. Vui lòng đổi thời gian.');document.getElementById('dat-phong')?.scrollIntoView({block:'start'});}});}}/>}
+      {comboDetail&&catalog.combo.find(c=>c.id===comboDetail)&&<ChiTietComboKhach combo={catalog.combo.find(c=>c.id===comboDetail)!} phong={catalog.phong} onDong={()=>setComboDetail('')} onMo={setLightbox} onChon={()=>{const item=catalog.combo.find(c=>c.id===comboDetail)!;const eligible=catalog.phong.filter(p=>item.pham_vi==='toan_he_thong'||item.pham_vi==='phong'&&item.phong_ids?.includes(p.id)||item.pham_vi==='chi_nhanh'&&!!p.homestay_id&&item.chi_nhanh_ids?.includes(p.homestay_id));setComboDetail('');setBookingTarget({comboId:item.id,roomIds:eligible.map(p=>p.id)});}}/>}
+      {bookingTarget&&<DatPhongKhach target={bookingTarget} rooms={catalog.phong.length?catalog.phong:bookingTarget.room?[bookingTarget.room]:[]} config={config} token={token} hidden={login} guests={guestCount} onClose={()=>setBookingTarget(null)} onLogin={phone=>{setPhone(phone);setLogin(true);}} onSaved={(result,room,phone)=>{nhoDonCucBo(result);setReceipt(result);setReceiptPhone(phone);setSelected(room);setBookingTarget(null);setRooms(items=>items.filter(p=>p.id!==room.id));}}/>}
+      {detailRoom&&<ChiTietPhongKhach phong={{...catalog.phong.find(p=>p.id===detailRoom.id),...detailRoom}} nhan={lastSearch.current?.bat_dau?new Date(lastSearch.current.bat_dau).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'}):start+' · '+st} tra={lastSearch.current?.ket_thuc?new Date(lastSearch.current.ket_thuc).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'}):end+' · '+et} onDong={()=>setDetailRoom(null)} onMo={setLightbox} onDat={()=>{const room=detailRoom;setDetailRoom(null);choose(room);}}/>}
       {modal &&
         createPortal(
           <div
             className="kh-shade"
             onMouseDown={(e) => {
-              if (e.target === e.currentTarget && !busy && !authBusy) {
+              if (e.target === e.currentTarget && !authBusy && !authBusy) {
                 setSelected(null);
                 setLogin(false);
                 setHistory(null);
@@ -703,7 +577,7 @@ export default function App() {
                 </h2>
                 <button
                   aria-label="Đóng"
-                  disabled={busy || authBusy}
+                  disabled={authBusy}
                   onClick={() => {
                     setSelected(null);
                     setLogin(false);
@@ -877,7 +751,7 @@ export default function App() {
                     <button
                       className="kh-primary"
                       onClick={() => {
-                        setPhone(form.so_dien_thoai);
+                        setPhone(receiptPhone);
                         setLogin(true);
                       }}
                     >
@@ -885,215 +759,7 @@ export default function App() {
                     </button>
                   )}
                 </div>
-              ) : (
-                selected && (
-                  <>
-                    <div className="kh-book-summary">
-                      <div>
-                        {selected.anh
-                          .filter((url): url is string => !!url)
-                          .map((url) => (
-                            <button key={url} onClick={() => setLightbox(url)}>
-                              <img src={url} alt={selected.ten_phong} />
-                            </button>
-                          ))}
-                      </div>
-                      <p>
-                        {selected.ten_homestay} · {selected.ten_loai} ·{" "}
-                        {selected.suc_chua} khách
-                      </p>
-                      <small>{selected.mo_ta || selected.dia_chi}</small>
-                    </div>
-                    <div className="kh-book-tabs">
-                      <button
-                        className={tab === "don" ? "active" : ""}
-                        onClick={() => setTab("don")}
-                      >
-                        Thông tin đặt phòng
-                      </button>
-                      <button
-                        className={tab === "combo" ? "active" : ""}
-                        onClick={() => setTab("combo")}
-                      >
-                        Combo phù hợp <b>{combos.length}</b>
-                      </button>
-                    </div>
-                    {tab === "combo" ? (
-                      <div className="kh-combo-list">
-                        <button
-                          className="kh-link"
-                          onClick={() => {
-                            setCombo(null);
-                            setPrice(selected.tien_phong);
-                            setTab("don");
-                          }}
-                        >
-                          Đặt phòng thông thường · {money(selected.tien_phong)}
-                        </button>
-                        {!combos.length && (
-                          <p>
-                            Không có combo áp dụng cho phòng và thời gian này.
-                          </p>
-                        )}
-                        {combos.map((c) => (
-                          <article key={c.id}>
-                            <div className="kh-combo-images">
-                              {c.anh
-                                .filter((u): u is string => !!u)
-                                .map((u) => (
-                                  <button
-                                    key={u}
-                                    onClick={() => setLightbox(u)}
-                                  >
-                                    <img src={u} alt={c.ten_combo} />
-                                  </button>
-                                ))}
-                            </div>
-                            <h3>{c.ten_combo}</h3>
-                            <p>{c.mo_ta || "Chưa có mô tả"}</p>
-                            <small>
-                              {c.so_gio_bao_gom
-                                ? c.so_gio_bao_gom + " giờ bao gồm"
-                                : "Combo dịch vụ cộng thêm"}{" "}
-                              · Giá combo {money(c.gia_combo)}
-                            </small>
-                            <p>
-                              Từ{" "}
-                              {c.bat_dau
-                                ? new Date(c.bat_dau).toLocaleDateString(
-                                    "vi-VN",
-                                  )
-                                : "Không giới hạn"}{" "}
-                              đến{" "}
-                              {c.ket_thuc
-                                ? new Date(c.ket_thuc).toLocaleDateString(
-                                    "vi-VN",
-                                  )
-                                : "Không giới hạn"}
-                            </p>
-                            <button
-                              className="kh-primary"
-                              onClick={() => {
-                                setCombo(c);
-                                setPrice(c.tong_gia);
-                                setTab("don");
-                              }}
-                            >
-                              Chọn combo · Tổng {money(c.tong_gia)}
-                            </button>
-                          </article>
-                        ))}
-                      </div>
-                    ) : (
-                      <form className="kh-book-form" onSubmit={submit}>
-                        <p className="kh-book-dates">
-                          {new Date(
-                            lastSearch.current?.bat_dau || "",
-                          ).toLocaleString("vi-VN", {
-                            timeZone: "Asia/Ho_Chi_Minh",
-                          })}{" "}
-                          →{" "}
-                          {new Date(
-                            lastSearch.current?.ket_thuc || "",
-                          ).toLocaleString("vi-VN", {
-                            timeZone: "Asia/Ho_Chi_Minh",
-                          })}
-                        </p>
-                        <label>
-                          Tên khách hàng
-                          <input
-                            required
-                            minLength={2}
-                            maxLength={150}
-                            value={form.ten_khach}
-                            onChange={(e) =>
-                              setForm({ ...form, ten_khach: e.target.value })
-                            }
-                          />
-                        </label>
-                        <label>
-                          Số điện thoại
-                          <input
-                            required
-                            type="tel"
-                            autoComplete="tel"
-                            value={form.so_dien_thoai}
-                            onChange={(e) =>
-                              setForm({
-                                ...form,
-                                so_dien_thoai: e.target.value,
-                              })
-                            }
-                          />
-                        </label>
-                        {form.so_dien_thoai && !token && (
-                          <div className="kh-join-hint">
-                            Bạn chưa đăng nhập. Tham gia để nhận ưu đãi khi có
-                            chương trình và dễ dàng quản lý đơn!{" "}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPhone(form.so_dien_thoai);
-                                setLogin(true);
-                              }}
-                            >
-                              Tham gia ngay
-                            </button>
-                            <small>Bạn vẫn có thể đặt phòng trước.</small>
-                          </div>
-                        )}
-                        <label>
-                          Số khách
-                          <input
-                            required
-                            type="number"
-                            min={1}
-                            max={selected.suc_chua}
-                            value={form.so_khach}
-                            onChange={(e) =>
-                              setForm({
-                                ...form,
-                                so_khach: Number(e.target.value),
-                              })
-                            }
-                          />
-                        </label>
-                        <label>
-                          Ghi chú
-                          <textarea
-                            rows={2}
-                            maxLength={2000}
-                            value={form.ghi_chu}
-                            onChange={(e) =>
-                              setForm({ ...form, ghi_chu: e.target.value })
-                            }
-                          />
-                        </label>
-                        <div className="kh-total">
-                          <span>
-                            {combo?.ten_combo || "Đặt phòng thông thường"}
-                          </span>
-                          <strong>
-                            {price !== null ? money(price) : "Đang tính…"}
-                          </strong>
-                        </div>
-                        <small>
-                          Giá được kiểm tra lại khi gửi. Yêu cầu chờ nhân viên
-                          xác nhận, giữ phòng 15 phút.
-                        </small>
-                        {formError && (
-                          <p className="kh-error" role="alert">
-                            {formError}
-                          </p>
-                        )}
-                        <button className="kh-primary" disabled={busy}>
-                          {busy ? "Đang gửi…" : "Gửi yêu cầu đặt phòng"}
-                        </button>
-                      </form>
-                    )}
-                  </>
-                )
-              )}
+              ) : null}
             </section>
           </div>,
           document.body,

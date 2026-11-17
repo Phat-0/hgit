@@ -37,18 +37,15 @@ export async function duLieuPhongGia(page) {
       dien_thoai: "0901234567",
     },
   };
-  const rooms = Array.from({ length: 5 }, (_, i) => ({
+  const rooms = Array.from({ length: 15 }, (_, i) => ({
     id: "phong-" + i,
-    homestay_id: "branch",
-    ten_phong: [
-      "Deluxe Garden",
-      "Suite Bathtub",
-      "Romantic",
-      "Family",
-      "Studio Cinema",
-    ][i],
+    homestay_id: i < 8 ? "branch" : "branch2",
+    ten_phong:
+      ["Deluxe Garden", "Suite Bathtub", "Romantic", "Family", "Studio Cinema"][
+        i
+      ] || "Phòng " + (i + 1),
     ma_phong: "P10" + i,
-    ten_homestay: "HomeStay trung tâm",
+    ten_homestay: i < 8 ? "HomeStay trung tâm" : "HomeStay ven sông",
     dia_chi: "Địa chỉ kiểm thử",
     tinh_thanh: "TP. Hồ Chí Minh",
     ten_loai: "Phòng cao cấp",
@@ -151,9 +148,34 @@ export async function duLieuPhongGia(page) {
           phong_ids: [],
           anh: [photos[i]],
         }));
-      else if (path.endsWith("/bao-gia")) data = { tong_tien: 720000 };
-      else if (path.endsWith("/chat/khach")) data = {};
-      if (route.request().method() !== "GET" && !path.endsWith("/bao-gia"))
+      else if (path.endsWith("/combo"))
+        data = Array.from({ length: 3 }, (_, i) => ({
+          id: "combo-" + i,
+          ten_combo: ["Combo Lãng mạn", "Combo Thư giãn", "Combo Gia đình"][i],
+          gia_combo: 150000 + i * 50000,
+          so_gio_bao_gom: null,
+          tong_gia: 870000 + i * 50000,
+        }));
+      else if (path.endsWith("/bao-gia")) {
+        const q = route.request().postDataJSON();
+        const room = rooms.find((p) => p.id === q.phong_id);
+        data = {
+          tien_phong:
+            (q.hinh_thuc_dat === "Theo giờ"
+              ? 200000
+              : q.hinh_thuc_dat === "Theo đêm"
+                ? 500000
+                : room?.tien_phong || 720000) +
+            (q.combo_id
+              ? 150000 + Number(q.combo_id.split("-")[1]) * 50000
+              : 0),
+        };
+      } else if (path.endsWith("/chat/khach")) data = {};
+      if (
+        route.request().method() !== "GET" &&
+        !path.endsWith("/bao-gia") &&
+        !path.endsWith("/combo")
+      )
         return route.fulfill({
           status: 403,
           json: { message: "Không ghi dữ liệu thật trong kiểm thử" },
@@ -242,101 +264,163 @@ export async function kiemTraTrangChuMoi(page, base = "http://localhost:5173") {
     if (!ok) throw Error(message);
   };
   check(
-    !/Đăng nhập|Tham gia/.test(
-      await page.locator("#kh-navigation").innerText(),
-    ),
-    "Header không có đăng nhập/tham gia",
+    (await page.locator("#gioi-thieu-phong .kh-sort").count()) === 0,
+    "Trang chủ chỉ lọc chi nhánh",
   );
-  check(
-    !(await page.locator("#ket-qua-phong").isVisible()),
-    "Kết quả chỉ hiện sau khi kiểm tra",
-  );
-  check(
-    (await page
-      .getByRole("tab", { name: "Giá phòng", exact: true })
-      .getAttribute("aria-selected")) === "true",
-    "Mặc định tab giá phòng",
-  );
-  await page.getByRole("tab", { name: "Combo", exact: true }).click();
-  check(
-    (await page.locator("#combo-khach").isVisible()) &&
-      !(await page.locator("#gioi-thieu-phong").isVisible()),
-    "Tab chỉ hiện dữ liệu đã chọn",
-  );
-  await page.getByLabel("Sắp xếp combo giới thiệu").selectOption("gia-giam");
-  check(
-    (await page.locator("#combo-khach h3").first().innerText()) ===
-      "Combo Gia đình",
-    "Sắp xếp giá combo",
-  );
-  await page.locator("#combo-khach .kh-feature-card button").first().click();
-  check(
-    (await page.getByRole("dialog").innerText()).includes("Giá combo"),
-    "Chi tiết combo có giá",
-  );
-  await page.keyboard.press("Escape");
+  await page
+    .getByLabel("Chi nhánh của phòng giới thiệu")
+    .selectOption("branch2");
+  const before = await page.locator("#gioi-thieu-phong h3").allTextContents();
   await page.getByRole("button", { name: "Theo giờ", exact: true }).click();
-  const radio = page.getByRole("radiogroup", { name: "Giờ nhận phòng" });
-  check((await radio.getByRole("radio").count()) > 0, "Dải chọn giờ");
+  const receive = page.getByRole("spinbutton", { name: "Giờ nhận phòng" });
   check(
-    (await radio.getByRole("radio").allTextContents()).every((t) =>
-      /^[0-2][0-9]:(00|30)/.test(t),
-    ),
-    "Các mốc 30 phút",
+    (await receive.locator(".kh-wheel-number").count()) === 3,
+    "Chỉ hiện ba mốc giờ",
   );
-  await page.getByRole("button", { name: "Tìm phòng phù hợp ↗" }).click();
-  await page.locator("#ket-qua-phong .kh-room-card").first().waitFor();
+  const value = await receive.getAttribute("aria-valuetext");
+  await receive.press("ArrowRight");
   check(
-    (await page.locator(".kh-showcases .kh-feature-card").count()) === 6,
-    "Kết quả phòng trống không thay danh mục",
+    (await receive.getAttribute("aria-valuetext")) !== value,
+    "Kéo/điều khiển được giờ",
+  );
+  const bottoms = await page
+    .locator(".kh-search form")
+    .evaluate((e) =>
+      Array.from(e.children).map((n) => n.getBoundingClientRect().bottom),
+    );
+  check(
+    Math.max(...bottoms) - Math.min(...bottoms) < 2,
+    "Các ô tìm phòng cùng một hàng",
+  );
+  await page.getByRole("button", { name: "Theo ngày", exact: true }).click();
+  await page.getByRole("button", { name: "Tìm phòng phù hợp ↗" }).click();
+  await page.locator("#ket-qua-phong article").first().waitFor();
+  check(
+    (await page.locator("#ket-qua-phong article").count()) === 10,
+    "Tối đa 10 phòng trong xem nhanh",
+  );
+  check(
+    JSON.stringify(before) ===
+      JSON.stringify(
+        await page.locator("#gioi-thieu-phong h3").allTextContents(),
+      ),
+    "Giữ nguyên phòng giới thiệu bên dưới",
+  );
+  await page
+    .getByRole("button", { name: /Xem tất cả 15 phòng theo chi nhánh/ })
+    .click();
+  await page.locator(".kh-results-full article").first().waitFor();
+  check(
+    (await page.locator(".kh-results-full article").count()) === 15,
+    "Trang xem tất cả đủ dữ liệu",
+  );
+  check(
+    (await page.locator(".kh-result-group>h3").count()) === 2,
+    "Nhóm phòng theo chi nhánh",
+  );
+  check(
+    (await page.locator(".kh-showcases,#dat-phong").count()) === 0,
+    "Trang kết quả không trộn danh mục",
   );
   return {
-    tabs: true,
-    comboDetail: true,
-    hourStrip: true,
-    separateResults: true,
+    clockWheel: true,
+    singleRow: true,
+    tenRooms: true,
+    catalogUnchanged: true,
+    fullResults: true,
   };
 }
-
-export async function kiemTraAnhVaBanDo(page, base = "http://localhost:5173") {
+export async function kiemTraDatPhongKhach(
+  page,
+  base = "http://localhost:5173",
+) {
   await duLieuPhongGia(page);
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto(base + "/");
-  await page.locator(".kh-gallery-fan").waitFor();
+  let requests = 0,
+    body = null;
+  await page.route("**/api/khach/dat-phong", async (route) => {
+    requests++;
+    body = route.request().postDataJSON();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    return route.fulfill({
+      json: {
+        ma_dat_phong: "UI-TEST-ORDER",
+        tong_tien: 720000,
+        trang_thai: "Chờ xác nhận",
+        het_han_giu_cho: new Date(Date.now() + 900000).toISOString(),
+      },
+    });
+  });
   const check = (ok, message) => {
     if (!ok) throw Error(message);
   };
+  await page.goto(base + "/");
+  await page
+    .locator("#gioi-thieu-phong .kh-feature-card button")
+    .first()
+    .click();
+  await page
+    .getByRole("button", { name: "Đặt phòng này", exact: true })
+    .click();
   check(
-    await page
-      .locator(".kh-cms-hero>div")
-      .first()
-      .evaluate((e) => getComputedStyle(e).textAlign === "center"),
-    "Chữ đầu trang căn giữa",
+    (await page.getByLabel("Loại đặt phòng của khách").inputValue()) === "",
+    "Ảnh giới thiệu không gán loại đặt",
   );
-  const g = page.locator(".kh-cms-hero .kh-gallery-main"),
-    box = await g.boundingBox(),
-    next = page.locator(".kh-gallery-fan img").nth(2),
-    before = Number(await next.evaluate((e) => getComputedStyle(e).zIndex));
-  await page.mouse.move(box.x + box.width * 0.75, box.y + 100);
-  await page.mouse.down();
-  await page.mouse.move(box.x + box.width * 0.35, box.y + 100, { steps: 10 });
   check(
-    Number(await next.evaluate((e) => getComputedStyle(e).zIndex)) > before,
-    "Ảnh kế nổi dần khi kéo",
+    await page.locator(".kh-reserve-notice").isVisible(),
+    "Nhắc đăng nhập trước khi đặt",
   );
-  await page.mouse.up();
-  await page.waitForTimeout(300);
-  await g.click();
-  await page.getByRole("button", { name: "Xem thông tin phòng" }).click();
+  await page.getByLabel("Loại đặt phòng của khách").selectOption("ngay");
+  await page
+    .locator(".kh-reserve-total strong")
+    .filter({ hasText: "720.000" })
+    .waitFor();
+  await page
+    .getByLabel("Tên khách hàng", { exact: true })
+    .fill("Khách kiểm thử");
+  await page.getByLabel("Số điện thoại", { exact: true }).fill("0901234567");
+  await page.locator(".kh-reserve form").evaluate((form) => {
+    form.requestSubmit();
+    form.requestSubmit();
+  });
+  await page.locator(".kh-receipt").waitFor();
+  check(requests === 1, "Không gửi trùng đơn");
   check(
-    (await page.getByRole("dialog").innerText()).includes(
-      "Phụ thu giờ tiếp theo",
-    ),
-    "Ảnh mở chi tiết và giá phụ thu",
+    body.hinh_thuc_dat === "Theo ngày" &&
+      !!body.khoa_yeu_cau &&
+      !Object.hasOwn(body, "tien_phong"),
+    "Gửi lịch/loại đúng, máy chủ tự tính giá",
   );
-  await page.keyboard.press("Escape");
-  await page.route("https://router.project-osrm.org/**", (route) =>
-    route.fulfill({
+  await page.getByRole("button", { name: "Đóng", exact: true }).click();
+  await page.getByRole("button", { name: "Tìm phòng phù hợp ↗" }).click();
+  await page.locator("#ket-qua-phong article").first().waitFor();
+  await page.locator("#ket-qua-phong article button").first().click();
+  await page
+    .getByRole("button", { name: "Đặt phòng này", exact: true })
+    .click();
+  check(
+    (await page.getByLabel("Loại đặt phòng của khách").inputValue()) === "ngay",
+    "Kết quả tìm kiếm mang theo loại đặt",
+  );
+  await page.getByRole("button", { name: "Đóng đặt phòng" }).click();
+  return {
+    unseeded: true,
+    warning: true,
+    autoQuote: true,
+    idempotent: true,
+    serverPrice: true,
+    seededSearch: true,
+  };
+}
+export async function kiemTraAnhVaBanDo(page, base = "http://localhost:5173") {
+  await duLieuPhongGia(page);
+  await page.context().grantPermissions(["geolocation"], { origin: base });
+  await page.context().setGeolocation({ latitude: 10.77, longitude: 106.69 });
+  await page.route("https://router.project-osrm.org/table/**", (r) =>
+    r.fulfill({ json: { code: "Ok", distances: [[0, 1200, 2500]] } }),
+  );
+  await page.route("https://router.project-osrm.org/route/**", (r) =>
+    r.fulfill({
       json: {
         code: "Ok",
         routes: [
@@ -346,7 +430,6 @@ export async function kiemTraAnhVaBanDo(page, base = "http://localhost:5173") {
             geometry: {
               coordinates: [
                 [106.69, 10.77],
-                [106.7, 10.78],
                 [106.72, 10.79],
               ],
             },
@@ -355,37 +438,45 @@ export async function kiemTraAnhVaBanDo(page, base = "http://localhost:5173") {
       },
     }),
   );
-  await page.locator("#dat-phong select").selectOption("branch2");
-  await page.getByRole("button", { name: "Mở bản đồ và đường đi" }).click();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto(base + "/");
+  await page.locator(".kh-gallery-fan").waitFor();
+  const check = (ok, message) => {
+    if (!ok) throw Error(message);
+  };
   check(
-    (await page.locator(".kh-map-expanded .leaflet-interactive").count()) === 1,
-    "Ghim bản đồ theo chi nhánh đã chọn",
+    !(await page.locator(".kh-gallery--noi .kh-gallery-caption").isVisible()),
+    "Ảnh đầu trang không chú thích",
   );
-  await page
-    .getByRole("dialog", { name: "Bản đồ và đường đi" })
-    .locator("input[type=checkbox]")
-    .first()
-    .check();
+  const boxes = await page
+    .locator(".kh-cms-hero>div")
+    .evaluateAll((es) => es.map((e) => e.getBoundingClientRect().x));
+  check(boxes[0] < boxes[1], "Chữ và ảnh xếp hai bên");
+  await page.locator(".kh-footer-route").click();
   check(
-    (await page.locator(".kh-map-expanded .leaflet-interactive").count()) === 2,
-    "Hiện nhiều chi nhánh",
+    (await page.locator(".kh-footer-map [role=alert]").innerText()).includes(
+      "chọn một chi nhánh",
+    ),
+    "Tìm đường bắt buộc một chi nhánh",
   );
+  await page.getByRole("button", { name: "Lấy vị trí", exact: true }).click();
   await page
-    .locator(".kh-map-expanded")
-    .click({ position: { x: 100, y: 100 } });
+    .locator(".kh-footer-distances li strong")
+    .filter({ hasText: "1,2 km" })
+    .waitFor();
+  await page.getByLabel("Chi nhánh trong footer").selectOption("branch2");
+  await page.locator(".kh-footer-route").click();
   await page.locator(".kh-route-summary").waitFor();
   check(
     (await page.locator(".kh-route-summary").innerText()).includes("2,5 km"),
-    "Hiện khoảng cách và đường đi từ dữ liệu tuyến đường",
+    "Đường đi từ vị trí hiện tại",
   );
   await page.keyboard.press("Escape");
   return {
-    centeredHero: true,
-    risingPhoto: true,
-    photoToRoom: true,
-    prices: true,
-    branchSync: true,
-    multiplePins: true,
-    route: true,
+    splitHero: true,
+    noCaption: true,
+    branchRequired: true,
+    distances: true,
+    directions: true,
   };
 }

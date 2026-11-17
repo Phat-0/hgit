@@ -165,7 +165,7 @@ export default function ThuVienAnhKhach({
                   alt=""
                   draggable={false}
                   style={{
-                    transform: `translateX(${slot * 48}%) translateY(${distance * 24}px) scale(${1 - Math.min(2, distance) * 0.13}) rotate(${slot * 5}deg)`,
+                    transform: `translateX(${slot * 12}%) translateY(${distance * 24}px) scale(${1 - Math.min(2, distance) * 0.13}) rotate(${slot * 5}deg)`,
                     opacity: 1 - Math.min(2, distance) * 0.2,
                     zIndex: Math.round(100 - distance * 10),
                   }}

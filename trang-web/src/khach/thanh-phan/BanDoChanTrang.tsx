@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import L from "leaflet";
+import { khoangCachKm } from "./khoang-cach-chi-nhanh";
 import "leaflet/dist/leaflet.css";
 import type { ChiNhanhBanDo } from "./GioiThieuLuuTru";
 type Point = [number, number];
@@ -30,16 +31,18 @@ function duongDi(b: ChiNhanhBanDo, origin: Point | null) {
 function BanDoMoRong({
   branches,
   initial,
+  initialOrigin = null,
   onClose,
 }: {
   branches: ChiNhanhBanDo[];
   initial: string;
+  initialOrigin?: Point | null;
   onClose: () => void;
 }) {
   const [selected, setSelected] = useState<string[]>(
       initial ? [initial] : branches.map((b) => b.id),
     ),
-    [origin, setOrigin] = useState<Point | null>(null),
+    [origin, setOrigin] = useState<Point | null>(initialOrigin),
     [status, setStatus] = useState(
       "Chọn điểm xuất phát trên bản đồ hoặc dùng vị trí của bạn.",
     ),
@@ -317,28 +320,27 @@ export default function BanDoChanTrang({
   branch?: string;
 }) {
   const valid = points(chiNhanh),
-    [index, setIndex] = useState(0),
+    [selected, setSelected] = useState(branch || "*"),
     [expanded, setExpanded] = useState(false),
-    node = useRef<HTMLDivElement>(null);
+    [origin, setOrigin] = useState<Point | null>(null),
+    [notice, setNotice] = useState(""),
+    [road, setRoad] = useState<Record<string, number>>({}),
+    [locating, setLocating] = useState(false),
+    node = useRef<HTMLDivElement>(null),
+    selectRef = useRef<HTMLSelectElement>(null),
+    active = useRef(true);
   const key = valid.map((b) => [b.id, b.vi_do, b.kinh_do].join(":")).join("|");
-  const active = branch
-    ? valid.find((b) => b.id === branch)
-    : valid[index % Math.max(1, valid.length)];
   useEffect(() => {
-    setIndex(0);
-    if (
-      branch ||
-      valid.length < 2 ||
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    )
-      return;
-    const timer = setInterval(() => {
-      if (!document.hidden && !expanded) setIndex((i) => i + 1);
-    }, 6000);
-    return () => clearInterval(timer);
-  }, [branch, key, expanded]);
+    active.current = true;
+    return () => {
+      active.current = false;
+    };
+  }, []);
+  useEffect(() => setSelected(branch || "*"), [branch]);
+  const chosen =
+    selected === "*" ? valid : valid.filter((b) => b.id === selected);
   useEffect(() => {
-    if (!node.current || !active) return;
+    if (!node.current || !chosen.length) return;
     const map = L.map(node.current, {
       scrollWheelZoom: false,
       dragging: false,
@@ -352,9 +354,9 @@ export default function BanDoChanTrang({
       maxZoom: 19,
       attribution: "© OpenStreetMap contributors",
     }).addTo(map);
-    valid.forEach((b) =>
+    chosen.forEach((b) =>
       L.circleMarker(coord(b), {
-        radius: b.id === active.id ? 8 : 5,
+        radius: 7,
         color: "#76512b",
         fillColor: "#e9bd80",
         fillOpacity: 1,
@@ -362,47 +364,182 @@ export default function BanDoChanTrang({
         .addTo(map)
         .bindTooltip(b.ten_homestay),
     );
-    map.setView(coord(active), 14);
+    if (chosen.length === 1) map.setView(coord(chosen[0]), 14);
+    else
+      map.fitBounds(L.latLngBounds(chosen.map(coord)), {
+        padding: [20, 20],
+        maxZoom: 14,
+      });
     const observer = new ResizeObserver(() => map.invalidateSize());
     observer.observe(node.current);
     return () => {
       observer.disconnect();
       map.remove();
     };
-  }, [active?.id, key]);
+  }, [selected, key]);
+  useEffect(() => {
+    setRoad({});
+    if (!origin || !valid.length) return;
+    const controller = new AbortController(),
+      timer = setTimeout(() => controller.abort(), 10000);
+    let current = true;
+    const list = [origin, ...valid.map(coord)]
+      .map(([lat, lng]) => lng + "," + lat)
+      .join(";");
+    void fetch(
+      "https://router.project-osrm.org/table/v1/driving/" +
+        list +
+        "?sources=0&annotations=distance",
+      { signal: controller.signal },
+    )
+      .then(async (r) => {
+        if (!r.ok) throw Error();
+        return r.json();
+      })
+      .then((data) => {
+        if (
+          !current ||
+          data.code !== "Ok" ||
+          !Array.isArray(data.distances?.[0])
+        )
+          return;
+        setRoad(
+          Object.fromEntries(
+            valid.flatMap((b, i) =>
+              typeof data.distances[0][i + 1] === "number"
+                ? [[b.id, data.distances[0][i + 1] / 1000]]
+                : [],
+            ),
+          ),
+        );
+      })
+      .catch(() => {})
+      .finally(() => clearTimeout(timer));
+    return () => {
+      current = false;
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [origin?.join(","), key]);
+  function locate() {
+    if (!navigator.geolocation) {
+      setNotice("Trình duyệt chưa hỗ trợ vị trí hiện tại.");
+      return;
+    }
+    setLocating(true);
+    setNotice("");
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        if (active.current) {
+          setOrigin([p.coords.latitude, p.coords.longitude]);
+          setLocating(false);
+        }
+      },
+      () => {
+        if (active.current) {
+          setNotice(
+            "Chưa lấy được vị trí. Hãy cho phép truy cập vị trí hoặc chọn điểm xuất phát trên bản đồ lớn.",
+          );
+          setLocating(false);
+        }
+      },
+      { timeout: 10000, maximumAge: 60000 },
+    );
+  }
+  function route() {
+    if (selected === "*" || !valid.some((b) => b.id === selected)) {
+      setNotice("Vui lòng chọn một chi nhánh để tìm đường.");
+      selectRef.current?.focus();
+      return;
+    }
+    setNotice("");
+    setExpanded(true);
+  }
   return (
     <section className="kh-footer-map" aria-label="Bản đồ chi nhánh">
-      <strong>Tìm đường đến HomeStay</strong>
-      {active ? (
-        <>
-          <div className="kh-map-preview">
-            <div ref={node} className="kh-map-canvas" />
-            <button
-              type="button"
-              className="kh-map-open"
-              onClick={() => setExpanded(true)}
-              aria-label="Mở bản đồ và đường đi"
-            >
-              <span>Xem chi nhánh & chỉ đường ↗</span>
-            </button>
-          </div>
-          <small>
-            {active.ten_homestay}
-            {!branch && valid.length > 1
-              ? " · " + ((index % valid.length) + 1) + "/" + valid.length
-              : ""}
-          </small>
-          {branch && !valid.some((b) => b.id === branch) && (
-            <small>Chi nhánh đã chọn chưa có tọa độ.</small>
-          )}
-        </>
+      <strong>Bản đồ & chi nhánh</strong>
+      <select
+        ref={selectRef}
+        aria-label="Chi nhánh trong footer"
+        value={selected}
+        onChange={(e) => {
+          setSelected(e.target.value);
+          setNotice("");
+        }}
+      >
+        <option value="*">Tất cả chi nhánh</option>
+        {chiNhanh.map((b) => (
+          <option key={b.id} value={b.id}>
+            {b.ten_homestay}
+          </option>
+        ))}
+      </select>
+      {chosen.length ? (
+        <div className="kh-map-preview">
+          <div ref={node} className="kh-map-canvas" />
+          <button
+            type="button"
+            className="kh-map-open"
+            onClick={() => setExpanded(true)}
+            aria-label="Mở bản đồ chi nhánh"
+          >
+            <span>Mở bản đồ ↗</span>
+          </button>
+        </div>
       ) : (
-        <p>Chưa có tọa độ chi nhánh. Vui lòng xem địa chỉ liên hệ.</p>
+        <p>Chi nhánh này chưa có tọa độ.</p>
       )}
-      {expanded && (
+      <div className="kh-footer-distances">
+        <div>
+          <small>Đến vị trí hiện tại</small>
+          <button type="button" disabled={locating} onClick={locate}>
+            {locating ? "Đang lấy…" : origin ? "Cập nhật vị trí" : "Lấy vị trí"}
+          </button>
+        </div>
+        <ul>
+          {chiNhanh.map((b) => {
+            const point = valid.find((p) => p.id === b.id),
+              distance = road[b.id];
+            return (
+              <li key={b.id}>
+                <span>{b.ten_homestay}</span>
+                <strong>
+                  {!point
+                    ? "Chưa có tọa độ"
+                    : !origin
+                      ? "Chưa có vị trí"
+                      : distance != null
+                        ? distance.toLocaleString("vi-VN", {
+                            maximumFractionDigits: 1,
+                          }) + " km"
+                        : "≈ " +
+                          khoangCachKm(origin, coord(point)).toLocaleString(
+                            "vi-VN",
+                            { maximumFractionDigits: 1 },
+                          ) +
+                          " km"}
+                </strong>
+              </li>
+            );
+          })}
+        </ul>
+        {origin && valid.some((b) => road[b.id] == null) && (
+          <small>≈ là khoảng cách đường thẳng khi chưa có tuyến đường.</small>
+        )}
+      </div>
+      <button type="button" className="kh-footer-route" onClick={route}>
+        Tìm đường →
+      </button>
+      {notice && <small role="alert">{notice}</small>}
+      {expanded && valid.length > 0 && (
         <BanDoMoRong
           branches={valid}
-          initial={branch && valid.some((b) => b.id === branch) ? branch : ""}
+          initial={
+            selected !== "*" && valid.some((b) => b.id === selected)
+              ? selected
+              : ""
+          }
+          initialOrigin={origin}
           onClose={() => setExpanded(false)}
         />
       )}

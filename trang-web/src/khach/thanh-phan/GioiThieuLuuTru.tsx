@@ -17,17 +17,22 @@ export type PhongKhach = {
   gia_moi_ngay?: number;
   gia_moi_dem?: number;
   gia_moi_gio?: number;
-  gia_phu_thu_gio?:number;
-  so_gio_toi_thieu?:number;
-  cho_dat_theo_gio?:boolean;
-  cho_dat_theo_ngay?:boolean;
-  cho_dat_theo_dem?:boolean;
-  anh_chon?:{id:string;url:string|null}[];
+  gia_phu_thu_gio?: number;
+  so_gio_toi_thieu?: number;
+  cho_dat_theo_gio?: boolean;
+  cho_dat_theo_ngay?: boolean;
+  cho_dat_theo_dem?: boolean;
+  anh_chon?: { id: string; url: string | null }[];
   luot_dat?: number;
   gia_tham_khao?: boolean;
 };
 export type ComboGioiThieu = {
-  bat_dau?:string|null;ket_thuc?:string|null;pham_vi?:string;chi_nhanh_ids?:string[];phong_ids?:string[];
+  luot_dat?: number;
+  bat_dau?: string | null;
+  ket_thuc?: string | null;
+  pham_vi?: string;
+  chi_nhanh_ids?: string[];
+  phong_ids?: string[];
   id: string;
   ten_combo: string;
   mo_ta: string | null;
@@ -58,7 +63,8 @@ export type DuLieuGioiThieu = {
   chi_nhanh: ChiNhanhBanDo[];
   danh_gia: DanhGiaKhach[];
 };
-export type SapXep = "noi-bat" | "gia-tang" | "gia-giam" | "ten";
+export type SapXep =
+  "noi-bat" | "gia-tang" | "gia-giam" | "ten" | "ten-giam" | "pho-bien";
 export function ChonSapXep({
   value,
   onChange,
@@ -80,6 +86,8 @@ export function ChonSapXep({
         <option value="gia-tang">Giá thấp đến cao</option>
         <option value="gia-giam">Giá cao đến thấp</option>
         <option value="ten">Tên A–Z</option>
+        <option value="ten-giam">Tên Z–A</option>
+        <option value="pho-bien">Phổ biến nhất</option>
       </select>
     </label>
   );
@@ -97,12 +105,16 @@ export function xepDanhSach<T extends { id: string }>(
       ? price(a) - price(b)
       : sort === "gia-giam"
         ? price(b) - price(a)
-        : sort === "ten"
-          ? name(a).localeCompare(name(b), "vi")
-          : (featured.includes(b.id) ? 1 : 0) -
-              (featured.includes(a.id) ? 1 : 0) ||
-            popular(b) - popular(a) ||
-            name(a).localeCompare(name(b), "vi"),
+        : sort === "ten-giam"
+          ? name(b).localeCompare(name(a), "vi")
+          : sort === "pho-bien"
+            ? popular(b) - popular(a) || name(a).localeCompare(name(b), "vi")
+            : sort === "ten"
+              ? name(a).localeCompare(name(b), "vi")
+              : (featured.includes(b.id) ? 1 : 0) -
+                  (featured.includes(a.id) ? 1 : 0) ||
+                popular(b) - popular(a) ||
+                name(a).localeCompare(name(b), "vi"),
   );
 }
 const money = (n: number | string) => Number(n).toLocaleString("vi-VN") + " ₫";
@@ -127,17 +139,20 @@ export default function GioiThieuLuuTru({
   onXem: (p: PhongKhach) => void;
   onCombo: (id: string) => void;
 }) {
-  const [activeTab,setActiveTab]=useState<"phong"|"combo">("phong");
+  const [catalogBranch, setCatalogBranch] = useState("");
+  const [activeTab, setActiveTab] = useState<"phong" | "combo">("phong");
   const [roomSort, setRoomSort] = useState<SapXep>("noi-bat"),
     [comboSort, setComboSort] = useState<SapXep>("noi-bat"),
     [search, setSearch] = useState("");
   const rooms = useMemo(
     () =>
       xepDanhSach(
-        data.phong.filter((p) =>
-          (p.ten_phong + " " + p.ten_homestay)
-            .toLocaleLowerCase("vi")
-            .includes(search.toLocaleLowerCase("vi")),
+        data.phong.filter(
+          (p) =>
+            (!catalogBranch || p.homestay_id === catalogBranch) &&
+            (p.ten_phong + " " + p.ten_homestay)
+              .toLocaleLowerCase("vi")
+              .includes(search.toLocaleLowerCase("vi")),
         ),
         roomSort,
         phongNoiBat,
@@ -145,7 +160,7 @@ export default function GioiThieuLuuTru({
         (p) => Number(p.gia_moi_ngay) || 0,
         (p) => Number(p.luot_dat) || 0,
       ),
-    [data.phong, roomSort, search, phongNoiBat],
+    [data.phong, roomSort, search, phongNoiBat, catalogBranch],
   );
   const combos = xepDanhSach(
     data.combo,
@@ -153,16 +168,55 @@ export default function GioiThieuLuuTru({
     comboNoiBat,
     (c) => c.ten_combo,
     (c) => Number(c.gia_combo),
+    (c) => c.luot_dat || 0,
   );
-  const shownRooms = page === "home" ? rooms.slice(0, Math.max(3,phongNoiBat.length)) : rooms,
-    shownCombos = page === "home" ? combos.slice(0, Math.max(3,comboNoiBat.length)) : combos;
+  const shownRooms =
+      page === "home" ? rooms.slice(0, Math.max(3, phongNoiBat.length)) : rooms,
+    shownCombos =
+      page === "home"
+        ? combos.slice(0, Math.max(3, comboNoiBat.length))
+        : combos;
   return (
     <div
       className={"kh-showcases " + (page === "home" ? "kh-showcases-home" : "")}
     >
-      {page==='home'&&<div className="kh-showcase-tabs" role="tablist" aria-label="Giá phòng và Combo"><button id="kh-room-tab" type="button" role="tab" aria-selected={activeTab==='phong'} aria-controls="gioi-thieu-phong" onClick={()=>setActiveTab('phong')}>Giá phòng</button>{hienCombo&&<button id="kh-combo-tab" type="button" role="tab" aria-selected={activeTab==='combo'} aria-controls="combo-khach" onClick={()=>setActiveTab('combo')}>Combo</button>}</div>}
+      {page === "home" && (
+        <div
+          className="kh-showcase-tabs"
+          role="tablist"
+          aria-label="Giá phòng và Combo"
+        >
+          <button
+            id="kh-room-tab"
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "phong"}
+            aria-controls="gioi-thieu-phong"
+            onClick={() => setActiveTab("phong")}
+          >
+            Giá phòng
+          </button>
+          {hienCombo && (
+            <button
+              id="kh-combo-tab"
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "combo"}
+              aria-controls="combo-khach"
+              onClick={() => setActiveTab("combo")}
+            >
+              Combo
+            </button>
+          )}
+        </div>
+      )}
       {page !== "combo" && (
-        <section id="gioi-thieu-phong" className="kh-showcase" hidden={page==='home'&&activeTab!=='phong'} aria-label="Giá phòng">
+        <section
+          id="gioi-thieu-phong"
+          className="kh-showcase"
+          hidden={page === "home" && activeTab !== "phong"}
+          aria-label="Giá phòng"
+        >
           <header>
             <div>
               <h2>{tieuDePhong}</h2>
@@ -171,11 +225,29 @@ export default function GioiThieuLuuTru({
             {page === "home" && <a href="/phong-gia">Xem tất cả →</a>}
           </header>
           <div className="kh-showcase-tools">
-            <ChonSapXep
-              label="Sắp xếp phòng giới thiệu"
-              value={roomSort}
-              onChange={setRoomSort}
-            />
+            {page === "home" ? (
+              <label className="kh-catalog-branch">
+                Chi nhánh
+                <select
+                  aria-label="Chi nhánh của phòng giới thiệu"
+                  value={catalogBranch}
+                  onChange={(e) => setCatalogBranch(e.target.value)}
+                >
+                  <option value="">Tất cả chi nhánh</option>
+                  {data.chi_nhanh.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.ten_homestay}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <ChonSapXep
+                label="Sắp xếp phòng giới thiệu"
+                value={roomSort}
+                onChange={setRoomSort}
+              />
+            )}
             {page === "phong" && (
               <input
                 aria-label="Tìm phòng giới thiệu"
@@ -236,7 +308,12 @@ export default function GioiThieuLuuTru({
         </section>
       )}
       {page !== "phong" && hienCombo && (
-        <section id="combo-khach" className="kh-showcase" hidden={page==='home'&&activeTab!=='combo'} aria-label="Combo">
+        <section
+          id="combo-khach"
+          className="kh-showcase"
+          hidden={page === "home" && activeTab !== "combo"}
+          aria-label="Combo"
+        >
           <header>
             <div>
               <h2>{tieuDeCombo}</h2>
@@ -245,11 +322,13 @@ export default function GioiThieuLuuTru({
             {page === "home" && <a href="/uu-dai-combo">Xem tất cả →</a>}
           </header>
           <div className="kh-showcase-tools">
-            <ChonSapXep
-              label="Sắp xếp combo giới thiệu"
-              value={comboSort}
-              onChange={setComboSort}
-            />
+            {page !== "home" && (
+              <ChonSapXep
+                label="Sắp xếp combo giới thiệu"
+                value={comboSort}
+                onChange={setComboSort}
+              />
+            )}
           </div>
           <div className="kh-showcase-cards">
             {shownCombos.map((c) => (
