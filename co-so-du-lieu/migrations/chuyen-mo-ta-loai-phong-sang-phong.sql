@@ -1,4 +1,4 @@
--- Chưa áp dụng trên Supabase: thao tác xác nhận đã bị hủy.
+-- Đã áp dụng và xác minh trên Supabase homestay-db ngày 18/11/2026.
 -- Chạy toàn bộ trong một transaction, không dùng CASCADE.
 BEGIN;
 ALTER TABLE public.phong ADD COLUMN IF NOT EXISTS mo_ta text;

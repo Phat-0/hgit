@@ -14,7 +14,7 @@ export default function ConSoLuuTru({
   const [visible, setVisible] = useState(false);
   const [progress, setProgress] = useState(0);
   useEffect(() => {
-    if (!ref.current) return;
+    if (!ref.current || !stats) return;
     const ob = new IntersectionObserver(
       (entries) => {
         if (entries.some((x) => x.isIntersecting)) {
@@ -26,7 +26,7 @@ export default function ConSoLuuTru({
     );
     ob.observe(ref.current);
     return () => ob.disconnect();
-  }, []);
+  }, [!!stats]);
   useEffect(() => {
     if (!visible) return;
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) {

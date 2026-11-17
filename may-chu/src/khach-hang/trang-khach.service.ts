@@ -105,7 +105,7 @@ export class TrangKhachService {
       const reviews=await c.query(`SELECT dg.id,dg.so_sao,dg.noi_dung,dg.ngay_tao,split_part(trim(n.ho_ten),' ',1)||' · Khách lưu trú' AS ten_khach,p.ten_phong,h.ten_homestay FROM public.danh_gia dg JOIN public.nguoi_dung n ON n.id=dg.nguoi_dung_id JOIN public.dat_phong d ON d.id=dg.dat_phong_id JOIN public.phong p ON p.id=d.phong_id JOIN public.homestay h ON h.id=d.homestay_id WHERE dg.trang_thai='Hiển thị' AND h.trang_thai='Đang hoạt động' ORDER BY dg.ngay_tao DESC LIMIT 20`);
       const summary=(await c.query("SELECT (SELECT count(*)::int FROM public.homestay WHERE trang_thai='Đang hoạt động') AS so_homestay,(SELECT count(*)::int FROM public.phong p JOIN public.homestay h ON h.id=p.homestay_id WHERE h.trang_thai='Đang hoạt động') AS so_phong,(SELECT coalesce(sum(so_khach),0)::bigint FROM public.dat_phong WHERE trang_thai IN ('Đã nhận phòng','Đã trả phòng')) AS luot_khach")).rows[0];
       const branches=await c.query("SELECT id,ten_homestay,dia_chi,tinh_thanh,vi_do,kinh_do FROM public.homestay WHERE trang_thai='Đang hoạt động' ORDER BY ten_homestay");
-      return {thong_ke:summary,phong:await Promise.all(roomRows.rows.map(async p=>{
+      return {thong_ke:{so_homestay:Number(summary?.so_homestay)||0,so_phong:Number(summary?.so_phong)||0,luot_khach:Number(summary?.luot_khach)||0},phong:await Promise.all(roomRows.rows.map(async p=>{
         const selectedPhotos=await Promise.all(photos.rows.filter(a=>a.phong_id===p.id).slice(0,16).map(async a=>({id:a.id,url:await this.image(a.duong_dan)})));
         return {...p,anh_chon:selectedPhotos,tien_nghi:amenities.rows.filter(a=>a.phong_id===p.id).map(a=>a.ten_tien_nghi),tien_phong:Number(p.gia_moi_ngay),anh:selectedPhotos.map(a=>a.url)};
       })),

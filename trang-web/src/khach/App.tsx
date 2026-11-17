@@ -1,3 +1,4 @@
+import KhungDatDonChim from "./thanh-phan/KhungDatDonChim";
 import ChanTrangKhach from "./thanh-phan/ChanTrangKhach";
 import ConSoLuuTru from "./thanh-phan/ConSoLuuTru";
 import {layGiaoDien, type NoiDungTrangChu } from "../dung-chung/du-lieu/trang-chu-noi-dung";
@@ -447,7 +448,7 @@ export default function App() {
       {home?.hien_phong && page==='home' && (
         <>
           <ConSoLuuTru name={ui.ten_web} stats={catalog.thong_ke}/>
-          <section id="dat-phong" className="kh-booking-split"><button type="button" className="kh-booking-toggle" aria-expanded={bookingOpen} aria-controls="kh-booking-panel" onClick={()=>setBookingOpen(!bookingOpen)}><BieuTuong ten="calendar"/>Đặt đơn <span aria-hidden="true">{bookingOpen?'−':'+'}</span></button><div id="kh-booking-panel" hidden={!bookingOpen} className="kh-booking-panel"><section className="kh-search" aria-label="Tìm phòng trống">
+          <section id="dat-phong" className="kh-booking-split"><button type="button" className="kh-booking-toggle" aria-expanded={bookingOpen} aria-controls="kh-booking-panel" onClick={()=>setBookingOpen(!bookingOpen)}><BieuTuong ten="calendar"/>Đặt đơn <span aria-hidden="true">{bookingOpen?'−':'+'}</span></button><KhungDatDonChim open={bookingOpen}><section className="kh-search" aria-label="Tìm phòng trống">
             {roomIntent&&<p className="kh-combo-intent">Đang chọn {catalog.phong.find(p=>p.id===roomIntent)?.ten_phong||'phòng'} · Chọn lịch để kiểm tra phòng trống. <button type="button" onClick={()=>setRoomIntent('')}>Bỏ chọn</button></p>}
             {comboChon&&<p className="kh-combo-intent">Đang chọn {catalog.combo.find(c=>c.id===comboChon)?.ten_combo||'combo'} · Kiểm tra lịch để xem phòng áp dụng. <button type="button" onClick={()=>setComboChon('')}>Bỏ chọn</button></p>}
             <form onSubmit={search}>
@@ -464,8 +465,8 @@ export default function App() {
                 </button>
               ))}
             </div></div>
-              <label>
-                Chi nhánh
+              <label className="kh-search-field">
+                <span>Chi nhánh</span>
                 <select
                   value={branch}
                   onChange={(e) => {
@@ -521,7 +522,7 @@ export default function App() {
               {error}
             </p>
           )}
-          </div></section>
+          </KhungDatDonChim></section>
           {(searched||loading)&&<KetQuaTimPhong rooms={rooms.map(p=>({...catalog.phong.find(c=>c.id===p.id),...p}))} loading={loading} onXem={room=>setDetailRoom(room)} onTatCa={()=>{const q=lastSearch.current;if(q)location.href='/ket-qua-phong?'+new URLSearchParams(q);}}/>}
         </>
       )}

@@ -607,3 +607,14 @@
 /* Override the former light search theme inside the booking fold only. */
 .kh-site.kh-cms-custom .kh-booking-panel .kh-search{background:transparent!important;border:0!important;border-radius:0!important}
 .kh-site.kh-cms-custom .kh-booking-panel .kh-search :is(select,.lp-range-button,.cg-trigger){height:48px!important;min-height:48px!important;background:#30281f!important;color:#ecd4b3!important;border:1px solid #8e704966!important;border-radius:8px!important}
+/* First screen fills the viewport; the photo leaves naturally with the page scroll. */
+.kh-site.kh-page-home{--kh-page-gutter:clamp(16px,6vw,100px);position:relative;background-color:color-mix(in srgb,var(--kh-bg,#1e1813) 90%,#fff 10%)!important}
+.kh-site.kh-page-home:has(.kh-cms-hero) .kh-nav{position:absolute;inset:0 0 auto;width:100%;z-index:20;border-radius:0;border:0;border-bottom:1px solid #efd2a020;background:#17130e8c;padding-inline:var(--kh-page-gutter)}
+.kh-site.kh-page-home .kh-cms-hero{width:calc(100% + var(--kh-page-gutter)*2);max-width:none;margin-inline:calc(-1*var(--kh-page-gutter));min-height:100svh;padding:104px max(32px,calc((100% - 1060px)/2)) 48px;border-radius:0;background-attachment:scroll!important;align-content:center}
+.kh-site .kh-booking-split{width:calc(100% + var(--kh-page-gutter)*2);margin-inline:calc(-1*var(--kh-page-gutter));padding-top:16px;margin-bottom:36px}
+.kh-site .kh-booking-toggle{min-width:200px;border-radius:8px 8px 0 0;border-color:#8f775a55;background:#302a24;color:#e5cba7;box-shadow:inset 0 4px 8px #0005;border-bottom:0}
+.kh-site .kh-booking-toggle[aria-expanded=false]{border-radius:8px;box-shadow:inset 0 3px 8px #0006}
+.kh-site .kh-booking-panel{border-radius:0;margin-top:0;background:#201d19;border-inline:0;border-top:1px solid #0e0c0a;border-bottom:1px solid #ffffff0d;box-shadow:inset 0 12px 22px #0007,inset 0 -6px 12px #0003;padding:28px var(--kh-page-gutter) 20px;animation:none}
+.kh-site .kh-booking-panel .kh-search{max-width:1160px;margin-inline:auto}
+.kh-site .kh-booking-toggle:focus-visible{outline:2px solid #e0b779;outline-offset:4px}
+@media(max-width:700px){.kh-site.kh-page-home .kh-cms-hero{min-height:100svh;padding:80px 24px 32px;gap:20px}.kh-site.kh-page-home .kh-cms-hero h1{font-size:32px}.kh-site.kh-page-home .kh-cms-hero>.kh-gallery{width:86%;margin:auto;justify-self:center}.kh-site .kh-booking-panel{padding:20px var(--kh-page-gutter) 16px}.kh-site .kh-booking-toggle{min-width:180px}}
