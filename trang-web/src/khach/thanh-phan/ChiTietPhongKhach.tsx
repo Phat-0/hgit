@@ -1,20 +1,9 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import BangGiaPhong from "./BangGiaPhong";
+import type {PhongKhach} from "./GioiThieuLuuTru";
 import ThuVienAnhKhach from "./ThuVienAnhKhach";
-type Phong = {
-  tien_nghi?: string[];
-  gia_tham_khao?:boolean;
-  ten_phong: string;
-  ten_loai: string;
-  ten_homestay: string;
-  dia_chi: string;
-  tinh_thanh: string;
-  mo_ta: string | null;
-  suc_chua: number;
-  dien_tich_m2: string | null;
-  tien_phong: number;
-  anh: (string | null)[];
-};
+type Phong = PhongKhach;
 export default function ChiTietPhongKhach({
   phong,
   nhan,
@@ -123,6 +112,7 @@ export default function ChiTietPhongKhach({
               </div>
             </section>
           ) : null}
+          <BangGiaPhong phong={phong}/>
           <section>
             <h3>Thông tin đặt phòng</h3>
             <div className="kh-detail-times">

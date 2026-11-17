@@ -17,10 +17,17 @@ export type PhongKhach = {
   gia_moi_ngay?: number;
   gia_moi_dem?: number;
   gia_moi_gio?: number;
+  gia_phu_thu_gio?:number;
+  so_gio_toi_thieu?:number;
+  cho_dat_theo_gio?:boolean;
+  cho_dat_theo_ngay?:boolean;
+  cho_dat_theo_dem?:boolean;
+  anh_chon?:{id:string;url:string|null}[];
   luot_dat?: number;
   gia_tham_khao?: boolean;
 };
 export type ComboGioiThieu = {
+  bat_dau?:string|null;ket_thuc?:string|null;pham_vi?:string;chi_nhanh_ids?:string[];phong_ids?:string[];
   id: string;
   ten_combo: string;
   mo_ta: string | null;
@@ -120,6 +127,7 @@ export default function GioiThieuLuuTru({
   onXem: (p: PhongKhach) => void;
   onCombo: (id: string) => void;
 }) {
+  const [activeTab,setActiveTab]=useState<"phong"|"combo">("phong");
   const [roomSort, setRoomSort] = useState<SapXep>("noi-bat"),
     [comboSort, setComboSort] = useState<SapXep>("noi-bat"),
     [search, setSearch] = useState("");
@@ -152,14 +160,15 @@ export default function GioiThieuLuuTru({
     <div
       className={"kh-showcases " + (page === "home" ? "kh-showcases-home" : "")}
     >
+      {page==='home'&&<div className="kh-showcase-tabs" role="tablist" aria-label="Giá phòng và Combo"><button id="kh-room-tab" type="button" role="tab" aria-selected={activeTab==='phong'} aria-controls="gioi-thieu-phong" onClick={()=>setActiveTab('phong')}>Giá phòng</button>{hienCombo&&<button id="kh-combo-tab" type="button" role="tab" aria-selected={activeTab==='combo'} aria-controls="combo-khach" onClick={()=>setActiveTab('combo')}>Combo</button>}</div>}
       {page !== "combo" && (
-        <section id="gioi-thieu-phong" className="kh-showcase">
+        <section id="gioi-thieu-phong" className="kh-showcase" hidden={page==='home'&&activeTab!=='phong'} aria-label="Giá phòng">
           <header>
             <div>
               <h2>{tieuDePhong}</h2>
               <p>Không gian lưu trú của HomeStay</p>
             </div>
-            {page === "home" && <a href="/phong-gia">Xem thêm →</a>}
+            {page === "home" && <a href="/phong-gia">Xem tất cả →</a>}
           </header>
           <div className="kh-showcase-tools">
             <ChonSapXep
@@ -227,13 +236,13 @@ export default function GioiThieuLuuTru({
         </section>
       )}
       {page !== "phong" && hienCombo && (
-        <section id="combo-khach" className="kh-showcase">
+        <section id="combo-khach" className="kh-showcase" hidden={page==='home'&&activeTab!=='combo'} aria-label="Combo">
           <header>
             <div>
               <h2>{tieuDeCombo}</h2>
               <p>Gói dịch vụ cho kỳ nghỉ của bạn</p>
             </div>
-            {page === "home" && <a href="/uu-dai-combo">Xem thêm →</a>}
+            {page === "home" && <a href="/uu-dai-combo">Xem tất cả →</a>}
           </header>
           <div className="kh-showcase-tools">
             <ChonSapXep

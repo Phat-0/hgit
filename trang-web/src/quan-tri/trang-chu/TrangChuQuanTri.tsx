@@ -6,6 +6,7 @@ import {
   layGiaoDien,
 } from "../../dung-chung/du-lieu/trang-chu-noi-dung";
 import "./trang-chu-quan-tri.css";
+import AnhDauTrang from "./AnhDauTrang";
 const khoiMoi = (): Khoi => ({
   hien: true,
   tieu_de: "Nội dung mới",
@@ -20,7 +21,12 @@ type Row = {
 };
 export default function TrangChuQuanTri({ token }: { token: string }) {
   const [options, setOptions] = useState<{
-      phong: { id: string; ten_phong: string; ten_homestay: string }[];
+      phong: {
+        id: string;
+        ten_phong: string;
+        ten_homestay: string;
+        anh_chon?: { id: string; url: string | null }[];
+      }[];
       combo: { id: string; ten_combo: string }[];
     }>({ phong: [], combo: [] }),
     [optionError, setOptionError] = useState("");
@@ -176,100 +182,54 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
             onChange={(e) => onChange({ ...x, noi_dung: e.target.value })}
           />
         </label>
-        <div className="tc-image">
-          {x.anh ? (
-            <img src={x.anh} alt={x.tieu_de} />
-          ) : (
-            <span>Chưa có ảnh</span>
-          )}
-          <label>
-            {role === "hero"
-              ? "Ảnh nổi đầu tiên (JPEG/PNG/WebP)"
-              : "Tải ảnh JPEG/PNG/WebP"}
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(e) => {
-                void image(e.target.files?.[0], (url) =>
-                  onChange({ ...x, anh: url }),
-                );
-                e.target.value = "";
-              }}
-            />
-          </label>
-          {x.anh && (
-            <button type="button" onClick={() => onChange({ ...x, anh: "" })}>
-              Bỏ ảnh khỏi phần này
-            </button>
-          )}
-        </div>
-        {role === "hero" && (
-          <>
+        {role === "hero" ? (
+          <AnhDauTrang
+            value={x}
+            phong={options.phong}
+            onChange={onChange}
+            onUpload={image}
+          />
+        ) : (
+          <div className="tc-image">
+            {x.anh ? (
+              <img src={x.anh} alt={x.tieu_de} />
+            ) : (
+              <span>Chưa có ảnh</span>
+            )}
             <label>
-              Thêm ảnh nổi để lướt (tối đa 8 ảnh bổ sung)
+              Tải ảnh JPEG/PNG/WebP
               <input
                 type="file"
-                multiple
                 accept="image/jpeg,image/png,image/webp"
-                onChange={async (e) => {
-                  const files = Array.from(e.target.files || []).slice(
-                    0,
-                    8 - (x.album || []).length,
+                onChange={(e) => {
+                  void image(e.target.files?.[0], (url) =>
+                    onChange({ ...x, anh: url }),
                   );
                   e.target.value = "";
-                  for (const file of files)
-                    await image(file, (url) => {
-                      setData((prev) => ({
-                        ...prev,
-                        hero: {
-                          ...(prev.hero || khoiMoi()),
-                          album: [...(prev.hero?.album || []), url],
-                        },
-                      }));
-                      setDirty(true);
-                      setNotice("");
-                    });
                 }}
               />
             </label>
-            <div className="tc-hero-album">
-              {(x.album || []).map((url, i) => (
-                <div key={url + String(i)}>
-                  <img src={url} alt={"Ảnh nổi " + (i + 2)} />
-                  <div>
-                    <button
-                      type="button"
-                      disabled={i === 0}
-                      aria-label={"Đưa ảnh " + (i + 2) + " lên trước"}
-                      onClick={() => {
-                        const album = [...x.album!];
-                        [album[i - 1], album[i]] = [album[i], album[i - 1]];
-                        onChange({ ...x, album });
-                      }}
-                    >
-                      ←
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={"Xóa ảnh nổi " + (i + 2)}
-                      onClick={() =>
-                        onChange({
-                          ...x,
-                          album: x.album!.filter((_, n) => n !== i),
-                        })
-                      }
-                    >
-                      ×
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <p>
-              Ảnh nền phủ toàn bộ phần đầu trang. Ảnh nổi được chuyển bằng mũi
-              tên, ảnh nhỏ hoặc vuốt trên điện thoại.
-            </p>
-          </>
+            {x.anh && (
+              <button type="button" onClick={() => onChange({ ...x, anh: "" })}>
+                Bỏ ảnh khỏi phần này
+              </button>
+            )}
+          </div>
+        )}
+        {title.includes("Giới thiệu") && (
+          <button
+            type="button"
+            onClick={() =>
+              onChange({
+                ...x,
+                tieu_de: "Một khoảng riêng, vừa vặn với nhịp sống của bạn",
+                noi_dung:
+                  "Một buổi hẹn cần riêng tư, một đêm muốn nghỉ ngơi hay vài ngày đổi không khí — HomeStay giúp bạn tìm không gian phù hợp với thời gian của mình. Xem ảnh phòng, chọn lịch theo giờ, ngày hoặc đêm và kiểm tra giá trước khi đặt. Thêm một combo yêu thích để chuyến nghỉ mang dấu ấn riêng của bạn.",
+              })
+            }
+          >
+            Dùng nội dung giới thiệu gợi ý
+          </button>
         )}
         {role === "footer" && (
           <div className="tc-contact-fields">
@@ -439,10 +399,9 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
               tahoma: "Tahoma,sans-serif",
             }[ui.font_chu || "georgia"],
             background: ui.mau_nen,
-            backgroundImage:
-              ui.anh_nen_chung
-                ? `url(${JSON.stringify(ui.anh_nen_chung)})`
-                : undefined,
+            backgroundImage: ui.anh_nen_chung
+              ? `url(${JSON.stringify(ui.anh_nen_chung)})`
+              : undefined,
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
@@ -536,11 +495,11 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
           thiệu.
         </p>
       </fieldset>
-      <h2 className="tc-stage-title">05 · Hai khu giới thiệu Phòng và Combo</h2>
+      <h2 className="tc-stage-title">05 · Tab Giá phòng và Combo</h2>
       {optionError && <p role="alert">{optionError}</p>}
       <div className="tc-feature-grid">
         <fieldset className="tc-block" disabled={busy}>
-          <legend>Phòng · Bên trái trang chủ</legend>
+          <legend>Tab Giá phòng</legend>
           <label>
             Tiêu đề
             <input
@@ -577,7 +536,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
           </div>
         </fieldset>
         <fieldset className="tc-block" disabled={busy}>
-          <legend>Combo · Bên phải trang chủ</legend>
+          <legend>Tab Combo</legend>
           <label className="tc-toggle">
             <input
               type="checkbox"

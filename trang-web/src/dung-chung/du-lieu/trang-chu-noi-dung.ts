@@ -13,6 +13,7 @@ export type Khoi = {
   anh: string;
   anh_nen?: string;
   album?: string[];
+  bo_anh?: ({url:string}|{phong_id:string;anh_id:string})[];
   dia_chi?: string;
   dien_thoai?: string;
   email?: string;

@@ -15,6 +15,7 @@ export type KhoiTrangChu = {
   anh: string;
   anh_nen?: string;
   album?: string[];
+  bo_anh?: ({url:string}|{phong_id:string;anh_id:string})[];
   dia_chi?: string;
   dien_thoai?: string;
   email?: string;
@@ -95,7 +96,7 @@ export class TrangChuService {
       const b = v as Record<string, unknown>;
       if (
         Object.keys(b).some(
-          (k) => !['hien', 'tieu_de', 'noi_dung', 'anh', ...(role==='hero'?['anh_nen','album']:[]), ...(role==='footer'?['dia_chi','dien_thoai','email']:[])].includes(k),
+          (k) => !['hien', 'tieu_de', 'noi_dung', 'anh', ...(role==='hero'?['anh_nen','album','bo_anh']:[]), ...(role==='footer'?['dia_chi','dien_thoai','email']:[])].includes(k),
         ) ||
         typeof b.hien !== 'boolean' ||
         typeof b.tieu_de !== 'string' ||
@@ -113,6 +114,11 @@ export class TrangChuService {
       const extra: Partial<KhoiTrangChu> = {};
       if(role==='hero') {
         if(b.anh_nen!==undefined)extra.anh_nen=imageUrl(b.anh_nen);
+        if(b.bo_anh!==undefined){
+          if(!Array.isArray(b.bo_anh)||b.bo_anh.length>12)throw new BadRequestException('Bộ ảnh tối đa 12 ảnh');
+          const uuid=(v:unknown)=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+          extra.bo_anh=b.bo_anh.map(item=>{if(!item||typeof item!=='object'||Array.isArray(item))throw new BadRequestException('Ảnh không hợp lệ');const v=item as Record<string,unknown>;if(Object.keys(v).length===1&&typeof v.url==='string'&&v.url)return {url:imageUrl(v.url)};if(Object.keys(v).length===2&&uuid(v.phong_id)&&uuid(v.anh_id))return {phong_id:v.phong_id as string,anh_id:v.anh_id as string};throw new BadRequestException('Chọn đúng phòng và ảnh phòng');});
+        }
         if(b.album!==undefined) {
           if(!Array.isArray(b.album)||b.album.length>8)throw new BadRequestException('Bộ ảnh nổi tối đa 8 ảnh');
           extra.album=[...new Set(b.album.map(imageUrl))].filter(Boolean);

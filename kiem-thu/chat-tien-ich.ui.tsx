@@ -37,6 +37,15 @@ const catalogItems=[{id:'a',name:'An',price:100},{id:'b',name:'Bình',price:50}]
 assert.equal(xepDanhSach(catalogItems,'noi-bat',['b'],x=>x.name,x=>x.price)[0].id,'b');
 assert.equal(xepDanhSach(catalogItems,'gia-giam',[],x=>x.name,x=>x.price)[0].id,'a');
 assert.equal(catalogItems[0].id,'a');
+const {mocNhanPhong,mocTraPhong}=await import('../trang-web/src/khach/thanh-phan/moc-gio-khach.ts');
+const cfgHours={gio_tu:'08:00',gio_den:'22:00'};
+const receiveSlots=mocNhanPhong('2026-12-01',cfgHours,Date.parse('2026-12-01T10:12:00+07:00'));
+assert.equal(receiveSlots[0].gio,'10:30');assert.ok(receiveSlots.every(s=>s.gio>='08:00'&&s.gio<'22:00'&&['00','30'].includes(s.gio.slice(3))));
+assert.equal(mocNhanPhong('2026-12-01',cfgHours,Date.parse('2026-12-01T22:10:00+07:00')).length,0);
+const returnSlots=mocTraPhong('2026-12-01','20:00','2026-12-01',cfgHours);assert.equal(returnSlots.at(-1)?.gio,'22:00');assert.equal(returnSlots[0].gio,'20:30');
+const nightSlots=mocTraPhong('2026-12-01','23:30','2026-12-01',{gio_tu:'20:00',gio_den:'06:00'});assert.equal(nightSlots[0].ngay,'2026-12-02');assert.equal(nightSlots.at(-1)?.gio,'06:00');
+assert.equal(mocTraPhong('2026-12-02','01:00','2026-12-02',{gio_tu:'20:00',gio_den:'06:00'}).at(-1)?.gio,'06:00');
+assert.equal(mocNhanPhong('2026-12-01',{gio_tu:'00:00',gio_den:'00:00'},Date.parse('2026-11-01')).length,48);
 const now = new Date().toISOString();
 const f = {
   id: "f1",

@@ -2,7 +2,8 @@ import {layGiaoDien, type NoiDungTrangChu } from "../dung-chung/du-lieu/trang-ch
 import { useEffect, useRef, useState,type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { RangePicker } from "../dung-chung/lich/RangePicker";
-import ChonGio from "../dung-chung/lich/ChonGio";
+import ChonKhoangGio from "./thanh-phan/ChonKhoangGio";
+import ChiTietComboKhach from "./thanh-phan/ChiTietComboKhach";
 import { ngayVietNam, goiYThoiGian } from "../dung-chung/lich/mac-dinh-thoi-gian";
 import { khoangThoiGianLich } from "../dung-chung/lich/khung-gio-dat-phong";
 import { khachApi } from "../dung-chung/api/khach-api";
@@ -21,6 +22,7 @@ import "./giao-dien/phong-va-combo.css";
 import GioiThieuLuuTru,{DanhGiaTrangChu,ChonSapXep,xepDanhSach,type PhongKhach as Room,type DuLieuGioiThieu,type SapXep} from './thanh-phan/GioiThieuLuuTru';
 import BanDoChanTrang from './thanh-phan/BanDoChanTrang';
 import './giao-dien/trang-chu-trai-nghiem.css';
+import './giao-dien/trang-chu-anh-noi.css';
 type Combo = {
   id: string;
   ten_combo: string;
@@ -61,9 +63,10 @@ const defaults = {
 };
 export default function App() {
   const page=location.pathname.startsWith('/phong-gia')?'phong':location.pathname.startsWith('/uu-dai-combo')?'combo':'home';
-  const [catalog,setCatalog]=useState<DuLieuGioiThieu>({phong:[],combo:[],danh_gia:[],chi_nhanh:[]}),[catalogError,setCatalogError]=useState(''),[resultSort,setResultSort]=useState<SapXep>('noi-bat'),[comboChon,setComboChon]=useState('');
+  const [catalog,setCatalog]=useState<DuLieuGioiThieu>({phong:[],combo:[],danh_gia:[],chi_nhanh:[]}),[catalogError,setCatalogError]=useState(''),[resultSort,setResultSort]=useState<SapXep>('noi-bat'),[comboChon,setComboChon]=useState(new URLSearchParams(location.search).get('combo')||'');
+  const [comboDetail,setComboDetail]=useState(''),[roomIntent,setRoomIntent]=useState(new URLSearchParams(location.search).get('phong')||'');
   useEffect(()=>{let active=true;void khachApi<DuLieuGioiThieu>('/gioi-thieu').then(d=>{if(active)setCatalog(d);}).catch(e=>{if(active)setCatalogError(e.message);});return()=>{active=false;};},[]);
-  const [detailRoom,setDetailRoom]=useState<Room|null>(null),[cartCount,setCartCount]=useState<number|null>(null),[cartOnly,setCartOnly]=useState(false),[roomSearch,setRoomSearch]=useState(''),[capacity,setCapacity]=useState('');
+  const [detailRoom,setDetailRoom]=useState<Room|null>(null),[cartCount,setCartCount]=useState<number|null>(null),[cartOnly,setCartOnly]=useState(false);
   const [config, setConfig] = useState<Record<string, string>>(defaults),
     [branches, setBranches] = useState<Branch[]>([]),
     [branch, setBranch] = useState(""),
@@ -255,6 +258,7 @@ export default function App() {
     };
   }, [selected, login, history, busy]);
   useEffect(()=>{serial.current++;setRooms([]);setSearched(false);setLoading(false);},[branch,kind,start,end,st,et,config]);
+  useEffect(()=>{if(ready&&comboChon&&catalog.combo.find(c=>c.id===comboChon)?.so_gio_bao_gom)applyKind('gio');},[ready,comboChon,catalog.combo]);
   async function loadRooms(current: number) {
     setLoading(true);
     setError("");
@@ -425,6 +429,11 @@ export default function App() {
   }, [home, rooms]);
   const modal = selected || login || history !== null;
   const ui=layGiaoDien(home?.giao_dien);
+  const heroPhotos:{url:string;ten:string;phongId?:string}[]=home?.hero?.bo_anh!==undefined?home.hero.bo_anh.flatMap(item=>{if('url' in item)return [{url:item.url,ten:ui.ten_web}];const room=catalog.phong.find(p=>p.id===item.phong_id),photo=room?.anh_chon?.find(p=>p.id===item.anh_id);return room&&photo?.url?[{url:photo.url,ten:room.ten_phong,phongId:room.id}]:[];}):[
+    ...(home?.hero?.anh?[{url:home.hero.anh,ten:home.hero.tieu_de}]:[]),...(home?.hero?.album||[]).map(url=>({url,ten:ui.ten_web})),
+    ...(!(home?.hero?.anh||home?.hero?.album?.length)?catalog.phong.flatMap(p=>p.anh.filter((url):url is string=>!!url).map(url=>({url,ten:p.ten_phong,phongId:p.id}))).slice(0,8):[])
+  ];
+  const lightboxRoom=lightbox?(detailRoom?.anh.includes(lightbox)?detailRoom:catalog.phong.find(p=>p.id===heroPhotos.find(a=>a.url===lightbox)?.phongId)||catalog.phong.find(p=>p.anh.includes(lightbox))):undefined;
   const rgb=[1,3,5].map(i=>parseInt(ui.mau_nhan.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
   const buttonText=rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722>.179?'#20142b':'#fff';
   return (
@@ -440,7 +449,7 @@ export default function App() {
           {home?.hien_phong&&<a href="/phong-gia" aria-current={page==='phong'?'page':undefined}>Phòng & Giá</a>}
           {home?.hien_phong&&home.hien_combo!==false&&<a href="/uu-dai-combo" aria-current={page==='combo'?'page':undefined}>Ưu đãi Combo</a>}
           <button className="kh-cart-link" onClick={()=>{setCartOnly(true);void myBookings();}}>Giỏ hàng {cartCount!==null&&<span className="kh-cart-count" aria-label={cartCount+' đơn chưa hoàn thành'}>{cartCount>99?'99+':cartCount}</span>}</button>
-          {home?.hien_phong&&<a className="kh-nav-book" href="#dat-phong"><BieuTuong ten="calendar"/>Đặt phòng ngay <span aria-hidden="true">→</span></a>}
+          {home?.hien_phong&&<a className="kh-nav-book" href={page==='home'?'#dat-phong':'/#dat-phong'}><BieuTuong ten="calendar"/>Đặt phòng ngay <span aria-hidden="true">→</span></a>}
         </nav>
       </header>
       {homeError && (
@@ -458,13 +467,8 @@ export default function App() {
             <p>{home.hero.noi_dung}</p>
             <a className="kh-hero-action" href="#dat-phong">Khám phá kỳ nghỉ <span aria-hidden="true">↗</span></a>
           </div>
-          {home.hero.anh || home.hero.album?.length || catalog.phong.some(r=>r.anh.some(Boolean)) ?
-            <ThuVienAnhKhach anh={[
-              ...(home.hero.anh ? [{url:home.hero.anh,ten:home.hero.tieu_de}] : []),
-              ...(home.hero.album||[]).map((url,i)=>({url,ten:`${ui.ten_web} · Không gian ${i+1}`})),
-              ...(!(home.hero.anh||home.hero.album?.length)?catalog.phong.flatMap(r=>r.anh.filter((url):url is string=>!!url).map(url=>({url,ten:r.ten_phong}))).slice(0,8):[]),
-            ]} onMo={setLightbox}/> :
-            <a className="kh-stay-note" href="#dat-phong"><span>Một khoảng riêng</span><strong>Chọn lịch nghỉ.<br />Tìm nơi bạn muốn ở.</strong><span>Xem phòng và giá theo thời gian của bạn ↗</span></a>}
+          {heroPhotos.length?<ThuVienAnhKhach noi anh={heroPhotos} onMo={setLightbox}/>:<a className="kh-stay-note" href="#dat-phong">Chọn lịch nghỉ và khám phá phòng →</a>}
+
 
         </section>
       )}
@@ -502,9 +506,10 @@ export default function App() {
           ))}
         </section>
       )}
-      {home?.hien_phong && (
+      {home?.hien_phong && page==='home' && (
         <>
           <section id="dat-phong" className="kh-search" aria-label="Tìm phòng trống">
+            {roomIntent&&<p className="kh-combo-intent">Đang chọn {catalog.phong.find(p=>p.id===roomIntent)?.ten_phong||'phòng'} · Chọn lịch để kiểm tra phòng trống. <button type="button" onClick={()=>setRoomIntent('')}>Bỏ chọn</button></p>}
             {comboChon&&<p className="kh-combo-intent">Đang chọn {catalog.combo.find(c=>c.id===comboChon)?.ten_combo||'combo'} · Kiểm tra lịch để xem phòng áp dụng. <button type="button" onClick={()=>setComboChon('')}>Bỏ chọn</button></p>}
             <form onSubmit={search}>
               <div className="kh-search-field"><span>Hình thức đặt phòng</span><div className="kh-kinds">
@@ -558,28 +563,7 @@ export default function App() {
                   {kind === "gio" ? "Giờ nhận / trả" : "Khung giờ áp dụng"}
                 </span>
                 {kind === "gio" ? (
-                  <div className="kh-time-pair">
-                    <ChonGio
-                      value={st}
-                      label="Giờ nhận phòng"
-                      onChange={(v) => {
-                        if (v === st) return;
-                        setSt(v);
-                        setSearched(false);
-                        setRooms([]);
-                      }}
-                    />
-                    <ChonGio
-                      value={et}
-                      label="Giờ trả phòng"
-                      onChange={(v) => {
-                        if (v === et) return;
-                        setEt(v);
-                        setSearched(false);
-                        setRooms([]);
-                      }}
-                    />
-                  </div>
+                  <ChonKhoangGio date={start} endDate={end} start={st} end={et} config={config} onChange={(day,last,a,b)=>{setStart(day);setEnd(last);setSt(a);setEt(b);setSearched(false);setRooms([]);}}/>
                 ) : (
                   <div className="kh-clock-pair"><span>Nhận phòng<strong>{config[kind+'_tu']}</strong></span><span>Trả phòng<strong>{config[kind+'_den']}{config[kind+'_den']<=config[kind+'_tu']?' · hôm sau':''}</strong></span></div>
                 )}
@@ -620,10 +604,9 @@ export default function App() {
                 nhé.
               </div>
             )}
-            {page==='phong'&&<div className="kh-room-filters"><label>Tìm phòng<input type="search" placeholder="Tên phòng, chi nhánh…" value={roomSearch} onChange={e=>setRoomSearch(e.target.value)}/></label><label>Số khách<select value={capacity} onChange={e=>setCapacity(e.target.value)}><option value="">Tất cả</option>{[1,2,3,4,5,6].map(n=><option key={n} value={n}>{n} khách trở lên</option>)}</select></label></div>}
             <ChonSapXep value={resultSort} onChange={setResultSort} label="Sắp xếp phòng trống"/>
             <div className="kh-room-grid">
-              {xepDanhSach(rooms,resultSort,ui.phong_noi_bat||[],r=>r.ten_phong,r=>r.tien_phong).filter(r=>(r.ten_phong+' '+r.ten_homestay).toLocaleLowerCase('vi').includes(roomSearch.toLocaleLowerCase('vi'))&&(!capacity||r.suc_chua>=Number(capacity))).map((r, i) => (
+              {xepDanhSach(rooms,resultSort,ui.phong_noi_bat||[],r=>r.ten_phong,r=>r.tien_phong).map((r, i) => (
                 <article
                   className="kh-room-card"
                   key={r.id}
@@ -669,14 +652,14 @@ export default function App() {
           {searched&&home.hien_combo!==false&&<DanhSachComboKhach comboChon={comboChon} query={searched&&lastSearch.current?new URLSearchParams(lastSearch.current).toString():''} phong={rooms} tieuDe={ui.tieu_de_combo||'Combo & trải nghiệm'} onChon={(roomId,comboId)=>{const room=rooms.find(p=>p.id===roomId);if(room)void choose(room,comboId);}}/>}
         </>
       )}
-      {home?.hien_phong&&<><div className="kh-catalog-error">{catalogError&&<p role="alert">{catalogError}</p>}</div><GioiThieuLuuTru hienCombo={home.hien_combo!==false} data={{...catalog,combo:home.hien_combo===false?[]:catalog.combo}} page={page} phongNoiBat={ui.phong_noi_bat} comboNoiBat={ui.combo_noi_bat} tieuDePhong={ui.tieu_de_phong} tieuDeCombo={ui.tieu_de_combo||'Combo ưu đãi'} onXem={setDetailRoom} onCombo={id=>{setComboChon(id);if(catalog.combo.find(c=>c.id===id)?.so_gio_bao_gom)applyKind('gio');document.getElementById('dat-phong')?.scrollIntoView({block:'start',behavior:'smooth'});}}/></>}
+      {home?.hien_phong&&<><div className="kh-catalog-error">{catalogError&&<p role="alert">{catalogError}</p>}</div><GioiThieuLuuTru hienCombo={home.hien_combo!==false} data={{...catalog,combo:home.hien_combo===false?[]:catalog.combo}} page={page} phongNoiBat={ui.phong_noi_bat} comboNoiBat={ui.combo_noi_bat} tieuDePhong={ui.tieu_de_phong} tieuDeCombo={ui.tieu_de_combo||'Combo ưu đãi'} onXem={setDetailRoom} onCombo={id=>setComboDetail(id)}/></>}
       {page==='home'&&ui.hien_danh_gia!==false&&<DanhGiaTrangChu items={catalog.danh_gia}/>}
       {home?.chan_trang && (
         <footer className="kh-footer">
+          {ui.hien_ban_do!==false&&<BanDoChanTrang chiNhanh={catalog.chi_nhanh} branch={branch}/>}
           <div className="kh-footer-about">{home.chan_trang.anh?<img className="kh-footer-logo" src={home.chan_trang.anh} alt={home.chan_trang.tieu_de}/>:<BieuTuong ten="home" size={28}/>}<strong>{home.chan_trang.tieu_de}</strong><p>{home.chan_trang.noi_dung}</p></div>
           <nav aria-label="Liên kết cuối trang"><strong>Khám phá HomeStay</strong>{home.hien_phong&&<a href="/phong-gia">Phòng và giá</a>}{home.hien_phong&&home.hien_combo!==false&&<a href="/uu-dai-combo">Ưu đãi Combo</a>}<button onClick={()=>window.dispatchEvent(new Event('homestay:mo-chat'))}>Liên hệ HomeStay</button><a href="/quan-tri">Dành cho nhân viên</a></nav>
           <address className="kh-footer-contact"><strong>Kết nối với chúng tôi</strong>{home.chan_trang.dia_chi&&<span>{home.chan_trang.dia_chi}</span>}{home.chan_trang.dien_thoai&&<a href={'tel:'+home.chan_trang.dien_thoai.replace(/[^+\d]/g,'')}>{home.chan_trang.dien_thoai}</a>}{home.chan_trang.email&&<a href={'mailto:'+home.chan_trang.email}>{home.chan_trang.email}</a>}<button onClick={()=>window.dispatchEvent(new Event('homestay:mo-chat'))}>Nhắn tin cho HomeStay →</button></address>
-          {ui.hien_ban_do!==false&&<BanDoChanTrang chiNhanh={catalog.chi_nhanh}/>}
           <small className="kh-footer-bottom">© {new Date().getFullYear()} {ui.ten_web}</small>
         </footer>
       )}
@@ -689,7 +672,8 @@ export default function App() {
         setStart(lich.start); setEnd(lastDay); setKind(lich.kind);
         if (lich.guests) setForm(f => ({ ...f, so_khach: lich.guests! }));
       }} />
-      {detailRoom&&<ChiTietPhongKhach phong={detailRoom} nhan={lastSearch.current?.bat_dau?new Date(lastSearch.current.bat_dau).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'}):start+' · '+st} tra={lastSearch.current?.ket_thuc?new Date(lastSearch.current.ket_thuc).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'}):end+' · '+et} onDong={()=>setDetailRoom(null)} onMo={setLightbox} onDat={()=>{const room=detailRoom;setDetailRoom(null);if(!room.gia_tham_khao){void choose(room);return;}void loadRooms(++serial.current).then(list=>{const free=list?.find(p=>p.id===room.id);if(free)void choose(free);else {setError('Phòng này chưa trống trong lịch đang chọn. Vui lòng đổi thời gian.');document.getElementById('dat-phong')?.scrollIntoView({block:'start'});}});}}/>}
+      {comboDetail&&catalog.combo.find(c=>c.id===comboDetail)&&<ChiTietComboKhach combo={catalog.combo.find(c=>c.id===comboDetail)!} phong={catalog.phong} onDong={()=>setComboDetail('')} onMo={setLightbox} onChon={()=>{const id=comboDetail;setComboDetail('');if(page!=='home'){location.href='/?combo='+encodeURIComponent(id)+'#dat-phong';return;}setComboChon(id);if(catalog.combo.find(c=>c.id===id)?.so_gio_bao_gom)applyKind('gio');document.getElementById('dat-phong')?.scrollIntoView({block:'start',behavior:'smooth'});}}/>}
+      {detailRoom&&<ChiTietPhongKhach phong={{...catalog.phong.find(p=>p.id===detailRoom.id),...detailRoom}} nhan={lastSearch.current?.bat_dau?new Date(lastSearch.current.bat_dau).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'}):start+' · '+st} tra={lastSearch.current?.ket_thuc?new Date(lastSearch.current.ket_thuc).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'}):end+' · '+et} onDong={()=>setDetailRoom(null)} onMo={setLightbox} onDat={()=>{const room=detailRoom;if(page!=='home'){location.href='/?phong='+encodeURIComponent(room.id)+'#dat-phong';return;}setDetailRoom(null);if(!room.gia_tham_khao){void choose(room);return;}void loadRooms(++serial.current).then(list=>{const free=list?.find(p=>p.id===room.id);if(free)void choose(free);else {setError('Phòng này chưa trống trong lịch đang chọn. Vui lòng đổi thời gian.');document.getElementById('dat-phong')?.scrollIntoView({block:'start'});}});}}/>}
       {modal &&
         createPortal(
           <div
@@ -1117,7 +1101,8 @@ export default function App() {
       {lightbox && (
         <AnhPhongNoi
           url={lightbox}
-          title="Ảnh không gian lưu trú"
+          title={lightboxRoom?.ten_phong||"Ảnh không gian lưu trú"}
+          action={lightboxRoom?{label:"Xem thông tin phòng",onClick:()=>{setLightbox(null);setDetailRoom({...lightboxRoom,gia_tham_khao:lightboxRoom.gia_tham_khao??true});}}:undefined}
           label="Xem ảnh phòng hoặc combo"
           onClose={() => setLightbox(null)}
         />

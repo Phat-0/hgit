@@ -2,3 +2,4 @@
 .anh-phong-noi>button{position:absolute;top:16px;right:20px;width:42px;height:42px;border:0;border-radius:50%;font-size:30px;background:white;color:#172033;cursor:pointer}
 .anh-phong-noi figure{margin:0;max-width:100%;text-align:center}.anh-phong-noi img{display:block;max-width:min(1200px,calc(100vw - 60px));max-height:calc(100dvh - 110px);object-fit:contain;border-radius:8px}.anh-phong-noi figcaption{color:white;padding-top:10px}
 .cn-photo-open{border:0!important;background:transparent!important;padding:0!important;cursor:zoom-in!important;display:inline-flex!important}.cn-room-images img{cursor:zoom-in}
+.anh-phong-noi figure>figcaption{display:flex;justify-content:center;align-items:center;gap:20px;flex-wrap:wrap}.anh-phong-noi .anh-phong-thong-tin{position:static;inset:auto;width:auto;height:auto;min-height:40px;min-width:0;border-radius:22px;background:#e9bd80;color:#302115;border:1px solid #e9bd80;padding:10px 20px;font:13px system-ui;cursor:pointer}

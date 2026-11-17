@@ -3,14 +3,17 @@ export default function ThuVienAnhKhach({
   anh,
   onMo,
   chiTiet = false,
+  noi = false,
 }: {
   anh: { url: string; ten: string }[];
   onMo: (url: string) => void;
   chiTiet?: boolean;
+  noi?: boolean;
 }) {
   const [index, setIndex] = useState(0),
     [offset, setOffset] = useState(0),
     [settling, setSettling] = useState(false);
+  const width = useRef(500);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
     () => () => {
@@ -35,7 +38,10 @@ export default function ThuVienAnhKhach({
     setIndex((i) => (i + step + photos.length) % photos.length);
   if (!selected) return <div className="kh-no-photo">Chưa có ảnh phòng</div>;
   return (
-    <div className="kh-gallery" aria-label="Không gian lưu trú">
+    <div
+      className={"kh-gallery" + (noi ? " kh-gallery--noi" : "")}
+      aria-label="Không gian lưu trú"
+    >
       {photos.length > 1 && (
         <div className="kh-gallery-stack" aria-hidden="true">
           <img
@@ -67,6 +73,7 @@ export default function ThuVienAnhKhach({
         style={
           {
             transform: "none",
+            "--kh-drag": offset,
           } as CSSProperties
         }
         onKeyDown={(e) => {
@@ -79,6 +86,7 @@ export default function ThuVienAnhKhach({
         onPointerDown={(e) => {
           if (settling) return;
           if (e.pointerType === "mouse" && e.button !== 0) return;
+          width.current = e.currentTarget.clientWidth;
           gesture.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
           swiped.current = false;
           e.currentTarget.setPointerCapture(e.pointerId);
@@ -138,23 +146,54 @@ export default function ThuVienAnhKhach({
           if (!swiped.current) onMo(selected.url);
         }}
       >
-        <div
-          className={
-            "kh-gallery-track" + (settling ? " kh-gallery-settling" : "")
-          }
-          style={{ transform: `translateX(calc(-100% + ${offset}px))` }}
-          aria-hidden="true"
-        >
-          {[-1, 0, 1].map((step) => (
-            <img
-              key={step}
-              draggable={false}
-              src={photos[(current + step + photos.length) % photos.length].url}
-              alt=""
-              fetchPriority={step === 0 ? "high" : "auto"}
-            />
-          ))}
-        </div>
+        {noi ? (
+          <div
+            className={
+              "kh-gallery-fan" + (settling ? " kh-gallery-settling" : "")
+            }
+            aria-hidden="true"
+          >
+            {[-1, 0, 1].map((step) => {
+              const slot = step + offset / width.current,
+                distance = Math.abs(slot);
+              return (
+                <img
+                  key={step}
+                  src={
+                    photos[(current + step + photos.length) % photos.length].url
+                  }
+                  alt=""
+                  draggable={false}
+                  style={{
+                    transform: `translateX(${slot * 48}%) translateY(${distance * 24}px) scale(${1 - Math.min(2, distance) * 0.13}) rotate(${slot * 5}deg)`,
+                    opacity: 1 - Math.min(2, distance) * 0.2,
+                    zIndex: Math.round(100 - distance * 10),
+                  }}
+                />
+              );
+            })}
+          </div>
+        ) : (
+          <div
+            className={
+              "kh-gallery-track" + (settling ? " kh-gallery-settling" : "")
+            }
+            style={{ transform: `translateX(calc(-100% + ${offset}px))` }}
+            aria-hidden="true"
+          >
+            {[-1, 0, 1].map((step) => (
+              <img
+                key={step}
+                draggable={false}
+                src={
+                  photos[(current + step + photos.length) % photos.length].url
+                }
+                alt=""
+                fetchPriority={step === 0 ? "high" : "auto"}
+              />
+            ))}
+          </div>
+        )}
         <span className="kh-gallery-caption">
           <span>{selected.ten}</span>
           <small>

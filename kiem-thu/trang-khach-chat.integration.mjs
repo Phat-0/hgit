@@ -179,7 +179,8 @@ const day = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10),
     hinh_thuc_dat: "Theo giờ",
   };
 assert.equal((await service.rooms(q)).length, 2);
-const catalogPublic=await service.catalog();assert.equal(catalogPublic.phong.length,2);assert.equal(catalogPublic.chi_nhanh.length,1);assert.ok(catalogPublic.danh_gia.every(d=>typeof d.ten_khach==='string'));
+const photoRef=randomUUID();await db.query('INSERT INTO public.hinh_anh_phong(id,phong_id,duong_dan) VALUES($1,$2,$3)',[photoRef,room,'https://example.test/phong.webp']);
+const catalogPublic=await service.catalog();assert.equal(catalogPublic.phong.length,2);assert.equal(catalogPublic.chi_nhanh.length,1);assert.ok(catalogPublic.danh_gia.every(d=>typeof d.ten_khach==='string'));assert.equal(catalogPublic.phong.find(p=>p.id===room).anh_chon[0].id,photoRef);assert.equal(catalogPublic.phong.find(p=>p.id===room).anh[0],'https://example.test/phong.webp');
 const combo = (
   await db.query(
     "INSERT INTO public.combo(homestay_id,ten_combo,gia_combo,so_gio_bao_gom,pham_vi) VALUES($1,'Combo thử',150000,2,'toan_he_thong') RETURNING id",
