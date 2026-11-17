@@ -15,3 +15,11 @@ Migration thêm `phong.mo_ta`, sao chép mô tả khi phòng chưa có nội dun
 Mã đọc public tương thích cả trước và sau migration. Trước migration, các thông tin phòng khác vẫn lưu được; nhập mô tả riêng sẽ báo cần áp dụng migration thay vì làm lỗi SQL. Sau migration, form Phòng lưu mô tả riêng bình thường. Form Loại phòng không còn ô mô tả.
 
 Kiểm tra sau áp dụng: chỉ còn cột `phong.mo_ta`, số phòng nhận nội dung đúng 3, nội dung mô tả cũ được giữ lại, sửa mô tả của một phòng không thay đổi phòng khác.
+
+## Trang phòng và giao diện theo tham khảo Charmy
+
+- Chi tiết phòng có URL `/phong/:id`, tải lại trực tiếp được; ảnh lớn và thanh xem trước nằm bên trái, tên/giá/đặt phòng bên phải. Phần Thông tin chi tiết đọc đúng `phong.mo_ta`, hiển thị văn bản thuần.
+- Mở từ danh sách giới thiệu không chọn sẵn loại đặt. Mở từ kết quả tìm phòng mang theo thời gian qua URL và kiểm tra lại với API trước khi dùng lịch đó để đặt.
+- Nền dùng chất liệu nâu vẽ bằng CSS, mép chuyển đầu trang dạng giấy, xuất hiện dần khi cuộn và dịch ảnh nền nhẹ. Giữ ảnh trong CMS/phòng; không dùng tài nguyên hình của website tham khảo. Tôn trọng thiết lập giảm chuyển động.
+- Footer không còn liên kết dành cho nhân viên. Hotline, email, website và các ứng dụng có biểu tượng; liên kết lấy từ cấu hình Trang chủ. Biểu tượng chưa có URL chỉ hiển thị, không tạo đường dẫn giả.
+- Sidebar bản đồ có ba nhóm nền riêng, chữ sáng; nhãn trên nền bản đồ sáng vẫn dùng chữ tối.

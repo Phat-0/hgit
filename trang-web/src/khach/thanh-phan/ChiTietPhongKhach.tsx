@@ -1,84 +1,25 @@
-import { useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
 import BangGiaPhong from "./BangGiaPhong";
-import type {PhongKhach} from "./GioiThieuLuuTru";
+import type { PhongKhach } from "./GioiThieuLuuTru";
 import ThuVienAnhKhach from "./ThuVienAnhKhach";
-type Phong = PhongKhach;
+import BieuTuong from "../../dung-chung/giao-dien/BieuTuong";
 export default function ChiTietPhongKhach({
   phong,
-  nhan,
-  tra,
-  onDong,
   onDat,
   onMo,
+  dangKiemTra = false,
 }: {
-  phong: Phong;
-  nhan: string;
-  tra: string;
-  onDong: () => void;
+  dangKiemTra?: boolean;
+  phong: PhongKhach;
   onDat: () => void;
   onMo: (url: string) => void;
 }) {
-  const ref = useRef<HTMLElement>(null),
-    close = useRef(onDong);
-  close.current = onDong;
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null,
-      overflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    ref.current?.querySelector<HTMLButtonElement>("button")?.focus();
-    const key = (e: KeyboardEvent) => {
-      if (document.querySelector(".anh-phong-noi")) return;
-      if (e.key === "Escape") {
-        e.preventDefault();
-        close.current();
-      }
-      if (e.key === "Tab") {
-        const items = Array.from(
-          ref.current?.querySelectorAll<HTMLElement>(
-            'button:not(:disabled),[tabindex="0"],a[href]',
-          ) || [],
-        );
-        const first = items[0],
-          last = items.at(-1);
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last?.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first?.focus();
-        }
-      }
-    };
-    document.addEventListener("keydown", key);
-    return () => {
-      document.body.style.overflow = overflow;
-      document.removeEventListener("keydown", key);
-      previous?.focus();
-    };
-  }, []);
-  return createPortal(
-    <div
-      className="kh-detail-shade"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onDong();
-      }}
-    >
-      <section
-        ref={ref}
-        className="kh-detail"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="kh-detail-title"
-      >
-        <button
-          className="kh-detail-close"
-          aria-label="Đóng chi tiết phòng"
-          onClick={onDong}
-        >
-          ×
-        </button>
-        <div className="kh-detail-photos">
+  return (
+    <article className="kh-room-page" aria-labelledby="kh-detail-title">
+      <a className="kh-room-back" href="/phong-gia">
+        ← Phòng & Giá
+      </a>
+      <div className="kh-room-page-top">
+        <div className="kh-room-page-photos">
           <ThuVienAnhKhach
             chiTiet
             anh={phong.anh
@@ -87,56 +28,58 @@ export default function ChiTietPhongKhach({
             onMo={onMo}
           />
         </div>
-        <div className="kh-detail-info">
-          <span className="kh-detail-eyebrow">{phong.ten_loai}</span>
-          <h2 id="kh-detail-title">{phong.ten_phong}</h2>
-          <p>{phong.mo_ta || "Khám phá không gian qua bộ ảnh phòng."}</p>
-          <div className="kh-detail-facts">
-            <span>{phong.suc_chua} khách</span>
+        <div className="kh-room-page-booking">
+          <span className="kh-detail-eyebrow">
+            {phong.ten_loai} · {phong.ma_phong}
+          </span>
+          <h1 id="kh-detail-title">{phong.ten_phong}</h1>
+          <p className="kh-room-page-address">
+            {phong.ten_homestay}
+            <br />
+            {[phong.dia_chi, phong.tinh_thanh].filter(Boolean).join(", ")}
+          </p>
+          <div className="kh-room-page-facts">
+            <span>
+              <BieuTuong ten="users" />
+              {phong.suc_chua} khách
+            </span>
             {phong.dien_tich_m2 && <span>{phong.dien_tich_m2} m²</span>}
           </div>
-          <section>
-            <h3>Địa điểm lưu trú</h3>
-            <strong>{phong.ten_homestay}</strong>
-            <p>
-              {[phong.dia_chi, phong.tinh_thanh].filter(Boolean).join(", ")}
+          <BangGiaPhong phong={phong} />
+          {!phong.gia_tham_khao && (
+            <p className="kh-room-search-price">
+              Khoảng đã tìm:{" "}
+              <strong>
+                {Number(phong.tien_phong).toLocaleString("vi-VN")} ₫
+              </strong>
             </p>
-          </section>
-          {phong.tien_nghi?.length ? (
-            <section>
-              <h3>Tiện nghi trong phòng</h3>
-              <div className="kh-detail-amenities">
-                {phong.tien_nghi.map((t) => (
-                  <span key={t}>{t}</span>
-                ))}
-              </div>
-            </section>
-          ) : null}
-          <BangGiaPhong phong={phong}/>
-          <section>
-            <h3>Thông tin đặt phòng</h3>
-            <div className="kh-detail-times">
-              <span>
-                Nhận phòng<strong>{nhan}</strong>
-              </span>
-              <span>
-                Trả phòng<strong>{tra}</strong>
-              </span>
-            </div>
-            <small>{phong.gia_tham_khao?'Giá tham khảo theo ngày. Kiểm tra phòng trống trước khi đặt.':'Thời gian và giá theo khoảng bạn đang chọn.'}</small>
-          </section>
-          <div className="kh-detail-price">
-            <strong>
-              {phong.gia_tham_khao&&Number(phong.tien_phong)<=0?'Chưa có giá ngày':Number(phong.tien_phong).toLocaleString("vi-VN")+' ₫'}
-            </strong>
-            <small>{phong.gia_tham_khao?' / ngày':' / khoảng đặt'}</small>
-          </div>
-          <button className="kh-detail-book" onClick={onDat}>
-            Đặt phòng này <span aria-hidden="true">→</span>
+          )}
+          <button
+            type="button"
+            className="kh-detail-book"
+            disabled={dangKiemTra}
+            onClick={onDat}
+          >
+            {dangKiemTra ? "Đang kiểm tra lịch…" : "Đặt phòng này"}{" "}
+            <span aria-hidden="true">→</span>
           </button>
+          <small>Chọn lịch để kiểm tra phòng trống và tổng tiền.</small>
         </div>
+      </div>
+      <section className="kh-room-page-description">
+        <h2>Thông tin chi tiết</h2>
+        <p>{phong.mo_ta?.trim() || "Phòng chưa có mô tả chi tiết."}</p>
+        {!!phong.tien_nghi?.length && (
+          <div className="kh-room-page-amenities">
+            <h3>Tiện nghi trong phòng</h3>
+            <ul>
+              {phong.tien_nghi.map((x) => (
+                <li key={x}>{x}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
-    </div>,
-    document.body,
+    </article>
   );
 }

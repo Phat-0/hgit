@@ -31,6 +31,7 @@ import './giao-dien/trang-chu-gon.css';
 import './giao-dien/font-tieng-viet.css';
 import './giao-dien/can-chinh-khach.css';
 import './giao-dien/trang-chu-hoan-thien.css';
+import './giao-dien/tham-khao-charmy.css';
 type Receipt = {
   ma_dat_phong: string;
   tong_tien: number | string;
@@ -59,15 +60,16 @@ const defaults = {
   dem_den: "08:00",
 };
 export default function App() {
-  const page=location.pathname.startsWith('/ket-qua-phong')?'ket-qua':location.pathname.startsWith('/phong-gia')?'phong':location.pathname.startsWith('/uu-dai-combo')?'combo':'home';
+  const page=location.pathname.startsWith('/phong/')?'chi-tiet':location.pathname.startsWith('/ket-qua-phong')?'ket-qua':location.pathname.startsWith('/phong-gia')?'phong':location.pathname.startsWith('/uu-dai-combo')?'combo':'home';
   const [fullResults,setFullResults]=useState<Room[]>([]),[fullLoading,setFullLoading]=useState(false),[fullError,setFullError]=useState('');
-  useEffect(()=>{if(page!=='ket-qua')return;let active=true;const q=new URLSearchParams(location.search);const params=new URLSearchParams();for(const k of ['bat_dau','ket_thuc','hinh_thuc_dat','chi_nhanh_id'])if(q.get(k))params.set(k,q.get(k)!);setFullLoading(true);void khachApi<Room[]>('/phong?'+params).then(items=>{if(active){setFullResults(items);lastSearch.current=Object.fromEntries(params);setRooms(items);}}).catch(e=>{if(active)setFullError(e.message);}).finally(()=>{if(active)setFullLoading(false);});return()=>{active=false;};},[page]);
+  useEffect(()=>{if(page!=='ket-qua'&&page!=='chi-tiet')return;let active=true;const q=new URLSearchParams(location.search);if(page==='chi-tiet'&&!['bat_dau','ket_thuc','hinh_thuc_dat'].every(k=>q.has(k)))return;const params=new URLSearchParams();for(const k of ['bat_dau','ket_thuc','hinh_thuc_dat','chi_nhanh_id'])if(q.get(k))params.set(k,q.get(k)!);setFullLoading(true);void khachApi<Room[]>('/phong?'+params).then(items=>{if(active){setFullResults(items);lastSearch.current=Object.fromEntries(params);setRooms(items);}}).catch(e=>{if(active)setFullError(e.message);}).finally(()=>{if(active)setFullLoading(false);});return()=>{active=false;};},[page]);
+  const [catalogLoaded,setCatalogLoaded]=useState(false);
   const [catalog,setCatalog]=useState<DuLieuGioiThieu>({phong:[],combo:[],danh_gia:[],chi_nhanh:[]}),[catalogError,setCatalogError]=useState(''),[comboChon,setComboChon]=useState(new URLSearchParams(location.search).get('combo')||'');
   const [comboDetail,setComboDetail]=useState(''),[roomIntent,setRoomIntent]=useState(new URLSearchParams(location.search).get('phong')||'');
-  useEffect(()=>{let active=true;void khachApi<DuLieuGioiThieu>('/gioi-thieu').then(d=>{if(active)setCatalog(d);}).catch(e=>{if(active)setCatalogError(e.message);});return()=>{active=false;};},[]);
+  useEffect(()=>{let active=true;void khachApi<DuLieuGioiThieu>('/gioi-thieu').then(d=>{if(active)setCatalog(d);}).catch(e=>{if(active)setCatalogError(e.message);}).finally(()=>{if(active)setCatalogLoaded(true);});return()=>{active=false;};},[]);
   const [bookingOpen,setBookingOpen]=useState(!!location.hash.includes("dat-phong"));
   const [bookingTarget,setBookingTarget]=useState<MucDatPhong|null>(null),[receiptPhone,setReceiptPhone]=useState(''),[guestCount,setGuestCount]=useState(1);
-  const [detailRoom,setDetailRoom]=useState<Room|null>(null),[cartCount,setCartCount]=useState<number|null>(null),[cartOnly,setCartOnly]=useState(false);
+  const [cartCount,setCartCount]=useState<number|null>(null),[cartOnly,setCartOnly]=useState(false);
   const [config, setConfig] = useState<Record<string, string>>(defaults),
     [branches, setBranches] = useState<Branch[]>([]),
     [branch, setBranch] = useState(""),
@@ -271,6 +273,11 @@ export default function App() {
     await loadRooms(++serial.current);
     requestAnimationFrame(()=>document.getElementById("ket-qua-phong")?.scrollIntoView({block:"start",behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"}));
   }
+  function openRoom(room:Room){
+    const fromSearch=!room.gia_tham_khao&&lastSearch.current&&(rooms.some(p=>p.id===room.id)||fullResults.some(p=>p.id===room.id));
+    const q=new URLSearchParams();if(fromSearch)for(const k of ['bat_dau','ket_thuc','hinh_thuc_dat','chi_nhanh_id'])if(lastSearch.current?.[k])q.set(k,lastSearch.current[k]);
+    location.assign('/phong/'+encodeURIComponent(room.id)+(q.size?'?'+q.toString():''));
+  }
   function choose(room:Room,comboId?:string){
     const fromSearch=!room.gia_tham_khao&&!!lastSearch.current&&(rooms.some(p=>p.id===room.id)||fullResults.some(p=>p.id===room.id));
     setReceipt(null);setBookingTarget({room:{...catalog.phong.find(p=>p.id===room.id),...room},seed:fromSearch?{...lastSearch.current!}:undefined,comboId});
@@ -368,17 +375,28 @@ export default function App() {
     const observer = new IntersectionObserver(entries => entries.forEach(entry => {
       if (entry.isIntersecting) { entry.target.setAttribute('data-reveal', 'shown'); observer.unobserve(entry.target); }
     }), { threshold: .08 });
-    document.querySelectorAll('.kh-site .kh-room-card, .kh-site .kh-cms-cards article').forEach(e => {
+    document.querySelectorAll('.kh-site .kh-room-card, .kh-site .kh-cms-cards article, .kh-site .kh-feature-card, .kh-site .kh-reviews>header, .kh-site .kh-review-track article, .kh-site .kh-cms-intro').forEach(e => {
       e.setAttribute('data-reveal', 'pending'); observer.observe(e);
     });
     return () => observer.disconnect();
-  }, [home, rooms]);
+  }, [home, rooms, catalog, page]);
+  useEffect(()=>{
+    if(page!=='home'||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    const hero=document.querySelector<HTMLElement>('.kh-cms-hero');if(!hero)return;
+    let frame=0;const update=()=>{frame=0;const b=hero.getBoundingClientRect();if(b.bottom>0)hero.style.setProperty('--kh-photo-offset',Math.min(36,Math.max(0,-b.top)*.055)+'px');};
+    const scroll=()=>{if(!frame)frame=requestAnimationFrame(update);};window.addEventListener('scroll',scroll,{passive:true});update();return()=>{window.removeEventListener('scroll',scroll);cancelAnimationFrame(frame);};
+  },[page,home]);
   const modal = selected || login || history !== null;
   const ui=layGiaoDien(home?.giao_dien);
   const heroPhotos:{url:string;ten:string;phongId?:string}[]=home?.hero?.bo_anh!==undefined?home.hero.bo_anh.flatMap(item=>{if('url' in item)return [{url:item.url,ten:ui.ten_web}];const room=catalog.phong.find(p=>p.id===item.phong_id),photo=room?.anh_chon?.find(p=>p.id===item.anh_id);return room&&photo?.url?[{url:photo.url,ten:room.ten_phong,phongId:room.id}]:[];}):[
     ...(home?.hero?.anh?[{url:home.hero.anh,ten:home.hero.tieu_de}]:[]),...(home?.hero?.album||[]).map(url=>({url,ten:ui.ten_web})),
     ...(!(home?.hero?.anh||home?.hero?.album?.length)?catalog.phong.flatMap(p=>p.anh.filter((url):url is string=>!!url).map(url=>({url,ten:p.ten_phong,phongId:p.id}))).slice(0,8):[])
   ];
+  const detailId=(()=>{try{return decodeURIComponent(location.pathname.split('/')[2]||'');}catch{return '';}})();
+  const detailBase=page==='chi-tiet'?catalog.phong.find(p=>p.id===detailId):undefined;
+  const detailResult=fullResults.find(p=>p.id===detailId);
+  const detailRoom=detailBase?{...detailBase,...detailResult,gia_tham_khao:!detailResult}:undefined;
+  useEffect(()=>{if(detailRoom)document.title=detailRoom.ten_phong+' | '+ui.ten_web;},[detailRoom?.id,detailRoom?.ten_phong,ui.ten_web]);
   const lightboxRoom=lightbox?(detailRoom?.anh.includes(lightbox)?detailRoom:catalog.phong.find(p=>p.id===heroPhotos.find(a=>a.url===lightbox)?.phongId)||catalog.phong.find(p=>p.anh.includes(lightbox))):undefined;
   const rgb=[1,3,5].map(i=>parseInt(ui.mau_nhan.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
   const buttonText=rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722>.179?'#20142b':'#fff';
@@ -392,7 +410,7 @@ export default function App() {
         <button className="kh-nav-toggle" aria-label="Menu điều hướng" aria-expanded={navOpen} aria-controls="kh-navigation" onClick={()=>setNavOpen(!navOpen)}><BieuTuong ten={navOpen ? "close" : "menu"}/></button>
         <nav id="kh-navigation" aria-label="Điều hướng chính" className={navOpen ? "kh-nav-open" : ""} onClick={()=>setNavOpen(false)}>
           <a href="/" aria-current={page==='home'?'page':undefined}>Trang chủ</a>
-          {home?.hien_phong&&<a href="/phong-gia" aria-current={page==='phong'?'page':undefined}>Phòng & Giá</a>}
+          {home?.hien_phong&&<a href="/phong-gia" aria-current={page==='phong'||page==='chi-tiet'?'page':undefined}>Phòng & Giá</a>}
           {home?.hien_phong&&home.hien_combo!==false&&<a href="/uu-dai-combo" aria-current={page==='combo'?'page':undefined}>Ưu đãi Combo</a>}
           <button className="kh-cart-link" onClick={()=>{setCartOnly(true);void myBookings();}}>Giỏ hàng {cartCount!==null&&<span className="kh-cart-count" aria-label={cartCount+' đơn chưa hoàn thành'}>{cartCount>99?'99+':cartCount}</span>}</button>
           {home?.hien_phong&&<a className="kh-nav-book" onClick={()=>setBookingOpen(true)} href={page==='home'?'#dat-phong':'/#dat-phong'}><BieuTuong ten="calendar"/>Đặt phòng ngay <span aria-hidden="true">→</span></a>}
@@ -523,11 +541,12 @@ export default function App() {
             </p>
           )}
           </KhungDatDonChim></section>
-          {(searched||loading)&&<KetQuaTimPhong rooms={rooms.map(p=>({...catalog.phong.find(c=>c.id===p.id),...p}))} loading={loading} onXem={room=>setDetailRoom(room)} onTatCa={()=>{const q=lastSearch.current;if(q)location.href='/ket-qua-phong?'+new URLSearchParams(q);}}/>}
+          {(searched||loading)&&<KetQuaTimPhong rooms={rooms.map(p=>({...catalog.phong.find(c=>c.id===p.id),...p}))} loading={loading} onXem={room=>openRoom(room)} onTatCa={()=>{const q=lastSearch.current;if(q)location.href='/ket-qua-phong?'+new URLSearchParams(q);}}/>}
         </>
       )}
-      {page==='ket-qua'&&<section className="kh-full-results"><h1>Phòng trống theo chi nhánh</h1>{lastSearch.current&&<p className="kh-results-period">{lastSearch.current.hinh_thuc_dat} · {new Date(lastSearch.current.bat_dau).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})} → {new Date(lastSearch.current.ket_thuc).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})}</p>}{fullError&&<p role="alert" className="kh-error">{fullError}</p>}<KetQuaTimPhong rooms={fullResults.map(p=>({...catalog.phong.find(c=>c.id===p.id),...p}))} loading={fullLoading} full onXem={setDetailRoom}/></section>}
-      {home?.hien_phong&&page!=='ket-qua'&&<><div className="kh-catalog-error">{catalogError&&<p role="alert">{catalogError}</p>}</div><GioiThieuLuuTru hienCombo={home.hien_combo!==false} data={{...catalog,combo:home.hien_combo===false?[]:catalog.combo}} page={page} phongNoiBat={ui.phong_noi_bat} comboNoiBat={ui.combo_noi_bat} tieuDePhong={ui.tieu_de_phong} tieuDeCombo={ui.tieu_de_combo||'Combo ưu đãi'} onXem={setDetailRoom} onCombo={id=>setComboDetail(id)}/></>}
+      {page==='ket-qua'&&<section className="kh-full-results"><h1>Phòng trống theo chi nhánh</h1>{lastSearch.current&&<p className="kh-results-period">{lastSearch.current.hinh_thuc_dat} · {new Date(lastSearch.current.bat_dau).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})} → {new Date(lastSearch.current.ket_thuc).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})}</p>}{fullError&&<p role="alert" className="kh-error">{fullError}</p>}<KetQuaTimPhong rooms={fullResults.map(p=>({...catalog.phong.find(c=>c.id===p.id),...p}))} loading={fullLoading} full onXem={openRoom}/></section>}
+      {page==='chi-tiet'&&(catalogError?<p role="alert" className="kh-error">{catalogError}</p>:!catalogLoaded?<p role="status">Đang tải thông tin phòng…</p>:detailRoom?<><ChiTietPhongKhach phong={detailRoom} dangKiemTra={fullLoading} onMo={setLightbox} onDat={()=>choose(detailRoom)}/>{fullError&&<p role="alert" className="kh-error">{fullError}</p>}{fullLoading&&<p role="status">Đang kiểm tra lại lịch và giá…</p>}</>:<section className="kh-room-not-found"><h1>Không tìm thấy phòng</h1><a href="/phong-gia">Xem các phòng khác →</a></section>)}
+      {home?.hien_phong&&page!=='ket-qua'&&page!=='chi-tiet'&&<><div className="kh-catalog-error">{catalogError&&<p role="alert">{catalogError}</p>}</div><GioiThieuLuuTru hienCombo={home.hien_combo!==false} data={{...catalog,combo:home.hien_combo===false?[]:catalog.combo}} page={page} phongNoiBat={ui.phong_noi_bat} comboNoiBat={ui.combo_noi_bat} tieuDePhong={ui.tieu_de_phong} tieuDeCombo={ui.tieu_de_combo||'Combo ưu đãi'} onXem={openRoom} onCombo={id=>setComboDetail(id)}/></>}
       {page==='home'&&ui.hien_danh_gia!==false&&<DanhGiaTrangChu items={catalog.danh_gia}/>}
       {home?.chan_trang&&<ChanTrangKhach data={home.chan_trang} name={ui.ten_web} branches={catalog.chi_nhanh} branch={branch} map={ui.hien_ban_do!==false} rooms={home.hien_phong} combos={home.hien_combo!==false}/>}
 
@@ -542,7 +561,7 @@ export default function App() {
       }} />
       {comboDetail&&catalog.combo.find(c=>c.id===comboDetail)&&<ChiTietComboKhach combo={catalog.combo.find(c=>c.id===comboDetail)!} phong={catalog.phong} onDong={()=>setComboDetail('')} onMo={setLightbox} onChon={()=>{const item=catalog.combo.find(c=>c.id===comboDetail)!;const eligible=catalog.phong.filter(p=>item.pham_vi==='toan_he_thong'||item.pham_vi==='phong'&&item.phong_ids?.includes(p.id)||item.pham_vi==='chi_nhanh'&&!!p.homestay_id&&item.chi_nhanh_ids?.includes(p.homestay_id));setComboDetail('');setBookingTarget({comboId:item.id,roomIds:eligible.map(p=>p.id)});}}/>}
       {bookingTarget&&<DatPhongKhach target={bookingTarget} rooms={catalog.phong.length?catalog.phong:bookingTarget.room?[bookingTarget.room]:[]} config={config} token={token} hidden={login} guests={guestCount} onClose={()=>setBookingTarget(null)} onLogin={phone=>{setPhone(phone);setLogin(true);}} onSaved={(result,room,phone)=>{nhoDonCucBo(result);setReceipt(result);setReceiptPhone(phone);setSelected(room);setBookingTarget(null);setRooms(items=>items.filter(p=>p.id!==room.id));}}/>}
-      {detailRoom&&<ChiTietPhongKhach phong={{...catalog.phong.find(p=>p.id===detailRoom.id),...detailRoom}} nhan={lastSearch.current?.bat_dau?new Date(lastSearch.current.bat_dau).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'}):start+' · '+st} tra={lastSearch.current?.ket_thuc?new Date(lastSearch.current.ket_thuc).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'}):end+' · '+et} onDong={()=>setDetailRoom(null)} onMo={setLightbox} onDat={()=>{const room=detailRoom;setDetailRoom(null);choose(room);}}/>}
+
       {modal &&
         createPortal(
           <div
@@ -763,7 +782,7 @@ export default function App() {
         <AnhPhongNoi
           url={lightbox}
           title={lightboxRoom?.ten_phong||"Ảnh không gian lưu trú"}
-          action={lightboxRoom?{label:"Xem thông tin phòng",onClick:()=>{setLightbox(null);setDetailRoom({...lightboxRoom,gia_tham_khao:lightboxRoom.gia_tham_khao??true});}}:undefined}
+          action={lightboxRoom&&page!=='chi-tiet'?{label:"Xem thông tin phòng",onClick:()=>{setLightbox(null);openRoom({...lightboxRoom,gia_tham_khao:lightboxRoom.gia_tham_khao??true});}}:undefined}
           label="Xem ảnh phòng hoặc combo"
           onClose={() => setLightbox(null)}
         />

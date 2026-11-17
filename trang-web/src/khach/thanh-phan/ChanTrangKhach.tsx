@@ -44,9 +44,10 @@ export default function ChanTrangKhach({
       : []),
   ];
   const socials = [
-    ["Facebook", data.facebook],
-    ["TikTok", data.tiktok],
-    ["Instagram", data.instagram],
+    ["Facebook", data.facebook, "facebook"],
+    ["TikTok", data.tiktok, "tiktok"],
+    ["Instagram", data.instagram, "instagram"],
+    ["Zalo", data.zalo, "zalo"],
   ];
   return (
     <footer
@@ -106,11 +107,6 @@ export default function ChanTrangKhach({
           <span>Liên hệ {name}</span>
           <BieuTuong ten="chevron" size={14} />
         </button>
-        <a href="/quan-tri">
-          <BieuTuong ten="users" />
-          <span>Dành cho nhân viên</span>
-          <BieuTuong ten="chevron" size={14} />
-        </a>
       </nav>
       <div className="kh-footer-connect">
         <h3>{data.tieu_de_ket_noi || "Kết nối với chúng tôi"}</h3>
@@ -131,34 +127,54 @@ export default function ChanTrangKhach({
         <div className="kh-footer-contacts">
           {data.dien_thoai && (
             <a href={"tel:" + data.dien_thoai.replace(/[^+\d]/g, "")}>
+              <BieuTuong ten="phone" />
               Hotline: {data.dien_thoai}
             </a>
           )}
           {data.zalo && (
             <a href={data.zalo} target="_blank" rel="noopener noreferrer">
+              <BieuTuong ten="zalo" />
               Zalo
             </a>
           )}
           {data.website && (
             <a href={data.website} target="_blank" rel="noopener noreferrer">
+              <BieuTuong ten="globe" />
               {new URL(data.website).hostname}
             </a>
           )}
-          {data.email && <a href={"mailto:" + data.email}>{data.email}</a>}
+          {data.email && (
+            <a href={"mailto:" + data.email}>
+              <BieuTuong ten="mail" />
+              {data.email}
+            </a>
+          )}
         </div>
         <div className="kh-footer-socials">
-          {socials
-            .filter(([, url]) => url)
-            .map(([label, url]) => (
+          {socials.map(([label, url, icon]) =>
+            url ? (
               <a
                 key={label}
                 href={url}
+                aria-label={label}
+                title={label}
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {label}
+                <BieuTuong ten={icon as TenBieuTuong} />
               </a>
-            ))}
+            ) : (
+              <span
+                key={label}
+                className="kh-social-unlinked"
+                role="img"
+                aria-label={label}
+                title={label}
+              >
+                <BieuTuong ten={icon as TenBieuTuong} />
+              </span>
+            ),
+          )}
         </div>
         <div className="kh-footer-policies">
           {[

@@ -231,19 +231,18 @@ export async function kiemTraPhongGia(page, base = "http://localhost:5173") {
       .locator("#gioi-thieu-phong .kh-feature-card button")
       .first()
       .click();
-    await page.getByRole("dialog").waitFor();
-    await drag(".kh-detail .kh-gallery-main");
+    await page.locator(".kh-room-page").waitFor();
+    check(new URL(page.url()).pathname.startsWith("/phong/"),"Chi tiết có URL riêng");
+    await drag(".kh-room-page .kh-gallery-main");
     check(
       !(await page.evaluate(
         () => document.documentElement.scrollWidth > innerWidth,
       )),
       "Không tràn ngang ở " + width,
     );
-    await page.keyboard.press("Escape");
-    check(
-      (await page.getByRole("dialog").count()) === 0,
-      "Escape đóng chi tiết",
-    );
+    check(await page.locator(".kh-room-page-description").isVisible(),"Mô tả dưới ảnh và bảng giá");
+    await page.locator(".kh-room-back").click();
+    await page.locator("#gioi-thieu-phong").waitFor();
     results.push({ width, passed: true });
   }
   await page.goto(base + "/uu-dai-combo");
@@ -398,6 +397,7 @@ export async function kiemTraDatPhongKhach(
     "Gửi lịch/loại đúng, máy chủ tự tính giá",
   );
   await page.getByRole("button", { name: "Đóng", exact: true }).click();
+  await page.goto(base + "/");
   if (!(await page.locator("#kh-booking-panel").isVisible())) await page.locator(".kh-booking-toggle").click();
   await page.getByRole("button", { name: "Tìm phòng phù hợp ↗" }).click();
   await page.locator("#ket-qua-phong article").first().waitFor();

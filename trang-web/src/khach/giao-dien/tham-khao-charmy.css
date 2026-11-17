@@ -1,0 +1,562 @@
+/* Warm material and scroll entrances, drawn locally rather than reusing another site's assets. */
+.kh-site.kh-cms-custom {
+  background-color: color-mix(
+    in srgb,
+    var(--kh-bg, #261c14) 88%,
+    #705339 12%
+  ) !important;
+  background-image:
+    linear-gradient(#25190d12, #25190d12),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.72' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23d4b38a' opacity='.075' filter='url(%23n)' d='M0 0h160v160H0z'/%3E%3C/svg%3E") !important;
+  background-size:
+    auto,
+    160px 160px !important;
+  background-attachment: scroll !important;
+}
+.kh-site .kh-cms-hero {
+  background-position: center calc(50% + var(--kh-photo-offset, 0px)) !important;
+}
+.kh-site .kh-cms-hero::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 24px;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--kh-bg, #261c14) 88%, #705339 12%);
+  border-top: 1px solid #d3b17b66;
+  clip-path: polygon(
+    0 36%,
+    2% 48%,
+    4% 30%,
+    6% 55%,
+    8% 40%,
+    10% 58%,
+    12% 42%,
+    14% 65%,
+    16% 56%,
+    18% 75%,
+    20% 61%,
+    22% 68%,
+    24% 44%,
+    26% 54%,
+    28% 29%,
+    30% 42%,
+    32% 20%,
+    34% 46%,
+    36% 34%,
+    38% 62%,
+    40% 47%,
+    42% 70%,
+    44% 52%,
+    46% 63%,
+    48% 37%,
+    50% 50%,
+    52% 30%,
+    54% 42%,
+    56% 19%,
+    58% 34%,
+    60% 24%,
+    62% 47%,
+    64% 33%,
+    66% 58%,
+    68% 40%,
+    70% 63%,
+    72% 48%,
+    74% 70%,
+    76% 53%,
+    78% 62%,
+    80% 35%,
+    82% 51%,
+    84% 30%,
+    86% 42%,
+    88% 22%,
+    90% 38%,
+    92% 26%,
+    94% 49%,
+    96% 33%,
+    98% 50%,
+    100% 35%,
+    100% 100%,
+    0 100%
+  );
+}
+.kh-site .kh-cms-hero h1 {
+  font-family: "Home Serif", serif !important;
+  font-weight: 400 !important;
+  line-height: 1.2;
+  color: #fff2d8;
+}
+.kh-site .kh-cms-hero > div:first-child {
+  animation: kh-charmy-enter 0.75s cubic-bezier(0.2, 0.65, 0.3, 1) both;
+}
+.kh-site .kh-cms-hero .kh-gallery-main {
+  animation: kh-charmy-enter 1s 0.12s cubic-bezier(0.2, 0.65, 0.3, 1) both;
+}
+@keyframes kh-charmy-enter {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.kh-site [data-reveal] {
+  transition:
+    opacity 0.7s cubic-bezier(0.2, 0.65, 0.3, 1),
+    transform 0.7s cubic-bezier(0.2, 0.65, 0.3, 1);
+}
+.kh-site [data-reveal="pending"] {
+  opacity: 0;
+  transform: translateY(22px);
+}
+.kh-site [data-reveal="shown"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+.kh-site .kh-feature-card img {
+  transition: transform 0.65s cubic-bezier(0.2, 0.65, 0.3, 1);
+}
+@media (hover: hover) {
+  .kh-site .kh-feature-card:hover img {
+    transform: scale(1.025);
+  }
+}
+.kh-site .kh-footer-designed .kh-footer-contacts a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #ecdbc0;
+}
+.kh-site .kh-footer-designed .kh-footer-contacts svg {
+  color: #dfb77a;
+  flex: none;
+  width: 17px;
+  height: 17px;
+}
+.kh-site .kh-footer-designed .kh-footer-socials {
+  gap: 8px;
+}
+.kh-site .kh-footer-designed .kh-footer-socials :is(a, .kh-social-unlinked) {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #8c62302b;
+  border: 1px solid #bd945c40;
+  color: #e9bf7d;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+.kh-site .kh-footer-socials a:hover {
+  background: #a87c4266;
+  color: #fff1d6;
+}
+.kh-site .kh-footer-socials .kh-social-unlinked {
+  opacity: 0.6;
+}
+/* Standalone room route: photo and preview strip left, prices and action right. */
+.kh-room-page {
+  max-width: 1200px;
+  margin: 24px auto 40px;
+  min-width: 0;
+  animation: kh-charmy-enter 0.5s ease-out;
+}
+.kh-room-back {
+  display: inline-block;
+  font-size: 12px;
+  color: #d9b887 !important;
+  margin: 0 0 20px;
+  padding: 7px 0;
+}
+.kh-room-page-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(290px, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+.kh-room-page-photos {
+  min-width: 0;
+}
+.kh-room-page .kh-gallery-stack {
+  display: none;
+}
+.kh-site .kh-room-page .kh-gallery-main {
+  height: 470px !important;
+  aspect-ratio: auto;
+  border-radius: 16px !important;
+  border: 1px solid #b38c554d !important;
+  background: #1c1712 !important;
+  overflow: hidden;
+  box-shadow: none;
+  transform: none;
+}
+.kh-site .kh-room-page .kh-gallery-track {
+  height: 100%;
+}
+.kh-site .kh-room-page .kh-gallery-track > img {
+  height: 100% !important;
+  aspect-ratio: auto;
+  object-fit: cover;
+}
+.kh-site .kh-room-page .kh-gallery-caption {
+  padding: 10px 14px;
+  background: #100c08a3;
+  backdrop-filter: blur(8px);
+  font-size: 11px;
+}
+.kh-room-page .kh-gallery-controls {
+  margin-top: 12px;
+  min-width: 0;
+  width: 100%;
+  padding: 0;
+}
+.kh-site .kh-room-page .kh-gallery-thumbs {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0 8px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  max-width: 100%;
+  min-width: 0;
+}
+.kh-site .kh-room-page .kh-gallery-thumbs > button {
+  flex: 0 0 82px;
+  min-width: 82px;
+  height: 62px;
+  padding: 2px;
+  border: 1px solid #a883514d;
+  border-radius: 8px;
+  background: #2d2219;
+  overflow: hidden;
+  cursor: pointer;
+}
+.kh-site .kh-room-page .kh-gallery-thumbs > button[aria-pressed="true"] {
+  border-color: #f0c887;
+  background: #c09557;
+}
+.kh-site .kh-room-page .kh-gallery-thumbs img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+  border-radius: 5px;
+  aspect-ratio: auto;
+}
+.kh-room-page-booking {
+  padding: 20px 22px;
+  border: 1px solid #b08a5240;
+  border-radius: 16px;
+  background: #241b14c4;
+  min-width: 0;
+}
+.kh-room-page-booking > h1 {
+  font-size: clamp(28px, 3vw, 42px);
+  color: #f3d6a8;
+  margin: 8px 0 12px;
+  line-height: 1.2;
+}
+.kh-room-page-booking .kh-detail-eyebrow {
+  font-size: 11px;
+  color: #c5a273;
+  letter-spacing: 0.03em;
+}
+.kh-room-page-address {
+  font-size: 12px;
+  line-height: 1.8;
+  color: #d4bfa2;
+  margin: 0 0 16px;
+}
+.kh-room-page-facts {
+  display: flex;
+  gap: 18px;
+  padding: 12px 0;
+  border-block: 1px solid #ae895233;
+  font-size: 12px;
+  color: #dfc7a2;
+}
+.kh-room-page-facts > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.kh-room-page .kh-room-prices {
+  padding: 16px 0;
+  margin: 0;
+  border: 0;
+  background: none;
+}
+.kh-room-page .kh-room-prices h3 {
+  font-size: 20px;
+  color: #e9c697;
+  margin: 0 0 12px;
+}
+.kh-room-page .kh-room-prices dl {
+  margin: 0;
+  display: grid;
+  gap: 0;
+}
+.kh-room-page .kh-room-prices dl > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #b08a5226;
+  font-size: 12px;
+}
+.kh-room-page .kh-room-prices dt {
+  color: #cdb797;
+}
+.kh-room-page .kh-room-prices dd {
+  margin: 0;
+  color: #f1d5ad;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.kh-room-page .kh-room-prices > small {
+  display: block;
+  margin-top: 10px;
+  color: #af9676;
+  font-size: 10px;
+  line-height: 1.7;
+}
+.kh-site .kh-room-page .kh-detail-book {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 1px solid #e2b67480;
+  border-radius: 10px;
+  background: #e6bd7f;
+  color: #342412;
+  font-size: 13px;
+  cursor: pointer;
+  margin-top: 6px;
+}
+.kh-room-page .kh-detail-book:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.kh-room-page-booking > small {
+  display: block;
+  font-size: 10px;
+  color: #b89c78;
+  margin-top: 10px;
+  text-align: center;
+}
+.kh-room-search-price {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: #d3b58d;
+  padding: 10px 0;
+  margin: 0;
+}
+.kh-room-search-price strong {
+  color: #f4ce95;
+  font-size: 16px;
+}
+.kh-room-page-description {
+  padding: 24px 0;
+  margin-top: 24px;
+  border-top: 1px solid #c7a06a40;
+}
+.kh-room-page-description h2 {
+  font-size: 28px;
+  color: #eacd9e;
+  margin: 0 0 16px;
+}
+.kh-room-page-description > p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: 900px;
+  line-height: 1.9;
+  font-size: 14px;
+  color: #e0ccb0;
+  margin: 0;
+}
+.kh-room-page-amenities {
+  margin-top: 24px;
+}
+.kh-room-page-amenities h3 {
+  font-size: 21px;
+  color: #eacd9e;
+  margin: 0 0 12px;
+}
+.kh-room-page-amenities ul {
+  list-style: none;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 0;
+  margin: 0;
+}
+.kh-room-page-amenities li {
+  padding: 8px 12px;
+  border: 1px solid #c7a06a33;
+  border-radius: 8px;
+  background: #241b1466;
+  color: #d9c3a3;
+  font-size: 12px;
+}
+.kh-room-not-found {
+  padding: 48px 0;
+  min-height: 40vh;
+}
+.kh-room-not-found h1 {
+  color: #efcf9d;
+  font-size: 32px;
+}
+/* Three distinct, readable map groups. Leaflet labels retain dark ink on light tiles. */
+.kh-map-dialog {
+  background: #211a14;
+  color: #f1dfc5;
+}
+.kh-map-dialog .kh-map-layout aside {
+  gap: 12px;
+}
+.kh-map-dialog .kh-map-group {
+  background: #33271c;
+  border: 1px solid #b78b504d;
+  border-radius: 10px;
+  padding: 12px;
+  font-family: "Home Sans", sans-serif;
+}
+.kh-map-dialog .kh-map-group > h3 {
+  margin: -12px -12px 12px;
+  padding: 10px 12px;
+  background: #694a2a;
+  border-radius: 9px 9px 0 0;
+  color: #fff0d5;
+  font-family: "Home Sans", sans-serif !important;
+  font-size: 14px;
+  font-weight: 400;
+}
+.kh-map-dialog .kh-map-group label {
+  color: #f2e2c9;
+  font-size: 12px;
+}
+.kh-map-dialog .kh-map-group label small {
+  color: #ccb89c;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.kh-map-dialog .kh-map-group > button {
+  background: #4b3723;
+  color: #ffdfaa;
+  border-color: #a8824f88;
+  min-height: 34px;
+}
+.kh-map-dialog .kh-map-group .kh-map-directions {
+  background: #dab379;
+  color: #2c1e10;
+  border-color: #e4c18a;
+  font-weight: 700;
+}
+.kh-map-dialog .kh-map-distances li {
+  color: #f0dec3;
+  line-height: 1.6;
+  gap: 10px;
+  border-bottom: 1px solid #b18b5333;
+}
+.kh-map-dialog .kh-map-distances strong {
+  color: #f4ca88;
+  font-size: 11px;
+}
+.kh-map-dialog .kh-map-group :is(p, small) {
+  color: #d6c3a6;
+  line-height: 1.7;
+  font-size: 11px;
+}
+.kh-map-dialog .kh-map-group a {
+  color: #f4ce90;
+  text-decoration: underline;
+}
+.kh-map-dialog .kh-route-summary {
+  display: block;
+  color: #ffe0ac;
+  margin: 8px 0;
+  font-size: 13px;
+}
+.kh-map-dialog .leaflet-popup-content {
+  color: #30261b;
+  font-family: "Home Sans", sans-serif;
+}
+.kh-map-dialog .leaflet-popup-content a {
+  color: #1b6189;
+}
+@media (max-width: 1000px) {
+  .kh-room-page-top {
+    gap: 24px;
+    grid-template-columns: minmax(0, 1.2fr) minmax(280px, 1fr);
+  }
+  .kh-site .kh-room-page .kh-gallery-main {
+    height: 390px !important;
+  }
+  .kh-room-page-booking {
+    padding: 16px;
+  }
+}
+@media (max-width: 760px) {
+  .kh-room-page {
+    margin-top: 16px;
+  }
+  .kh-room-page-top {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .kh-site .kh-room-page .kh-gallery-main {
+    height: 300px !important;
+  }
+  .kh-room-page-booking > h1 {
+    font-size: 32px;
+  }
+  .kh-room-page .kh-room-prices dl > div {
+    font-size: 12px;
+  }
+  .kh-room-page-description {
+    padding-top: 20px;
+    margin-top: 20px;
+  }
+  .kh-room-page-description h2 {
+    font-size: 24px;
+  }
+  .kh-room-page-description > p {
+    font-size: 13px;
+  }
+  .kh-map-dialog .kh-map-layout aside {
+    max-height: none;
+  }
+}
+@media (max-width: 390px) {
+  .kh-site .kh-room-page .kh-gallery-main {
+    height: 250px !important;
+  }
+  .kh-room-page .kh-room-prices dl > div {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kh-site [data-reveal],
+  .kh-site .kh-cms-hero > div:first-child,
+  .kh-site .kh-cms-hero .kh-gallery-main,
+  .kh-room-page {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+  .kh-site .kh-feature-card img {
+    transition: none;
+  }
+}
+.kh-map-dialog .kh-map-group{color:#f1dfc5}
+.kh-map-dialog .kh-map-group label>span,.kh-map-dialog .kh-map-distances li>span{color:inherit}

@@ -1,5 +1,12 @@
-export type TenBieuTuong = 'home'|'search'|'image'|'file'|'close'|'chevron'|'menu'|'message'|'calendar'|'building'|'bed'|'grid'|'gift'|'users'|'star'|'chart'|'logout';
+export type TenBieuTuong = 'home'|'search'|'image'|'file'|'close'|'chevron'|'menu'|'message'|'calendar'|'building'|'bed'|'grid'|'gift'|'users'|'star'|'chart'|'logout'|'phone'|'mail'|'globe'|'facebook'|'instagram'|'tiktok'|'zalo';
 const paths: Record<TenBieuTuong,string[]> = {
+  phone:['M7 3H3v4c0 8 6 14 14 14h4v-4l-5-2-2 2c-3-1-6-4-7-7l2-2z'],
+  mail:['M3 5h18v14H3z','m3 5 9 8 9-8'],
+  globe:['M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0','M3 12h18M12 3c-5 5-5 13 0 18M12 3c5 5 5 13 0 18'],
+  facebook:['M14 21v-8h3l1-4h-4V7c0-1 0-2 2-2h2V2h-3c-4 0-5 2-5 5v2H7v4h3v8'],
+  instagram:['M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4','M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0M17.5 6.5h.01'],
+  tiktok:['M14 3v13a5 5 0 1 1-5-5h1v3H9a2 2 0 1 0 2 2V3z','M14 3c0 4 3 6 7 6V6c-2 0-4-1-4-3'],
+  zalo:['M5 3h14a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H9l-5 3 1-4a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3','M8 8h8l-8 7h8'],
   home:['m3 10 9-7 9 7','M5 9v12h14V9','M9 21v-8h6v8'],
   search:['M21 21l-5-5','M10.5 3a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15'],
   image:['M3 3h18v18H3z','m3 17 6-6 5 5 3-3 4 4','M8 7h.01'],
