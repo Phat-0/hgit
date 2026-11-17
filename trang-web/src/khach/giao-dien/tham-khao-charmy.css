@@ -606,3 +606,12 @@
 @media(max-width:760px){.kh-site .kh-stay-numbers article{display:flex;flex-direction:column;gap:6px}.kh-site .kh-stay-numbers article>div>span{min-height:30px;line-height:1.5}}
 @media(max-width:700px){.kh-map-dialog .kh-map-layout>aside{max-height:none}}
 .kh-reserve .kh-reserve-total>span{color:#765536}
+
+/* Smooth slide-and-fade entrance: one pass per element, staggered within each row. */
+.kh-site .kh-cms-hero>div:first-child,.kh-site .kh-cms-hero .kh-gallery-main{animation:none}
+.kh-site [data-reveal]{animation:none!important;transition:opacity 1.2s cubic-bezier(.22,.61,.36,1),transform 1.2s cubic-bezier(.22,.61,.36,1);transition-delay:var(--kh-reveal-delay,0ms)}
+.kh-site [data-reveal="pending"]{opacity:0!important;transform:translate3d(0,38px,0)!important;pointer-events:none}
+.kh-site [data-reveal="shown"]{opacity:1!important;transform:translate3d(0,0,0)!important}
+.kh-site [data-reveal]:focus-within{opacity:1!important;transform:none!important;transition:none}
+@media(prefers-reduced-motion:reduce){.kh-site [data-reveal]{opacity:1!important;transform:none!important;transition:none!important;pointer-events:auto}}
+.kh-site.kh-no-home-motion [data-reveal]{opacity:1!important;transform:none!important;transition:none!important;pointer-events:auto}

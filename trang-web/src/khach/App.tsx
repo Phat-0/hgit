@@ -371,14 +371,25 @@ export default function App() {
     return () => { document.removeEventListener('mousedown', outside); document.removeEventListener('keydown', escape); };
   }, [navOpen]);
   useLayoutEffect(() => {
-    if (!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const root = document.querySelector<HTMLElement>('.kh-site');
+    if (!root || !('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches || home?.giao_dien?.hien_hoat_anh === false) return;
+    const selectors = '.kh-room-card, .kh-cms-cards article, .kh-feature-card, .kh-reviews>header, .kh-review-track article, .kh-cms-intro>div, .kh-room-related>header, .kh-room-related article' + (page === 'home' ? ', .kh-cms-hero>div:first-child>*, .kh-cms-hero>.kh-gallery, .kh-cms-hero>.kh-stay-note, .kh-stay-numbers>h2, .kh-stay-numbers article, .kh-booking-toggle, .kh-booking-inner, .kh-showcase-tabs, .kh-showcase-tools, .kh-footer-location, .kh-footer-story, .kh-footer-explore, .kh-footer-connect, .kh-footer-bottom' : '');
+    const registered = new WeakSet<Element>();
     const observer = new IntersectionObserver(entries => entries.forEach(entry => {
       if (entry.isIntersecting) { entry.target.setAttribute('data-reveal', 'shown'); observer.unobserve(entry.target); }
-    }), { threshold: .08 });
-    document.querySelectorAll('.kh-site .kh-room-card, .kh-site .kh-cms-cards article, .kh-site .kh-feature-card, .kh-site .kh-reviews>header, .kh-site .kh-review-track article, .kh-site .kh-cms-intro, .kh-site .kh-room-related>header, .kh-site .kh-room-related article').forEach(e => {
-      e.setAttribute('data-reveal', 'pending'); observer.observe(e);
+    }), { threshold: .06, rootMargin: '0px 0px -32px 0px' });
+    const register = () => root.querySelectorAll<HTMLElement>(selectors).forEach(element => {
+      if (registered.has(element) || element.dataset.reveal === 'shown') return;
+      registered.add(element);
+      const index = Array.from(element.parentElement?.children || []).indexOf(element);
+      element.style.setProperty('--kh-reveal-delay', Math.min(Math.max(index, 0), 4) * 110 + 'ms');
+      element.setAttribute('data-reveal', 'pending');
+      observer.observe(element);
     });
-    return () => observer.disconnect();
+    register();
+    const changes = new MutationObserver(register);
+    changes.observe(root, { childList: true, subtree: true });
+    return () => { observer.disconnect(); changes.disconnect(); };
   }, [home, rooms, catalog, page]);
   useEffect(()=>{
     if(page!=='home'||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
