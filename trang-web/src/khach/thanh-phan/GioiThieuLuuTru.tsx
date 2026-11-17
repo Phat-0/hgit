@@ -123,8 +123,6 @@ export default function GioiThieuLuuTru({
   page,
   phongNoiBat = [],
   comboNoiBat = [],
-  tieuDePhong,
-  tieuDeCombo,
   onXem,
   onCombo,
   hienCombo = true,
@@ -140,6 +138,7 @@ export default function GioiThieuLuuTru({
   onCombo: (id: string) => void;
 }) {
   const [catalogBranch, setCatalogBranch] = useState("");
+  const [comboType, setComboType] = useState("");
   const [activeTab, setActiveTab] = useState<"phong" | "combo">("phong");
   const [roomSort, setRoomSort] = useState<SapXep>("noi-bat"),
     [comboSort, setComboSort] = useState<SapXep>("noi-bat"),
@@ -163,7 +162,13 @@ export default function GioiThieuLuuTru({
     [data.phong, roomSort, search, phongNoiBat, catalogBranch],
   );
   const combos = xepDanhSach(
-    data.combo,
+    data.combo.filter(
+      (c) =>
+        !comboType ||
+        (comboType === "gio"
+          ? Number(c.so_gio_bao_gom) > 0
+          : !Number(c.so_gio_bao_gom)),
+    ),
     comboSort,
     comboNoiBat,
     (c) => c.ten_combo,
@@ -217,36 +222,33 @@ export default function GioiThieuLuuTru({
           hidden={page === "home" && activeTab !== "phong"}
           aria-label="Giá phòng"
         >
-          <header>
-            <div>
-              <h2>{tieuDePhong}</h2>
-              <p>Không gian lưu trú của HomeStay</p>
-            </div>
-            {page === "home" && <a href="/phong-gia">Xem tất cả →</a>}
-          </header>
           <div className="kh-showcase-tools">
-            {page === "home" ? (
-              <label className="kh-catalog-branch">
-                Chi nhánh
-                <select
-                  aria-label="Chi nhánh của phòng giới thiệu"
-                  value={catalogBranch}
-                  onChange={(e) => setCatalogBranch(e.target.value)}
-                >
-                  <option value="">Tất cả chi nhánh</option>
-                  {data.chi_nhanh.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.ten_homestay}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : (
+            <label className="kh-catalog-branch">
+              Chi nhánh
+              <select
+                aria-label="Chi nhánh của phòng giới thiệu"
+                value={catalogBranch}
+                onChange={(e) => setCatalogBranch(e.target.value)}
+              >
+                <option value="">Tất cả chi nhánh</option>
+                {data.chi_nhanh.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.ten_homestay}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {page !== "home" && (
               <ChonSapXep
                 label="Sắp xếp phòng giới thiệu"
                 value={roomSort}
                 onChange={setRoomSort}
               />
+            )}
+            {page === "home" && (
+              <a className="kh-view-all" href="/phong-gia">
+                Xem tất cả →
+              </a>
             )}
             {page === "phong" && (
               <input
@@ -314,14 +316,24 @@ export default function GioiThieuLuuTru({
           hidden={page === "home" && activeTab !== "combo"}
           aria-label="Combo"
         >
-          <header>
-            <div>
-              <h2>{tieuDeCombo}</h2>
-              <p>Gói dịch vụ cho kỳ nghỉ của bạn</p>
-            </div>
-            {page === "home" && <a href="/uu-dai-combo">Xem tất cả →</a>}
-          </header>
           <div className="kh-showcase-tools">
+            <label className="kh-catalog-branch">
+              Loại combo
+              <select
+                aria-label="Phân loại combo"
+                value={comboType}
+                onChange={(e) => setComboType(e.target.value)}
+              >
+                <option value="">Tất cả combo</option>
+                <option value="gio">Theo giờ</option>
+                <option value="dich-vu">Dịch vụ</option>
+              </select>
+            </label>
+            {page === "home" && (
+              <a className="kh-view-all" href="/uu-dai-combo">
+                Xem tất cả →
+              </a>
+            )}
             {page !== "home" && (
               <ChonSapXep
                 label="Sắp xếp combo giới thiệu"
@@ -381,7 +393,6 @@ export function DanhGiaTrangChu({ items }: { items: DanhGiaKhach[] }) {
   return (
     <section className="kh-reviews" aria-label="Đánh giá khách hàng">
       <header>
-        <span>Những trải nghiệm được chia sẻ</span>
         <h2>Khách hàng nói về HomeStay</h2>
       </header>
       <div className="kh-review-track">

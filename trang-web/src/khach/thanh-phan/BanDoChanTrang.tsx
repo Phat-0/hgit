@@ -477,7 +477,7 @@ export default function BanDoChanTrang({
             onClick={() => setExpanded(true)}
             aria-label="Mở bản đồ chi nhánh"
           >
-            <span aria-hidden="true">⤢</span>
+
           </button>
         </div>
       ) : (

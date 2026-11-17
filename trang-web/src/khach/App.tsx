@@ -399,7 +399,8 @@ export default function App() {
         </p>
       )}
       {!home && !homeError && <p role="status">Đang tải…</p>}
-      {page!=='home'&&page!=='ket-qua'&&<section className="kh-catalog-heading"><span>Một khoảng riêng dành cho bạn</span><h1>{page==='phong'?'Phòng & Giá':'Ưu đãi Combo'}</h1><p>Chọn không gian và thời gian lưu trú phù hợp với bạn.</p></section>}
+
+      {(page==='phong'||page==='combo')&&<h1 className="kh-visually-hidden">{page==='phong'?'Phòng & Giá':'Ưu đãi Combo'}</h1>}
       {page==='home'&&home?.hero && (
         <section id="trang-dau" className="kh-hero kh-cms-hero">
           <div>
@@ -424,8 +425,8 @@ export default function App() {
             </button>
           )}
           <div>
-            <h2>{home.gioi_thieu.tieu_de}</h2>
-            <p>{home.gioi_thieu.noi_dung}</p>
+            <h2>{"Nghỉ yên, tận hưởng từng khoảnh khắc."}</h2>
+            <p>{"Không gian riêng tư, tiện nghi vừa đủ cho một kỳ nghỉ thoải mái."}</p>
           </div>
         </section>
       )}
@@ -499,14 +500,14 @@ export default function App() {
                   compact
                 />
               </div>
-              <div className="kh-search-field">
+              <div className={"kh-search-field " + (kind !== "gio" ? "kh-search-fixed-hours" : "")}>
                 <span>
                   {kind === "gio" ? "Giờ nhận / trả" : "Khung giờ áp dụng"}
                 </span>
                 {kind === "gio" ? (
                   <ChonKhoangGio date={start} endDate={end} start={st} end={et} config={config} onChange={(day,last,a,b)=>{setStart(day);setEnd(last);setSt(a);setEt(b);setSearched(false);setRooms([]);}}/>
                 ) : (
-                  <div className="kh-clock-pair"><span>Nhận phòng<strong>{config[kind+'_tu']}</strong></span><span>Trả phòng<strong>{config[kind+'_den']}{config[kind+'_den']<=config[kind+'_tu']?' · hôm sau':''}</strong></span></div>
+                  <div className="kh-clock-pair"><span>Nhận <strong>{config[kind+'_tu']}</strong></span><span>Trả <strong>{config[kind+'_den']}{config[kind+'_den']<=config[kind+'_tu']?' · hôm sau':''}</strong></span></div>
                 )}
               </div>
               <button className="kh-primary" disabled={loading||!ready}>
