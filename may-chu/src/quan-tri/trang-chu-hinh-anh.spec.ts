@@ -15,6 +15,13 @@ describe('Cấu hình hình ảnh Trang chủ',()=>{
     for(const extra of [{anh_nen:'https://evil.test/a.webp'},{album:[image('mot')+'?x=1']},{album:Array(9).fill(image('mot'))},{album:'anh'}])expect(()=>validate({...MAC_DINH_TRANG_CHU,hero:{...MAC_DINH_TRANG_CHU.hero,...extra}})).toThrow();
     expect(()=>validate({...MAC_DINH_TRANG_CHU,hien_combo:'yes'})).toThrow();
   });
+  it('lưu nền chung trong JSON hiện có và từ chối ảnh ngoài kho',()=>{
+    vi.stubEnv('SUPABASE_URL','https://home.supabase.co');
+    const ui={ten_web:'HomeStay',khau_hieu:'Nghỉ ngơi',tieu_de_phong:'Phòng',mau_nen:'#18352f',mau_nhan:'#e9bd80',so_cot:3,anh_ben_trai:false,anh_nen_chung:image('nen-chung')};
+    expect(validate({...MAC_DINH_TRANG_CHU,giao_dien:ui}).giao_dien?.anh_nen_chung).toBe(image('nen-chung'));
+    expect(()=>validate({...MAC_DINH_TRANG_CHU,giao_dien:{...ui,anh_nen_chung:'https://evil.test/a.webp'}})).toThrow();
+    expect(()=>validate({...MAC_DINH_TRANG_CHU,giao_dien:{...ui,mau_nen:'url(evil)'}})).toThrow();
+  });
   it('kiểm tra liên hệ và không cho cấy thuộc tính lạ vào khối',()=>{
     expect(()=>validate({...MAC_DINH_TRANG_CHU,chan_trang:{...MAC_DINH_TRANG_CHU.chan_trang,email:'a@x.com\nBcc:evil'}})).toThrow();
     expect(()=>validate({...MAC_DINH_TRANG_CHU,hero:{...MAC_DINH_TRANG_CHU.hero,html:'<script>'}})).toThrow();

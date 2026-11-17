@@ -13,10 +13,14 @@ import "./giao-dien/trang-khach.css";
 import "./giao-dien/khach-am.css";
 import BieuTuong from "../dung-chung/giao-dien/BieuTuong";
 import ThuVienAnhKhach from "./thanh-phan/ThuVienAnhKhach";
+import {docDonCucBo,donChuaHoanThanh,nhoDonCucBo} from "./thanh-phan/gio-hang";
+import ChiTietPhongKhach from "./thanh-phan/ChiTietPhongKhach";
 import DanhSachComboKhach from "./thanh-phan/DanhSachComboKhach";
 import "./giao-dien/trang-chu-bo-cuc.css";
+import "./giao-dien/phong-va-combo.css";
 type Room = {
   homestay_id?:string;
+  tien_nghi?:string[];
   id: string;
   ten_phong: string;
   ma_phong: string;
@@ -56,6 +60,7 @@ type BookingHistory = {
   nhan_phong_luc: string;
   tra_phong_luc: string;
   trang_thai_thanh_toan: string;
+  het_han_giu_cho?:string|null;
 };
 type Branch = { id: string; ten_homestay: string };
 const money = (n: number | string) => Number(n).toLocaleString("vi-VN") + " ₫";
@@ -68,6 +73,8 @@ const defaults = {
   dem_den: "08:00",
 };
 export default function App() {
+  const page=location.pathname.startsWith('/phong-gia')?'phong':location.pathname.startsWith('/uu-dai-combo')?'combo':'home';
+  const [detailRoom,setDetailRoom]=useState<Room|null>(null),[cartCount,setCartCount]=useState<number|null>(null),[cartOnly,setCartOnly]=useState(false),[roomSearch,setRoomSearch]=useState(''),[capacity,setCapacity]=useState('');
   const [config, setConfig] = useState<Record<string, string>>(defaults),
     [branches, setBranches] = useState<Branch[]>([]),
     [branch, setBranch] = useState(""),
@@ -327,6 +334,7 @@ export default function App() {
         },
         token,
       );
+      nhoDonCucBo(r);
       setReceipt(r);
       setRooms((v) => v.filter((p) => p.id !== selected.id));
     } catch (e) {
@@ -406,6 +414,14 @@ export default function App() {
       setError((e as Error).message);
     }
   }
+  useEffect(()=>{
+    if(!token){const update=()=>setCartCount(docDonCucBo().filter(d=>donChuaHoanThanh(d)).length);update();const timer=setInterval(update,30000);return()=>clearInterval(timer);}
+    let active=true;
+    const refresh=()=>void khachApi<{so_don:number}>('/gio-hang/so-don','GET',undefined,token).then(r=>{if(active)setCartCount(r.so_don);}).catch(()=>{if(active)setCartCount(null);});
+    refresh();const timer=setInterval(refresh,30000);window.addEventListener('focus',refresh);
+    return()=>{active=false;clearInterval(timer);window.removeEventListener('focus',refresh);};
+  },[token,receipt,history]);
+  const pending=donChuaHoanThanh;
   const [navOpen, setNavOpen] = useState(false);
   const navRef = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -430,7 +446,7 @@ export default function App() {
   const rgb=[1,3,5].map(i=>parseInt(ui.mau_nhan.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
   const buttonText=rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722>.179?'#20142b':'#fff';
   return (
-    <main className={"kh-site kh-cms-custom "+(ui.anh_ben_trai?"kh-hero-left":"")} style={{'--kh-bg':ui.mau_nen,'--kh-accent':ui.mau_nhan,'--kh-button-text':buttonText,'--kh-columns':ui.so_cot,'--kh-hero-image':home?.hero?.anh_nen?`url(${JSON.stringify(home.hero.anh_nen)})`:'none'} as CSSProperties}>
+    <main className={"kh-site kh-cms-custom kh-page-"+page+" "+(ui.anh_ben_trai?"kh-hero-left":"")} style={{'--kh-bg':ui.mau_nen,'--kh-site-image':ui.anh_nen_chung?`url(${JSON.stringify(ui.anh_nen_chung)})`:'none','--kh-accent':ui.mau_nhan,'--kh-button-text':buttonText,'--kh-columns':ui.so_cot,'--kh-hero-image':home?.hero?.anh_nen?`url(${JSON.stringify(home.hero.anh_nen)})`:'none'} as CSSProperties}>
       <div className="kh-hero-backdrop" aria-hidden="true"/>
       <header className="kh-nav" ref={navRef}>
         <a className="kh-brand" href="/">
@@ -438,12 +454,10 @@ export default function App() {
         </a>
         <button className="kh-nav-toggle" aria-label="Menu điều hướng" aria-expanded={navOpen} aria-controls="kh-navigation" onClick={()=>setNavOpen(!navOpen)}><BieuTuong ten={navOpen ? "close" : "menu"}/></button>
         <nav id="kh-navigation" aria-label="Điều hướng chính" className={navOpen ? "kh-nav-open" : ""} onClick={()=>setNavOpen(false)}>
-          <a href="#trang-dau">Trang chủ</a>
-          <button onClick={()=>window.dispatchEvent(new Event('homestay:mo-chat'))}>Hỗ trợ</button>
-          {home?.hien_phong && <a href="#phong-khach">Phòng & Giá</a>}
-          {home?.hien_phong&&home.hien_combo!==false&&<a href="#combo-khach">Combo</a>}
-          {home?.gioi_thieu&&<a href="#gioi-thieu">Về chúng tôi</a>}
-          <button onClick={() => void myBookings()}>Đơn của tôi</button>
+          <a href="/" aria-current={page==='home'?'page':undefined}>Trang chủ</a>
+          {home?.hien_phong&&<a href="/phong-gia" aria-current={page==='phong'?'page':undefined}>Phòng & Giá</a>}
+          {home?.hien_phong&&home.hien_combo!==false&&<a href="/uu-dai-combo" aria-current={page==='combo'?'page':undefined}>Ưu đãi Combo</a>}
+          <button className="kh-cart-link" onClick={()=>{setCartOnly(true);void myBookings();}}>Giỏ hàng {cartCount!==null&&<span className="kh-cart-count" aria-label={cartCount+' đơn chưa hoàn thành'}>{cartCount>99?'99+':cartCount}</span>}</button>
           {token ? (
             <button
               onClick={() => {
@@ -472,8 +486,9 @@ export default function App() {
           {homeError}
         </p>
       )}
-      {!home && !homeError && <p role="status">Đang tải Trang chủ…</p>}
-      {home?.hero && (
+      {!home && !homeError && <p role="status">Đang tải…</p>}
+      {page!=='home'&&<section className="kh-catalog-heading"><span>Một khoảng riêng dành cho bạn</span><h1>{page==='phong'?'Phòng & Giá':'Ưu đãi Combo'}</h1><p>Chọn không gian và thời gian lưu trú phù hợp với bạn.</p><nav aria-label="Danh mục lưu trú"><a href="/phong-gia" aria-current={page==='phong'?'page':undefined}>Phòng</a><a href="/uu-dai-combo" aria-current={page==='combo'?'page':undefined}>Combo</a></nav></section>}
+      {page==='home'&&home?.hero && (
         <section id="trang-dau" className="kh-hero kh-cms-hero">
           <div>
             <span className="kh-pill">{ui.khau_hieu}</span>
@@ -491,7 +506,7 @@ export default function App() {
 
         </section>
       )}
-      {home?.gioi_thieu && (
+      {page==='home'&&home?.gioi_thieu && (
         <section id="gioi-thieu" className="kh-cms-intro">
           {home.gioi_thieu.anh && (
             <button
@@ -507,7 +522,7 @@ export default function App() {
           </div>
         </section>
       )}
-      {!!home?.the.length && (
+      {page==='home'&&!!home?.the.length && (
         <section className="kh-cms-cards" aria-label="Khám phá Homestay">
           {home.the.map((x, i) => (
             <article key={i}>
@@ -625,7 +640,7 @@ export default function App() {
               {error}
             </p>
           )}
-          <section id="phong-khach" className="kh-room-section">
+          <section id="phong-khach" className="kh-room-section" hidden={page==='combo'}>
             <div className="kh-section-title">
               <div>
                 <span>{ui.tieu_de_phong}</span>
@@ -647,8 +662,9 @@ export default function App() {
                 nhé.
               </div>
             )}
+            {page==='phong'&&<div className="kh-room-filters"><label>Tìm phòng<input type="search" placeholder="Tên phòng, chi nhánh…" value={roomSearch} onChange={e=>setRoomSearch(e.target.value)}/></label><label>Số khách<select value={capacity} onChange={e=>setCapacity(e.target.value)}><option value="">Tất cả</option>{[1,2,3,4,5,6].map(n=><option key={n} value={n}>{n} khách trở lên</option>)}</select></label></div>}
             <div className="kh-room-grid">
-              {rooms.map((r, i) => (
+              {rooms.filter(r=>(r.ten_phong+' '+r.ten_homestay).toLocaleLowerCase('vi').includes(roomSearch.toLocaleLowerCase('vi'))&&(!capacity||r.suc_chua>=Number(capacity))).map((r, i) => (
                 <article
                   className="kh-room-card"
                   key={r.id}
@@ -657,7 +673,7 @@ export default function App() {
                   <button
                     className="kh-room-photo"
                     aria-label={"Xem phòng " + r.ten_phong}
-                    onClick={() => void choose(r)}
+                    onClick={() => setDetailRoom(r)}
                   >
                     {r.anh[0] ? (
                       <img src={r.anh[0]} alt={r.ten_phong} loading="lazy" />
@@ -684,7 +700,7 @@ export default function App() {
                         {money(r.tien_phong)}
                         <small> / khoảng đặt</small>
                       </strong>
-                      <button onClick={() => void choose(r)}>Chọn phòng</button>
+                      <button onClick={() => setDetailRoom(r)}>Xem chi tiết →</button>
                     </div>
                   </div>
                 </article>
@@ -724,7 +740,7 @@ export default function App() {
       {home?.chan_trang && (
         <footer className="kh-footer">
           <div className="kh-footer-about">{home.chan_trang.anh?<img className="kh-footer-logo" src={home.chan_trang.anh} alt={home.chan_trang.tieu_de}/>:<BieuTuong ten="home" size={28}/>}<strong>{home.chan_trang.tieu_de}</strong><p>{home.chan_trang.noi_dung}</p></div>
-          <nav aria-label="Liên kết cuối trang"><strong>Khám phá HomeStay</strong>{home.hien_phong&&<a href="#phong-khach">Phòng và giá</a>}{home.hien_phong&&home.hien_combo!==false&&<a href="#combo-khach">Combo & trải nghiệm</a>}<button onClick={()=>window.dispatchEvent(new Event('homestay:mo-chat'))}>Liên hệ HomeStay</button><a href="/quan-tri">Dành cho nhân viên</a></nav>
+          <nav aria-label="Liên kết cuối trang"><strong>Khám phá HomeStay</strong>{home.hien_phong&&<a href="/phong-gia">Phòng và giá</a>}{home.hien_phong&&home.hien_combo!==false&&<a href="/uu-dai-combo">Ưu đãi Combo</a>}<button onClick={()=>window.dispatchEvent(new Event('homestay:mo-chat'))}>Liên hệ HomeStay</button><a href="/quan-tri">Dành cho nhân viên</a></nav>
           <address className="kh-footer-contact"><strong>Kết nối với chúng tôi</strong>{home.chan_trang.dia_chi&&<span>{home.chan_trang.dia_chi}</span>}{home.chan_trang.dien_thoai&&<a href={'tel:'+home.chan_trang.dien_thoai.replace(/[^+\d]/g,'')}>{home.chan_trang.dien_thoai}</a>}{home.chan_trang.email&&<a href={'mailto:'+home.chan_trang.email}>{home.chan_trang.email}</a>}<button onClick={()=>window.dispatchEvent(new Event('homestay:mo-chat'))}>Nhắn tin cho HomeStay →</button></address>
           <small className="kh-footer-bottom">© {new Date().getFullYear()} {ui.ten_web}</small>
         </footer>
@@ -738,6 +754,7 @@ export default function App() {
         setStart(lich.start); setEnd(lastDay); setKind(lich.kind);
         if (lich.guests) setForm(f => ({ ...f, so_khach: lich.guests! }));
       }} />
+      {detailRoom&&<ChiTietPhongKhach phong={detailRoom} nhan={lastSearch.current?.bat_dau?new Date(lastSearch.current.bat_dau).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'}):start+' · '+st} tra={lastSearch.current?.ket_thuc?new Date(lastSearch.current.ket_thuc).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh',hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'}):end+' · '+et} onDong={()=>setDetailRoom(null)} onMo={setLightbox} onDat={()=>{const room=detailRoom;setDetailRoom(null);void choose(room);}}/>}
       {modal &&
         createPortal(
           <div
@@ -762,7 +779,7 @@ export default function App() {
                   {login
                     ? "Đăng nhập bằng số điện thoại"
                     : history !== null
-                      ? "Những chuyến nghỉ của bạn"
+                      ? (cartOnly?"Giỏ hàng · Đơn chưa hoàn thành":"Những chuyến nghỉ của bạn")
                       : selected?.ten_phong}
                 </h2>
                 <button
@@ -892,8 +909,9 @@ export default function App() {
                 </form>
               ) : history !== null ? (
                 <div className="kh-history">
-                  {!history.length && <p>Chưa có đơn nào cho tài khoản này.</p>}
-                  {history.map((d) => (
+                  <button type="button" className="kh-history-toggle" onClick={()=>setCartOnly(!cartOnly)}>{cartOnly?'Xem tất cả đơn':'Chỉ xem đơn chưa hoàn thành'}</button>
+                  {!history.filter(d=>!cartOnly||pending(d)).length&&<p>{cartOnly?'Bạn chưa có đơn đang thực hiện.':'Chưa có đơn nào cho tài khoản này.'}</p>}
+                  {history.filter(d=>!cartOnly||pending(d)).map((d) => (
                     <article key={d.ma_dat_phong}>
                       <strong>
                         {d.ten_phong} · {d.ten_homestay}

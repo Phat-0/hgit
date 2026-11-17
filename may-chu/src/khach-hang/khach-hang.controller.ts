@@ -65,6 +65,10 @@ export class KhachHangController {
     await this.conn.limit(r.ip || 'unknown', 'book', 3, 600);
     return this.rooms.create(x || {}, r.headers.authorization);
   }
+  @Get('gio-hang/so-don') async cartCount(@Req() r:Request) {
+    await this.conn.limit(r.ip||'unknown','cart-count',60);
+    return this.rooms.cartCount(r.headers.authorization);
+  }
   @Get('don-cua-toi') async history(@Req() r: Request) {
     await this.conn.limit(r.ip || 'unknown', 'history', 60);
     return this.rooms.history(r.headers.authorization);

@@ -157,6 +157,7 @@ export class TrangKhachService {
         'SELECT phong_id,duong_dan FROM public.hinh_anh_phong WHERE phong_id=ANY($1::uuid[]) ORDER BY la_anh_dai_dien DESC,thu_tu,id',
         [ids],
       );
+      const amenities=await c.query('SELECT pt.phong_id,t.ten_tien_nghi FROM public.phong_tien_nghi pt JOIN public.tien_nghi t ON t.id=pt.tien_nghi_id WHERE pt.phong_id=ANY($1::uuid[]) ORDER BY t.ten_tien_nghi',[ids]);
       return await Promise.all(
         valid.map(async (p) => ({
           id: p.id,
@@ -170,6 +171,7 @@ export class TrangKhachService {
           mo_ta: p.mo_ta,
           suc_chua: p.suc_chua,
           dien_tich_m2: p.dien_tich_m2,
+          tien_nghi:amenities.rows.filter(r=>r.phong_id===p.id).map(r=>r.ten_tien_nghi),
           tien_phong: tinhGiaKhach(
             p,
             start,
@@ -399,6 +401,15 @@ export class TrangKhachService {
     } finally {
       await c.end();
     }
+  }
+  async cartCount(authorization?: string) {
+    const user=await this.conn.identity(authorization);
+    if(!user)throw new UnauthorizedException();
+    const c=await this.conn.db();
+    try {
+      const result=await c.query(`SELECT count(*)::int AS so_don FROM public.dat_phong WHERE nguoi_dung_id=$1 AND trang_thai IN ('Chờ thanh toán','Chờ xác nhận','Đã xác nhận','Đã nhận phòng') AND (trang_thai NOT IN ('Chờ thanh toán','Chờ xác nhận') OR het_han_giu_cho IS NULL OR het_han_giu_cho>now())`,[user.id]);
+      return {so_don:result.rows[0].so_don};
+    } finally {await c.end();}
   }
   async history(authorization?: string) {
     const user = await this.conn.identity(authorization);

@@ -1,4 +1,4 @@
-export type GiaoDienTrangChu={ten_web:string;khau_hieu:string;tieu_de_phong:string;tieu_de_combo?:string;mau_nen:string;mau_nhan:string;so_cot:number;anh_ben_trai:boolean};
+export type GiaoDienTrangChu={ten_web:string;khau_hieu:string;tieu_de_phong:string;tieu_de_combo?:string;mau_nen:string;anh_nen_chung?:string;mau_nhan:string;so_cot:number;anh_ben_trai:boolean};
 export const giaoDienMacDinh:GiaoDienTrangChu={ten_web:'HomeStay',khau_hieu:'Một khoảng riêng dành cho bạn',tieu_de_phong:'Phòng & không gian lưu trú',tieu_de_combo:'Combo & trải nghiệm',mau_nen:'#1e1813',mau_nhan:'#e9bd80',so_cot:3,anh_ben_trai:false};
 export function layGiaoDien(value?:GiaoDienTrangChu) {
   const ui={...giaoDienMacDinh,...value};

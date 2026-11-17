@@ -20,7 +20,7 @@ export type KhoiTrangChu = {
   email?: string;
 };
 export type CauHinhTrangChu = {
-  giao_dien?: {ten_web:string;khau_hieu:string;tieu_de_phong:string;tieu_de_combo?:string;mau_nen:string;mau_nhan:string;so_cot:number;anh_ben_trai:boolean};
+  giao_dien?: {ten_web:string;khau_hieu:string;tieu_de_phong:string;tieu_de_combo?:string;mau_nen:string;anh_nen_chung?:string;mau_nhan:string;so_cot:number;anh_ben_trai:boolean};
   hero: KhoiTrangChu;
   gioi_thieu: KhoiTrangChu;
   the: KhoiTrangChu[];
@@ -132,7 +132,8 @@ export class TrangChuService {
       };
     };
     const ui=x.giao_dien as Record<string,unknown>|undefined;
-    if(ui&&(typeof ui!=='object'||Array.isArray(ui)||Object.keys(ui).some(k=>!['ten_web','khau_hieu','tieu_de_phong','mau_nen','mau_nhan','so_cot','anh_ben_trai','tieu_de_combo'].includes(k))||['ten_web','khau_hieu','tieu_de_phong'].some(k=>typeof ui[k]!=='string'||!(ui[k] as string).trim()||(ui[k] as string).length>150)||(ui.tieu_de_combo!==undefined&&(typeof ui.tieu_de_combo!=='string'||ui.tieu_de_combo.length>150))||!['#1e1813','#292018','#34271c','#4d2078','#39205f','#6b329b'].includes(String(ui.mau_nen))||!/^#[0-9a-f]{6}$/i.test(String(ui.mau_nhan))||![2,3,4].includes(Number(ui.so_cot))||typeof ui.anh_ben_trai!=='boolean'))throw new BadRequestException('Thiết lập giao diện trang chủ không hợp lệ');
+    if(ui&&(typeof ui!=='object'||Array.isArray(ui)||Object.keys(ui).some(k=>!['ten_web','khau_hieu','tieu_de_phong','mau_nen','mau_nhan','so_cot','anh_ben_trai','tieu_de_combo','anh_nen_chung'].includes(k))||['ten_web','khau_hieu','tieu_de_phong'].some(k=>typeof ui[k]!=='string'||!(ui[k] as string).trim()||(ui[k] as string).length>150)||(ui.tieu_de_combo!==undefined&&(typeof ui.tieu_de_combo!=='string'||ui.tieu_de_combo.length>150))||!/^#[0-9a-f]{6}$/i.test(String(ui.mau_nen))||!/^#[0-9a-f]{6}$/i.test(String(ui.mau_nhan))||![2,3,4].includes(Number(ui.so_cot))||typeof ui.anh_ben_trai!=='boolean'))throw new BadRequestException('Thiết lập giao diện trang chủ không hợp lệ');
+    if(ui?.anh_nen_chung!==undefined)imageUrl(ui.anh_nen_chung);
     return {
       ...(ui?{giao_dien:ui as NonNullable<CauHinhTrangChu['giao_dien']>}:{}),
       hero: block(x.hero,'hero'),

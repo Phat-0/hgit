@@ -1,22 +1,158 @@
-import { useEffect, useRef, useState } from 'react';
-import BieuTuong from '../../dung-chung/giao-dien/BieuTuong';
-export default function ThuVienAnhKhach({anh,onMo}:{anh:{url:string;ten:string}[];onMo:(url:string)=>void}) {
-  const [index,setIndex]=useState(0);
-  const touch=useRef<{x:number;y:number}|null>(null),swiped=useRef(false);
-  const photos=anh.filter((p,i,all)=>p.url&&all.findIndex(x=>x.url===p.url)===i);
-  useEffect(()=>setIndex(0),[anh[0]?.url]);
-  const activeIndex=Math.min(index,photos.length-1);
-  const selected=photos[activeIndex];
-  if(!selected)return null;
-  return <div className="kh-gallery" aria-label="Không gian lưu trú">
-    {photos.length>1&&<div className="kh-gallery-stack" aria-hidden="true"><img src={photos[(activeIndex+1)%photos.length].url} alt=""/><img src={photos[(activeIndex+photos.length-1)%photos.length].url} alt=""/></div>}
-    <button onTouchStart={e=>{touch.current={x:e.touches[0].clientX,y:e.touches[0].clientY};swiped.current=false;}} onTouchEnd={e=>{if(touch.current===null)return;const delta=e.changedTouches[0].clientX-touch.current.x;if(Math.abs(delta)>40&&Math.abs(delta)>Math.abs(e.changedTouches[0].clientY-touch.current.y)&&photos.length>1){swiped.current=true;setIndex((activeIndex+(delta<0?1:photos.length-1))%photos.length);}touch.current=null;requestAnimationFrame(()=>{swiped.current=false;});}} className="kh-cms-photo kh-gallery-main" onClick={()=>{if(swiped.current){swiped.current=false;return;}onMo(selected.url);}} aria-label={'Xem ảnh '+selected.ten}>
-      <img key={selected.url} src={selected.url} alt={selected.ten} fetchPriority="high" />
-      <span className="kh-gallery-caption"><span>{selected.ten}</span><small>{activeIndex+1} / {photos.length}</small></span>
-    </button>
-    {photos.length>1&&<div className="kh-gallery-controls"><button type="button" aria-label="Ảnh trước" onClick={()=>setIndex((activeIndex+photos.length-1)%photos.length)}><span className="kh-chevron-back"><BieuTuong ten="chevron"/></span></button>
-      <div className="kh-gallery-thumbs">{photos.map((p,i)=><button key={p.url} type="button" aria-label={'Chọn ảnh '+p.ten} aria-pressed={i===activeIndex} onClick={()=>setIndex(i)}><img src={p.url} alt="" loading="lazy"/></button>)}</div>
-      <button type="button" aria-label="Ảnh tiếp theo" onClick={()=>setIndex((activeIndex+1)%photos.length)}><BieuTuong ten="chevron"/></button>
-    </div>}
-  </div>;
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+export default function ThuVienAnhKhach({
+  anh,
+  onMo,
+  chiTiet = false,
+}: {
+  anh: { url: string; ten: string }[];
+  onMo: (url: string) => void;
+  chiTiet?: boolean;
+}) {
+  const [index, setIndex] = useState(0),
+    [offset, setOffset] = useState(0);
+  const gesture = useRef<{ x: number; y: number; id: number } | null>(null),
+    swiped = useRef(false);
+  const photos = anh.filter(
+    (p, i, all) => p.url && all.findIndex((x) => x.url === p.url) === i,
+  );
+  useEffect(() => {
+    setIndex(0);
+    setOffset(0);
+  }, [anh[0]?.url]);
+  const current = Math.min(index, photos.length - 1),
+    selected = photos[current];
+  const move = (step: number) =>
+    setIndex((i) => (i + step + photos.length) % photos.length);
+  if (!selected) return <div className="kh-no-photo">Chưa có ảnh phòng</div>;
+  return (
+    <div className="kh-gallery" aria-label="Không gian lưu trú">
+      {photos.length > 1 && (
+        <div className="kh-gallery-stack" aria-hidden="true">
+          <img
+            draggable={false}
+            src={photos[(current + 1) % photos.length].url}
+            alt=""
+          />
+          <img
+            draggable={false}
+            src={photos[(current + photos.length - 1) % photos.length].url}
+            alt=""
+          />
+        </div>
+      )}
+      <div
+        className={
+          "kh-cms-photo kh-gallery-main" +
+          (offset ? " kh-gallery-dragging" : "")
+        }
+        role="group"
+        tabIndex={0}
+        aria-label={
+          "Ảnh " +
+          (current + 1) +
+          " / " +
+          photos.length +
+          ". Kéo hoặc vuốt để chuyển ảnh; Enter để phóng to."
+        }
+        style={
+          {
+            transform: `translateX(${offset}px) rotate(${offset / 60}deg)`,
+          } as CSSProperties
+        }
+        onKeyDown={(e) => {
+          if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+            e.preventDefault();
+            move(e.key === "ArrowRight" ? 1 : -1);
+          }
+          if (e.key === "Enter") onMo(selected.url);
+        }}
+        onPointerDown={(e) => {
+          if (e.pointerType === "mouse" && e.button !== 0) return;
+          gesture.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+          swiped.current = false;
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }}
+        onPointerMove={(e) => {
+          const g = gesture.current;
+          if (!g) return;
+          const dx = e.clientX - g.x,
+            dy = e.clientY - g.y;
+          if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 12) {
+            gesture.current = null;
+            setOffset(0);
+            return;
+          }
+          if (Math.abs(dx) > 8) {
+            swiped.current = true;
+            setOffset(Math.max(-140, Math.min(140, dx)));
+          }
+        }}
+        onPointerUp={(e) => {
+          const g = gesture.current;
+          if (g) {
+            const dx = e.clientX - g.x;
+            if (
+              Math.abs(dx) > 40 &&
+              Math.abs(dx) > Math.abs(e.clientY - g.y) &&
+              photos.length > 1
+            )
+              move(dx < 0 ? 1 : -1);
+          }
+          gesture.current = null;
+          setOffset(0);
+          if (e.currentTarget.hasPointerCapture(e.pointerId))
+            e.currentTarget.releasePointerCapture(e.pointerId);
+        }}
+        onPointerCancel={() => {
+          gesture.current = null;
+          swiped.current = true;
+          setOffset(0);
+        }}
+        onClick={() => {
+          if (!swiped.current) onMo(selected.url);
+        }}
+      >
+        <img
+          key={selected.url}
+          draggable={false}
+          src={selected.url}
+          alt={selected.ten}
+          fetchPriority="high"
+        />
+        <span className="kh-gallery-caption">
+          <span>{selected.ten}</span>
+          <small>
+            {current + 1} / {photos.length}
+          </small>
+        </span>
+      </div>
+      {photos.length > 1 &&
+        (chiTiet ? (
+          <div className="kh-gallery-controls">
+            <div className="kh-gallery-thumbs">
+              {photos.map((p, i) => (
+                <button
+                  key={p.url}
+                  type="button"
+                  aria-label={"Xem ảnh " + (i + 1)}
+                  aria-pressed={i === current}
+                  onClick={() => setIndex(i)}
+                >
+                  <img src={p.url} alt="" loading="lazy" />
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="kh-gallery-hint" aria-hidden="true">
+            <span>← Kéo để khám phá →</span>
+            <span>
+              {photos.map((p, i) => (
+                <i key={p.url} className={i === current ? "active" : ""} />
+              ))}
+            </span>
+          </div>
+        ))}
+    </div>
+  );
 }

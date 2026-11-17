@@ -212,12 +212,16 @@ assert.equal((await service.history("b")).length, 0);
 const history = await service.history("a");
 assert.equal(history.length, 1);
 assert.equal(history[0].ma_dat_phong, booking.ma_dat_phong);
+assert.deepEqual(await service.cartCount('a'),{so_don:1});
+assert.deepEqual(await service.cartCount('b'),{so_don:0});
+await assert.rejects(()=>service.cartCount());
 assert.equal((await service.history("b")).length, 0);
 await db.query(
   "UPDATE public.dat_phong SET het_han_giu_cho=now()-interval '1 minute' WHERE ma_dat_phong=$1",
   [booking.ma_dat_phong],
 );
 assert.equal((await service.rooms(q)).length, 2);
+assert.deepEqual(await service.cartCount('a'),{so_don:0});
 assert.equal(
   (
     await db.query(

@@ -241,14 +241,12 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
           ))}
           <label>
             Màu nền
-            <select
-              value={ui.mau_nen}
-              onChange={(e) => setUi("mau_nen", e.target.value)}
-            >
-              <option value="#1e1813">Nâu gỗ đậm</option>
-              <option value="#292018">Nâu ấm</option>
-              <option value="#34271c">Nâu sáng</option>
-            </select>
+            <input type="color" value={ui.mau_nen} onChange={e=>setUi('mau_nen',e.target.value)}/>
+          </label>
+          <label>Ảnh nền chung toàn trang
+            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>{void image(e.target.files?.[0],url=>setUi('anh_nen_chung',url));e.target.value='';}}/>
+            {ui.anh_nen_chung&&<><img src={ui.anh_nen_chung} alt="Nền chung" style={{width:120,height:64,objectFit:'cover'}}/><button type="button" onClick={()=>setUi('anh_nen_chung','')}>Bỏ ảnh nền chung</button></>}
+
           </label>
           <label>
             Màu nút chính
@@ -280,7 +278,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
             </select>
           </label>
         </div>
-        <div className="tc-preview" style={{ background: ui.mau_nen, backgroundImage:data.hero?.anh_nen?`linear-gradient(90deg,#201a15d9,#201a1570),url(${JSON.stringify(data.hero.anh_nen)})`:undefined,backgroundSize:"cover",backgroundPosition:"center" }}>
+        <div className="tc-preview" style={{ background: ui.mau_nen, backgroundImage:(ui.anh_nen_chung||data.hero?.anh_nen)?`linear-gradient(90deg,#201a15d9,#201a1570),url(${JSON.stringify(ui.anh_nen_chung||data.hero?.anh_nen)})`:undefined,backgroundSize:"cover",backgroundPosition:"center" }}>
           <strong>{ui.ten_web}</strong>
           <small>{ui.khau_hieu}</small>
           <h3>{data.hero?.tieu_de}</h3>
