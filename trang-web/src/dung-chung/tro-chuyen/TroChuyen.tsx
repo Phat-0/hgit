@@ -98,6 +98,9 @@ export default function TroChuyen({
     ),
     [tool, setTool] = useState<"tim" | "anh" | "tep" | "mau" | null>(null),
     [canReply, setCanReply] = useState(false),
+    [aiMode,setAiMode]=useState<string|null>(null),
+    [canEnableAi,setCanEnableAi]=useState(false),
+    [aiBusy,setAiBusy]=useState(false),
     [selectedFile, setSelectedFile] = useState<File | null>(null),
     [preview, setPreview] = useState(""),
     [contextMode, setContextMode] = useState(false),
@@ -275,9 +278,12 @@ export default function TroChuyen({
           tin_nhan: Message[];
           co_tin_cu: boolean;
           duoc_dung_mau?: boolean;
+          che_do_ai?: string;
+          co_the_bat_ai?: boolean;
         }>("/chat/" + current + "/tin-nhan", "GET", undefined, token, guest);
         if (alive) {
           setCanReply(!!r.duoc_dung_mau);
+          setAiMode(r.che_do_ai||null);setCanEnableAi(!!r.co_the_bat_ai);
           const last = r.tin_nhan.at(-1)?.id || "";
           if (
             latestPoll.current &&
@@ -574,8 +580,18 @@ export default function TroChuyen({
       olderLock.current = false;
     }
   }
+  const activeConversation=useRef(current);
+  activeConversation.current=current;
+  useEffect(()=>{setAiMode(null);setCanEnableAi(false);},[current]);
+  async function toggleAi(){
+    if(!current||!aiMode||aiBusy)return;const id=current;
+    setAiBusy(true);setError('');
+    try{const r=await khachApi<{che_do_ai:string}>('/chat/'+id+'/ai','POST',{che_do:aiMode==='AI hỗ trợ'?'Nhân viên tiếp quản':'AI hỗ trợ'},token,guest);if(activeConversation.current===id)setAiMode(r.che_do_ai);}
+    catch(e){setError((e as Error).message);}finally{setAiBusy(false);}
+  }
   const toolsBar = (
                 <div className="chat-tool-buttons">
+                  {admin && canReply && aiMode && <button type="button" className={'chat-ai-toggle '+(aiMode==='AI hỗ trợ'?'is-on':'')} disabled={aiBusy||!current||(aiMode!=='AI hỗ trợ'&&!canEnableAi)} aria-label={aiMode==='AI hỗ trợ'?'Tắt AI trả lời':'Bật AI trả lời'} aria-pressed={aiMode==='AI hỗ trợ'} title={aiMode==='AI hỗ trợ'?'Tắt AI và tiếp quản hội thoại':'Bật AI từ tin khách tiếp theo'} onClick={()=>void toggleAi()}>{aiBusy?'…':aiMode==='AI hỗ trợ'?'AI · Tắt':'AI · Bật'}</button>}
                   <button
                     disabled={!current}
                     aria-label="Tìm tin nhắn"

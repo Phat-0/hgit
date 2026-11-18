@@ -14,6 +14,16 @@ export async function kiemTraChatbot({db,conn,chat,root,admin,direct}){
  let kb=(await db.query("SELECT * FROM public.chatbot_kien_thuc WHERE tieu_de='Thử FAQ'")).rows[0];
  await bot.knowledge(admin,{...kb,xuat_ban:true});
  await assert.rejects(()=>bot.knowledge(admin,{...kb,noi_dung:'Ghi đè'}),/đã thay đổi/);
+ await bot.knowledge(admin,{tieu_de:'Tình huống: Chào hỏi',nhom:'Hướng dẫn đặt phòng',noi_dung:'CHAO_KHACH_DUNG_TRONG_TAM',xuat_ban:true});
+ await bot.knowledge(admin,{tieu_de:'Tình huống: Nháp',nhom:'Hướng dẫn đặt phòng',noi_dung:'KHONG_DUOC_GUI_BAN_NHAP',xuat_ban:false});
+ await assert.rejects(()=>bot.knowledge(admin,{tieu_de:'Tình huống: Dài',nhom:'Hướng dẫn đặt phòng',noi_dung:'a'.repeat(1001),xuat_ban:true}));
+ const originalFetch=globalThis.fetch;let capturedPrompt='',providerRound=0;
+ try{
+   globalThis.fetch=async(url,init)=>{capturedPrompt=JSON.parse(init.body).systemInstruction.parts[0].text;return new Response(JSON.stringify({candidates:[{content:{role:'model',parts:providerRound++===0?[{functionCall:{name:'tra_kien_thuc',args:{tu_khoa:'chào'}}}]:[{text:'Chào bạn, mình có thể giúp gì?'}]},finishReason:'STOP'}]}));};
+   const previewBot=new ChatbotService(conn,adminAccess,{run:async()=>({noi_dung:'Chào bạn'})});
+   await previewBot.preview(admin,{cau_hoi:'Xin chào'});
+   assert.ok(capturedPrompt.includes('CHAO_KHACH_DUNG_TRONG_TAM'));assert.ok(!capturedPrompt.includes('KHONG_DUOC_GUI_BAN_NHAP'));
+ }finally{globalThis.fetch=originalFetch;}
  await db.query('UPDATE public.chatbot_cau_hinh SET bat=true');
  const support=await chat.start({});
  const send=async(text='Tìm phòng')=>chat.send(support.id,{noi_dung:text,ma_phia_khach:randomUUID()},undefined,support.guest_token);
@@ -42,6 +52,18 @@ export async function kiemTraChatbot({db,conn,chat,root,admin,direct}){
  // A dead worker's expired lease is reclaimable, with a single final reply.
  await send('Khôi phục tác vụ');const pending=(await db.query("SELECT id FROM public.chatbot_tac_vu WHERE cuoc_tro_chuyen_id=$1 AND trang_thai='cho' ORDER BY ngay_tao DESC LIMIT 1",[support.id])).rows[0];
  await db.query("UPDATE public.chatbot_tac_vu SET trang_thai='dang_chay',khoa=$2,han_khoa=now()-interval '1 second' WHERE id=$1",[pending.id,randomUUID()]);bot.answer=async()=>({text:'Đã khôi phục.',handoff:false,tools:['xem_danh_muc'],tokens:5});await bot.tick();assert.equal(await countAI(),4);
+ // Staff toggle cancels both pending/in-flight jobs; customers and DMs cannot change it.
+ await assert.rejects(()=>chat.aiMode(support.id,'Nhân viên tiếp quản',undefined,support.guest_token));
+ await assert.rejects(()=>chat.aiMode(direct.id,'Nhân viên tiếp quản','admin'));
+ await chat.aiMode(support.id,'AI hỗ trợ','admin');await send('Tắt AI đang chờ');
+ await chat.aiMode(support.id,'Nhân viên tiếp quản','admin');
+ assert.equal((await db.query("SELECT count(*)::int n FROM public.chatbot_tac_vu WHERE cuoc_tro_chuyen_id=$1 AND trang_thai IN ('cho','dang_chay')",[support.id])).rows[0].n,0);
+ let metadata=await chat.messages(support.id,'admin');assert.equal(metadata.che_do_ai,'Nhân viên tiếp quản');assert.equal(metadata.co_the_bat_ai,true);
+ assert.equal((await chat.messages(support.id,undefined,support.guest_token)).che_do_ai,undefined);
+ await db.query("UPDATE public.chatbot_tac_vu SET ngay_tao=now()-interval '2 minutes'");
+ await chat.aiMode(support.id,'AI hỗ trợ','admin');await send('Tắt trong lúc đang tạo câu trả lời');
+ bot.answer=async()=>{await chat.aiMode(support.id,'Nhân viên tiếp quản','admin');await chat.aiMode(support.id,'AI hỗ trợ','admin');return {text:'Không được gửi',tools:[],tokens:0,handoff:false};};
+ await bot.tick();assert.equal(await countAI(),4);
  await db.query('UPDATE public.chatbot_cau_hinh SET bat=false');await send('Bot đã tắt');await bot.tick();assert.equal(await countAI(),4);
  assert.equal((await db.query("SELECT count(*)::int n FROM pg_policies WHERE schemaname='public' AND tablename LIKE 'chatbot_%'")).rows[0].n,0);
  for(const role of ['anon','authenticated'])for(const table of ['chatbot_cau_hinh','chatbot_kien_thuc','chatbot_tac_vu'])assert.equal((await db.query('SELECT has_table_privilege($1,$2,\'SELECT\') allowed',[role,'public.'+table])).rows[0].allowed,false);

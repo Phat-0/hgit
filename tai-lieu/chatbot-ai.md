@@ -30,3 +30,9 @@ Tên bot/hướng dẫn không thể cấp thêm công cụ. Chỉ cho phép dan
 - `kiem-thu/chatbot-100-tinh-huong.json`: 100 tình huống cố định để đánh giá thật sau khi có khóa. Chấm câu trả lời đúng, dùng đúng công cụ, bịa thông tin và trích xuất nhu cầu. Không coi test mô phỏng là độ chính xác AI. Ghi câu trả lời/model/thời gian/công cụ thực tế, chấm độc lập; tính precision/recall/F1 từng trường dựa vào nhãn người kiểm tra. Không tạo kết quả giả.
 
 API nhà cung cấp: https://ai.google.dev/gemini-api/docs/function-calling (REST generateContent). Không cần SDK mới. Không có khóa trong mã nguồn.
+
+## Giao diện tình huống và nút AI trong chat
+
+Quản trị có hai mục chính: Thiết lập và Tình huống trả lời. Kho kiến thức cũ vẫn được giữ, không xóa dữ liệu. Thêm tình huống có 6 mẫu: Chào hỏi, Thiếu thông tin, Tư vấn phòng, Báo giá, Không có kết quả, Chuyển nhân viên; hoặc chọn Tự thiết lập. Mỗi tình huống gồm tên, hướng dẫn tối đa 1.000 ký tự và công tắc bật/tắt; tối đa 20 tình huống. Lưu rồi mở ô Thử tình huống đã lưu ngay dưới danh sách để kiểm tra. Những hướng dẫn đã bật được nạp vào cả luồng thử và luồng chat thật, nhưng không thay thế quyền truy cập, quy tắc bảo mật hoặc giá/lịch của hệ thống. Các bài kiến thức cũ vẫn được tra cứu như trước. Nhật ký và danh sách hội thoại nằm trong Nâng cao.
+
+Trong Tin nhắn, nhân viên có quyền với hội thoại hỗ trợ thấy nút Tắt AI/Bật AI. Tắt AI hủy cả tác vụ chờ và đang xử lý; bật lại chỉ áp dụng cho tin khách tiếp theo. Nhân viên gửi tin vẫn tự tiếp quản. Khách và các hội thoại trực tiếp giữa tài khoản không có quyền điều khiển AI; backend kiểm tra quyền và phạm vi chi nhánh. Bật lại chỉ được khi chatbot chung đã bật và máy chủ có khóa. Không thay đổi giới hạn 1–5.000 lượt/ngày.

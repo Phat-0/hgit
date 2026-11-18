@@ -155,6 +155,10 @@ export class KhachHangController {
       around,
     );
   }
+  @Post('chat/:id/ai') async aiMode(@Req() r:Request,@Param('id') id:string,@Body() b:Record<string,unknown>){
+    await this.conn.limit(r.ip||'unknown','chat-ai-mode',30);
+    return this.chat.aiMode(id,b?.che_do,r.headers.authorization,r.headers['x-guest-chat'] as string);
+  }
   @Post('chat/:id/tep')
   @UseInterceptors(
     FileInterceptor('file', {

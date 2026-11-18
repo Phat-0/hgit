@@ -49,10 +49,37 @@ const groups = [
   "Dịch vụ",
   "Hướng dẫn đặt phòng",
 ];
+const scenarios = [
+  {
+    name: "Chào hỏi",
+    text: "Chào khách thân thiện, ngắn gọn. Hỏi khách cần tìm phòng ở chi nhánh nào và thời gian nào; không hỏi lại thông tin khách đã cung cấp.",
+  },
+  {
+    name: "Thiếu thông tin",
+    text: "Chỉ hỏi thông tin còn thiếu để tra cứu: chi nhánh, ngày/giờ nhận và trả, loại đặt, số khách. Hỏi ngắn gọn; không tự đoán thời gian hoặc chọn loại đặt thay khách.",
+  },
+  {
+    name: "Tư vấn phòng",
+    text: "Tra dữ liệu phòng, loại phòng, tiện nghi và chi nhánh. Gợi ý tối đa 3 phòng phù hợp nhu cầu, nêu lý do ngắn gọn. Chỉ khẳng định còn trống sau khi kiểm tra đúng khoảng thời gian.",
+  },
+  {
+    name: "Báo giá",
+    text: "Dùng công cụ tính giá của hệ thống. Trình bày thời gian, loại đặt, tiền phòng, phụ thu và tổng tiền. Không tự tính hoặc lấy giá ghi trong hướng dẫn này làm giá hiện tại.",
+  },
+  {
+    name: "Không có kết quả",
+    text: "Thông báo chưa tìm được lựa chọn phù hợp, hỏi khách muốn đổi thời gian hoặc chi nhánh không. Không bịa phòng trống, ưu đãi hoặc chính sách.",
+  },
+  {
+    name: "Chuyển nhân viên",
+    text: "Khi khách yêu cầu nhân viên, khiếu nại, thanh toán, đổi/hủy đơn hoặc thông tin chưa được xác nhận: chuyển nhân viên. Không khẳng định đã xử lý đơn hoặc thanh toán.",
+  },
+];
+const nameOf = (title: string) => title.replace(/^Tình huống: /, "");
 const blank = (): Knowledge => ({
-  tieu_de: "",
-  nhom: groups[0],
-  noi_dung: "",
+  tieu_de: "Tình huống: " + scenarios[0].name,
+  nhom: groups[3],
+  noi_dung: scenarios[0].text,
   xuat_ban: false,
 });
 const status: Record<string, string> = {
@@ -148,10 +175,7 @@ export default function Chatbot({ token }: { token: string }) {
       <nav className="cb-tabs" aria-label="Mục chatbot">
         {[
           ["cau-hinh", "Thiết lập"],
-          ["kien-thuc", "Kho kiến thức"],
-          ["thu", "Thử trả lời"],
-          ["hoi-thoai", "Hội thoại"],
-          ["nhat-ky", "Nhật ký"],
+          ["kien-thuc", "Tình huống trả lời"],
         ].map(([id, label]) => (
           <button
             key={id}
@@ -161,6 +185,13 @@ export default function Chatbot({ token }: { token: string }) {
             {label}
           </button>
         ))}
+        <details className="cb-advanced">
+          <summary>Nâng cao</summary>
+          <div>
+            <button onClick={() => setTab("hoi-thoai")}>Hội thoại</button>
+            <button onClick={() => setTab("nhat-ky")}>Nhật ký</button>
+          </div>
+        </details>
       </nav>
       {error && (
         <div className="cb-error" role="alert">
@@ -281,24 +312,38 @@ export default function Chatbot({ token }: { token: string }) {
               <div className="cb-card">
                 <div className="cb-card-title">
                   <h2>
-                    Kiến thức tư vấn <small>{data.kien_thuc.length}/300</small>
+                    Tình huống trả lời{" "}
+                    <small>
+                      {
+                        data.kien_thuc.filter((x) =>
+                          x.tieu_de.startsWith("Tình huống: "),
+                        ).length
+                      }
+                      /20
+                    </small>
                   </h2>
                   <button
                     onClick={() => setEntry(blank())}
-                    disabled={busy || data.kien_thuc.length >= 300}
+                    disabled={
+                      busy ||
+                      data.kien_thuc.length >= 300 ||
+                      data.kien_thuc.filter((x) =>
+                        x.tieu_de.startsWith("Tình huống: "),
+                      ).length >= 20
+                    }
                   >
-                    + Thêm bài
+                    + Thêm tình huống
                   </button>
                 </div>
                 <input
-                  aria-label="Tìm bài kiến thức"
-                  placeholder="Tìm tiêu đề, nội dung…"
+                  aria-label="Tìm tình huống"
+                  placeholder="Tìm tình huống…"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
                 <p className="cb-note">
-                  Phòng, giá, lịch và combo tự lấy từ hệ thống. Chỉ thêm thông
-                  tin đã xác nhận; tránh nhập thông tin riêng của khách.
+                  Chọn tình huống, viết cách bot nên trả lời rồi bật để áp dụng.
+                  Phòng, lịch, giá và combo vẫn lấy từ hệ thống.
                 </p>
                 <div className="cb-entries">
                   {data.kien_thuc
@@ -314,18 +359,22 @@ export default function Chatbot({ token }: { token: string }) {
                         onClick={() => setEntry({ ...k })}
                       >
                         <span>
-                          <strong>{k.tieu_de}</strong>
-                          <small>{k.nhom}</small>
+                          <strong>{nameOf(k.tieu_de)}</strong>
+                          <small>
+                            {k.tieu_de.startsWith("Tình huống: ")
+                              ? "Hướng dẫn theo tình huống"
+                              : k.nhom}
+                          </small>
                         </span>
                         <span className={k.xuat_ban ? "cb-published" : ""}>
-                          {k.xuat_ban ? "Đã xuất bản" : "Bản nháp"}
+                          {k.xuat_ban ? "Đang bật" : "Đang tắt"}
                         </span>
                       </button>
                     ))}
                   {!data.kien_thuc.length && (
                     <p>
-                      Chưa có bài kiến thức. Hãy bắt đầu từ quy định nhận phòng,
-                      hủy đơn và các dịch vụ.
+                      Chưa có tình huống. Nhấn Thêm tình huống để chọn mẫu có
+                      sẵn.
                     </p>
                   )}
                 </div>
@@ -339,12 +388,12 @@ export default function Chatbot({ token }: { token: string }) {
                       await api("/kien-thuc", "POST", entry);
                       setEntry(null);
                       await load();
-                      setNotice("Đã lưu bài kiến thức.");
+                      setNotice("Đã lưu tình huống.");
                     });
                   }}
                 >
                   <div className="cb-card-title">
-                    <h2>{entry.id ? "Chỉnh sửa bài" : "Bài kiến thức mới"}</h2>
+                    <h2>{entry.id ? "Sửa tình huống" : "Tình huống mới"}</h2>
                     <button
                       type="button"
                       aria-label="Đóng chỉnh sửa"
@@ -354,35 +403,58 @@ export default function Chatbot({ token }: { token: string }) {
                     </button>
                   </div>
                   <label>
-                    Tiêu đề
-                    <input
-                      required
-                      maxLength={150}
-                      value={entry.tieu_de}
-                      onChange={(e) =>
-                        setEntry({ ...entry, tieu_de: e.target.value })
+                    Mẫu tình huống
+                    <select aria-label="Mẫu tình huống"
+                      value={
+                        scenarios.some((x) => x.name === nameOf(entry.tieu_de))
+                          ? nameOf(entry.tieu_de)
+                          : ""
                       }
-                    />
-                  </label>
-                  <label>
-                    Nhóm
-                    <select
-                      value={entry.nhom}
-                      onChange={(e) =>
-                        setEntry({ ...entry, nhom: e.target.value })
-                      }
+                      onChange={(e) => {
+                        const item = scenarios.find(
+                          (x) => x.name === e.target.value,
+                        );
+                        if (item)
+                          setEntry({
+                            ...entry,
+                            tieu_de: "Tình huống: " + item.name,
+                            nhom: groups[3],
+                            noi_dung: item.text,
+                          });
+                        else setEntry({...entry,tieu_de:'Tình huống: ',noi_dung:''});
+                      }}
                     >
-                      {groups.map((g) => (
-                        <option key={g}>{g}</option>
+                      <option value="">Tự thiết lập</option>
+                      {scenarios.map((x) => (
+                        <option key={x.name}>{x.name}</option>
                       ))}
                     </select>
                   </label>
                   <label>
-                    Nội dung
+                    Tên tình huống
+                    <input
+                      required
+                      maxLength={130}
+                      value={nameOf(entry.tieu_de)}
+                      onChange={(e) =>
+                        setEntry({
+                          ...entry,
+                          tieu_de:
+                            (entry.tieu_de.startsWith("Tình huống: ")
+                              ? "Tình huống: "
+                              : "") + e.target.value,
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Cách bot nên trả lời
                     <textarea
                       required
-                      rows={10}
-                      maxLength={6000}
+                      rows={5}
+                      maxLength={
+                        entry.tieu_de.startsWith("Tình huống: ") ? 1000 : 6000
+                      }
                       value={entry.noi_dung}
                       onChange={(e) =>
                         setEntry({ ...entry, noi_dung: e.target.value })
@@ -397,26 +469,27 @@ export default function Chatbot({ token }: { token: string }) {
                         setEntry({ ...entry, xuat_ban: e.target.checked })
                       }
                     />{" "}
-                    Xuất bản cho bot sử dụng
+                    Bật tình huống này
                   </label>
                   <p className="cb-note">
-                    Bỏ chọn xuất bản để ngừng sử dụng bài; nội dung vẫn được giữ
-                    để chỉnh sửa.
+                    Bot chỉ dùng hướng dẫn đã lưu và bật. Quy tắc bảo mật, quyền
+                    truy cập và tính giá luôn do hệ thống kiểm soát.
                   </p>
                   <button className="cb-primary" disabled={busy}>
-                    Lưu bài
+                    Lưu tình huống
                   </button>
                 </form>
               )}
             </div>
           )}
-          {tab === "thu" && (
-            <div className="cb-card cb-preview">
-              <h2>Thử trước khi bật</h2>
+          {tab === "kien-thuc" && (
+            <details className="cb-card cb-preview cb-inline-test">
+              <summary>Thử tình huống đã lưu</summary>
+
               <p>
-                Thử với thiết lập đã lưu và kiến thức đã xuất bản, không gửi tin
-                vào hội thoại khách. Mỗi lần thử là một câu hỏi độc lập, có dùng
-                hạn mức Gemini.
+                Nhập câu hỏi mẫu để thử các tình huống đã lưu và bật. Không gửi
+                tin vào hội thoại khách; mỗi lần thử độc lập và dùng hạn mức
+                Gemini.
               </p>
               <form
                 onSubmit={(e) => {
@@ -457,7 +530,7 @@ export default function Chatbot({ token }: { token: string }) {
                   </small>
                 </div>
               )}
-            </div>
+            </details>
           )}
           {tab === "hoi-thoai" && (
             <div className="cb-card">

@@ -295,3 +295,5 @@
     font-size: 25px;
   }
 }
+
+.cb-inline-test{margin-top:16px}.cb-inline-test>summary,.cb-advanced>summary{cursor:pointer;font-size:13px;font-weight:600;color:#74418f}.cb-inline-test[open]>summary{margin-bottom:15px}.cb-advanced{position:relative;margin-left:auto;align-self:center}.cb-advanced>div{position:absolute;right:0;top:26px;z-index:5;display:grid;gap:5px;padding:8px;min-width:140px;border:1px solid #e6deeb;border-radius:10px;background:#fff;box-shadow:0 5px 20px #44245a18}.cb-entries{max-height:460px;overflow:auto}.cb-knowledge .cb-note{margin-bottom:8px}

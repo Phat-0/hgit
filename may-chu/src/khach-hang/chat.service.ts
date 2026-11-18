@@ -327,6 +327,8 @@ export class ChatService {
       );
       return {
         duoc_dung_mau: !!staff,
+        che_do_ai: staff ? thread.che_do_xu_ly : undefined,
+        co_the_bat_ai: !!staff && !!(process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_API_KEY?.trim()) && !!(await c.query('SELECT bat FROM public.chatbot_cau_hinh WHERE id=true')).rows[0]?.bat,
         toi: user?.id ?? null,
         tin_nhan: r.rows.reverse().map((m) => {
           const own = user
@@ -577,6 +579,23 @@ export class ChatService {
     } finally {
       await c.end();
     }
+  }
+  async aiMode(id:string,mode:unknown,authorization?:string,token?:string){
+    if(!['AI hỗ trợ','Nhân viên tiếp quản'].includes(String(mode)))throw new BadRequestException('Chế độ AI không hợp lệ');
+    const user=await this.conn.identity(authorization);if(!user)throw new UnauthorizedException();
+    const c=await this.conn.db();try{
+      await c.query('BEGIN');await c.query('SELECT id FROM public.cuoc_tro_chuyen WHERE id=$1 FOR UPDATE',[this.conn.id(id)]);
+      const {t,staff}=await this.access(c,id,user.id,token);
+      if(!staff||t.loai!=='ho_tro')throw new ForbiddenException('Chỉ nhân viên phụ trách hội thoại hỗ trợ được điều khiển AI');
+      if(t.trang_thai!=='Đang mở')throw new BadRequestException('Hội thoại đã đóng');
+      if(mode==='AI hỗ trợ'){
+        const cfg=(await c.query('SELECT bat FROM public.chatbot_cau_hinh WHERE id=true')).rows[0];
+        if(!cfg?.bat||!(process.env.GEMINI_API_KEY?.trim()||process.env.GOOGLE_API_KEY?.trim()))throw new BadRequestException('Bot chưa được bật trong thiết lập hoặc chưa có khóa');
+      }
+      await c.query('UPDATE public.cuoc_tro_chuyen SET che_do_xu_ly=$2,ngay_cap_nhat=now() WHERE id=$1',[id,mode]);
+      if(mode==='Nhân viên tiếp quản')await c.query("UPDATE public.chatbot_tac_vu SET trang_thai='bo_qua',hoan_thanh_luc=now() WHERE cuoc_tro_chuyen_id=$1 AND trang_thai IN ('cho','dang_chay')",[id]);
+      await c.query('COMMIT');return {che_do_ai:mode};
+    }catch(e){await c.query('ROLLBACK');throw e;}finally{await c.end();}
   }
   async send(
     id: string,

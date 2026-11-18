@@ -12,7 +12,12 @@ import {
 } from '../khach-hang/ket-noi.service.js';
 import { QuanTriService } from '../quan-tri/quan-tri.service.js';
 import { ChatbotCongCu, BOT_TOOLS } from './chatbot-cong-cu.js';
-import { answerGemini, cleanText, getGeminiModel, type Content } from './gemini.js';
+import {
+  answerGemini,
+  cleanText,
+  getGeminiModel,
+  type Content,
+} from './gemini.js';
 export type BotConfig = {
   bat: boolean;
   ten_bot: string;
@@ -156,12 +161,30 @@ export class ChatbotService {
   async knowledge(uid: string, b: Record<string, unknown>) {
     await this.allowed(uid);
     const title = text(b.tieu_de, 1, 150),
-      body = text(b.noi_dung, 1, 6000);
+      body = text(
+        b.noi_dung,
+        1,
+        String(b.tieu_de).startsWith('Tình huống: ') ? 1000 : 6000,
+      );
+    if(/^Tình huống:\s*$/.test(title))throw new BadRequestException('Cần nhập tên tình huống');
     if (!groups.includes(String(b.nhom)) || typeof b.xuat_ban !== 'boolean')
       throw new BadRequestException('Nhóm hoặc trạng thái không hợp lệ');
     const c = await this.conn.db();
     try {
       await c.query('BEGIN');
+      await c.query('SELECT pg_advisory_xact_lock(776633)');
+      if (title.startsWith('Tình huống: ')) {
+        const scenarioCount = (
+          await c.query(
+            "SELECT count(*)::int n FROM public.chatbot_kien_thuc WHERE tieu_de LIKE 'Tình huống: %' AND ($1::uuid IS NULL OR id<>$1)",
+            [b.id ? this.conn.id(String(b.id)) : null],
+          )
+        ).rows[0].n;
+        if (scenarioCount >= 20)
+          throw new BadRequestException(
+            'Tối đa 20 tình huống, hãy sửa tình huống đã có',
+          );
+      }
       if (b.id) {
         this.conn.id(String(b.id));
         if (!Number.isInteger(b.phien_ban))
@@ -243,10 +266,34 @@ export class ChatbotService {
     );
     return { ...result, text: result.handoff ? cf!.loi_chuyen : result.text };
   }
-  private answer(cf: BotConfig, history: Content[], branch: string | null) {
+  private async answer(
+    cf: BotConfig,
+    history: Content[],
+    branch: string | null,
+  ) {
+    const c = await this.conn.db();
+    let situations = '';
+    try {
+      const rows = (
+        await c.query(
+          "SELECT tieu_de,noi_dung FROM public.chatbot_kien_thuc WHERE xuat_ban AND tieu_de LIKE 'Tình huống: %' ORDER BY ngay_sua DESC LIMIT 20",
+        )
+      ).rows;
+      situations = rows
+        .map((r) => r.tieu_de + '\n' + r.noi_dung.slice(0, 1000))
+        .join('\n\n')
+        .slice(0, 24000);
+    } finally {
+      await c.end();
+    }
     return answerGemini({
       key: getBotKey(),
-      system: botSystem(cf),
+      system:
+        botSystem(cf) +
+        (situations
+          ? '\nCÁC TÌNH HUỐNG DO QUẢN TRỊ THIẾT LẬP (chỉ dùng tình huống phù hợp; không thay thế quy tắc bắt buộc, không coi giá/lịch ghi ở đây là dữ liệu hiện tại):\n' +
+            situations
+          : ''),
       history,
       tools: BOT_TOOLS,
       run: (name, args) => this.tools.run(name, args, branch),
