@@ -7,9 +7,9 @@ type Notice = {
   loai: string;
   da_doc_luc: string | null;
   ngay_tao: string;
-  du_lieu: { dat_phong_id: string };
+  du_lieu: { dat_phong_id?: string;cong_viec_id?:string };
 };
-export default function ThongBaoDon({ token }: { token: string }) {
+export default function ThongBaoDon({ token,onVeSinh }: { token: string;onVeSinh?:()=>void }) {
   const [open, setOpen] = useState(false),
     [rows, setRows] = useState<Notice[]>([]),
     [unread, setUnread] = useState(0),
@@ -87,7 +87,7 @@ export default function ThongBaoDon({ token }: { token: string }) {
       await load();
       if (n) {
         setOpen(false);
-        setDetail(n.du_lieu.dat_phong_id);
+        if(n.du_lieu.cong_viec_id)onVeSinh?.();else setDetail(n.du_lieu.dat_phong_id||"");
       }
     } catch (e) {
       setError((e as Error).message);
@@ -131,7 +131,7 @@ export default function ThongBaoDon({ token }: { token: string }) {
             aria-label="Thông báo đơn đặt phòng"
           >
             <header>
-              <strong>Đơn đặt phòng</strong>
+              <strong>Thông báo</strong>
               <button onClick={() => void read()}>Đọc tất cả</button>
               <button
                 aria-label="Đóng thông báo"
@@ -145,6 +145,7 @@ export default function ThongBaoDon({ token }: { token: string }) {
                 ["", "Tất cả"],
                 ["Đơn mới", "Đơn mới"],
                 ["Đơn hủy", "Đơn hủy"],
+                ["Sắp trả phòng", "Vệ sinh"],
               ].map(([v, n]) => (
                 <button
                   key={v}

@@ -1,0 +1,14 @@
+BEGIN;
+ALTER TABLE public.ho_so_khach_hang ALTER COLUMN nguoi_dung_id DROP NOT NULL;
+ALTER TABLE public.ho_so_khach_hang ADD COLUMN IF NOT EXISTS khach_khoa text;
+UPDATE public.ho_so_khach_hang SET khach_khoa='u:'||nguoi_dung_id::text WHERE khach_khoa IS NULL AND nguoi_dung_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS ho_so_khach_khoa_uq ON public.ho_so_khach_hang(khach_khoa) WHERE khach_khoa IS NOT NULL;
+CREATE INDEX IF NOT EXISTS ve_sinh_don_idx ON public.cong_viec_ve_sinh(dat_phong_id);
+CREATE INDEX IF NOT EXISTS ve_sinh_checkout_idx ON public.dat_phong(tra_phong_luc) WHERE trang_thai='Đã nhận phòng';
+ALTER TABLE public.ho_so_khach_hang ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.so_thich_khach_hang ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.ho_so_khach_hang,public.so_thich_khach_hang,public.khuyen_mai,public.su_dung_khuyen_mai,public.cong_viec_ve_sinh,public.bao_cao_ve_sinh,public.lich_su_dang_nhap,public.thiet_bi_thong_bao FROM anon,authenticated;
+ALTER TABLE public.vai_tro DROP CONSTRAINT IF EXISTS vai_tro_quyen_trang_hop_le;
+ALTER TABLE public.vai_tro ADD CONSTRAINT vai_tro_quyen_trang_hop_le CHECK(quyen_trang <@ ARRAY['tong-quan','lich','chi-nhanh','phong','loai-phong','goi-combo','dat-phong','trang-chu','danh-gia','bao-cao','tin-nhan','ve-sinh']::text[]);
+UPDATE public.vai_tro SET quyen_trang=array_append(quyen_trang,'ve-sinh') WHERE ma_vai_tro='Nhân viên vệ sinh' AND NOT('ve-sinh'=ANY(quyen_trang));
+COMMIT;

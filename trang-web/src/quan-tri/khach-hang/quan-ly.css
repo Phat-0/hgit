@@ -1,0 +1,273 @@
+.ql-page {
+  max-width: 1500px;
+  margin: auto;
+  color: #343039;
+  font-size: 13px;
+}
+.ql-page * {
+  box-sizing: border-box;
+}
+.ql-head,
+.ql-tools,
+.ql-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+}
+.ql-head h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+.ql-page button {
+  padding: 8px 12px;
+  border: 1px solid #dcd5e3;
+  border-radius: 8px;
+  background: white;
+  color: #66417c;
+  cursor: pointer;
+  font: inherit;
+}
+.ql-page button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.ql-page button.ql-primary {
+  background: #68417e;
+  color: white;
+  border-color: #68417e;
+}
+.ql-page :is(input, select, textarea) {
+  width: 100%;
+  border: 1px solid #dfd9e5;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: inherit;
+  background: white;
+  font: inherit;
+  min-width: 0;
+  margin: 0;
+  font-weight: 400;
+}
+.ql-page textarea {
+  min-height: 80px;
+  resize: vertical;
+  line-height: 1.5;
+}
+.ql-page label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 400;
+  margin: 0;
+  min-width: 0;
+}
+.ql-page label.ql-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ql-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: #68417e;
+}
+.ql-tools {
+  justify-content: flex-start;
+}
+.ql-tools > input {
+  width: 200px;
+}
+.ql-tools > select {
+  width: 180px;
+}
+.ql-tools input[type="date"] {
+  width: 150px;
+}
+.ql-tools label {
+  max-width: 160px;
+}
+.ql-tools input[type="number"] {
+  width: 80px;
+}
+.ql-card {
+  padding: 16px;
+  background: white;
+  border: 1px solid #e3dde8;
+  border-radius: 12px;
+  min-width: 0;
+  margin-bottom: 12px;
+}
+.ql-card h3 {
+  font-size: 15px;
+  margin: 0 0 12px;
+  font-weight: 600;
+}
+.ql-table {
+  overflow: auto;
+  border: 1px solid #e3dde8;
+  border-radius: 10px;
+  background: white;
+}
+.ql-table table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 12px;
+}
+.ql-table :is(td, th) {
+  padding: 12px 10px;
+  border-bottom: 1px solid #e9e4ee;
+  vertical-align: top;
+}
+.ql-table th {
+  color: #71647c;
+  font-weight: 500;
+  background: #faf8fc;
+  white-space: nowrap;
+}
+.ql-table td small {
+  display: block;
+  color: #82758b;
+  line-height: 1.6;
+}
+.ql-table tbody tr {
+  cursor: pointer;
+}
+.ql-table tbody tr:hover,
+.ql-table tr.ql-selected {
+  background: #f5f0f8;
+}
+.ql-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.ql-form .ql-wide {
+  grid-column: 1/-1;
+}
+.ql-form footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  grid-column: 1/-1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.ql-prefs {
+  display: grid;
+  gap: 8px;
+}
+.ql-pref {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.ql-common {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.ql-common button {
+  font-size: 12px;
+  padding: 6px 10px;
+  background: #f4eff7;
+}
+.ql-error {
+  padding: 10px 12px;
+  background: #fff0f0;
+  color: #923d47;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+.ql-metrics {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 8px 0 16px;
+}
+.ql-metrics strong {
+  display: block;
+  font-size: 20px;
+  font-weight: 500;
+  color: #5c3673;
+}
+.ql-metrics span {
+  font-size: 12px;
+  color: #7b6d84;
+}
+.ql-page pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font:
+    12px/1.6 ui-monospace,
+    monospace;
+  max-height: 300px;
+  overflow: auto;
+}
+.ql-tasks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.ql-task h3 {
+  margin: 0;
+  font-size: 18px;
+}
+.ql-task p {
+  font-size: 13px;
+  line-height: 1.6;
+}
+.ql-task .ql-actions {
+  margin-top: 12px;
+}
+.ql-page :is(button, input, select, textarea):focus-visible {
+  outline: 2px solid #a184b5;
+  outline-offset: 2px;
+}
+@media (max-width: 800px) {
+  .ql-tasks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ql-form {
+    grid-template-columns: 1fr;
+  }
+  .ql-form .ql-wide {
+    grid-column: auto;
+  }
+  .ql-pref {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ql-tools > input,
+  .ql-tools > select {
+    flex: 1;
+    min-width: 130px;
+  }
+}
+@media (max-width: 500px) {
+  .ql-tasks {
+    grid-template-columns: 1fr;
+  }
+  .ql-card {
+    padding: 12px;
+  }
+  .ql-tools input[type="date"] {
+    width: 130px;
+  }
+  .ql-metrics {
+    gap: 12px;
+  }
+  .ql-tools {
+    gap: 8px;
+  }
+  .ql-head h2 {
+    font-size: 18px;
+  }
+}

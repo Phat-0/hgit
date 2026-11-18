@@ -1197,4 +1197,7 @@ assert.ok(serviceCombos.every(id=>comboUsage.find(c=>c.id===id)?.luot_dat===1));
 console.log('PASS phụ thu và nhiều combo: tổng tiền server, snapshot, phạm vi, lượt dùng và chống trùng lịch.');
 const {kiemTraChatbot}=await import('./chatbot.integration.mjs');
 await kiemTraChatbot({db,conn,chat,root,admin,direct});
+await db.exec(fs.readFileSync(root+'/co-so-du-lieu/migrations/20261118205919_khach_hang_voucher_ve_sinh.sql','utf8'));
+const {kiemTraVanHanh}=await import('./van-hanh.integration.mjs');
+await kiemTraVanHanh({db,conn,service,root,admin,uid,branch,type,room,room2});
 await db.close();

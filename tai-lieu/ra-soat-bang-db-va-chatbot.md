@@ -1,5 +1,7 @@
 # Rà soát bảng DB và chức năng — 19/11/2026
 
+> Đây là ảnh chụp trước khi bổ sung khách hàng, vệ sinh, lịch sử và voucher. Tình trạng mới xem [Vận hành khách, voucher và vệ sinh](van-hanh-khach-voucher-ve-sinh.md).
+
 Đối chiếu 60 bảng public trên Supabase với mã backend, web và thư mục di động; rà hàm DB cho các bảng không xuất hiện trong code. Đây là kiểm tra tĩnh luồng sử dụng, không phải kết luận mọi chức năng có tham chiếu đã hoàn thiện. Không thay đổi schema hoặc xóa dữ liệu.
 
 ## Những bảng chưa nối vào luồng chạy

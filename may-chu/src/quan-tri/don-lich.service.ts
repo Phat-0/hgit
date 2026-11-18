@@ -1,3 +1,4 @@
+import {traVoucher,luuVoucher} from './voucher.sql.js';
 import {TRANG_THAI_PHONG} from './trang-thai-phong.sql.js';
 import {soTienDaGhiNhan} from './thanh-toan-don.js';
 import {COMBO_THEO_PHONG} from './combo.input.js';
@@ -28,7 +29,7 @@ export class DonLichService{
  async edit(uid:string,id:string,body:unknown){
   await this.admin.kiemTraTrang(uid,'lich|dat-phong');this.id(id);
   if(!body||typeof body!=='object'||Array.isArray(body))throw new BadRequestException('Dữ liệu đơn không hợp lệ');
-  const x=body as Record<string,unknown>,allowed=['ten_khach','ten_don','phong_id','hinh_thuc_dat','nhan_phong_luc','tra_phong_luc','so_khach','tien_phong','so_dien_thoai','ghi_chu','combo_id','trang_thai_sua','ly_do_sua_trang_thai','trang_thai_thanh_toan','tien_da_thanh_toan'];
+  const x=body as Record<string,unknown>,allowed=['ma_voucher','ten_khach','ten_don','phong_id','hinh_thuc_dat','nhan_phong_luc','tra_phong_luc','so_khach','tien_phong','so_dien_thoai','ghi_chu','combo_id','trang_thai_sua','ly_do_sua_trang_thai','trang_thai_thanh_toan','tien_da_thanh_toan'];
   if(Object.keys(x).some(k=>!allowed.includes(k)))throw new BadRequestException('Trường dữ liệu không được phép');
   const guestName=x.ten_khach??x.ten_don;
   const name=typeof guestName==='string'?guestName.trim():'',room=String(x.phong_id||''),kind=String(x.hinh_thuc_dat||'') as HinhThucDat;
@@ -70,6 +71,10 @@ export class DonLichService{
     this.id(extraId);const valid=await c.query(COMBO_THEO_PHONG+" AND co.trang_thai='Đang bán' AND (co.bat_dau IS NULL OR co.bat_dau<=$4) AND (co.ket_thuc IS NULL OR co.ket_thuc>=$5) AND (co.so_gio_bao_gom IS NULL OR $6='Theo giờ') FOR SHARE OF co",[extraId,p.homestay_id,room,start.toISOString(),end.toISOString(),kind]);
     if(!valid.rowCount)throw new BadRequestException('Một combo dịch vụ của đơn không áp dụng cho lịch mới');
    }
+   const oldVoucher=(await c.query('SELECT k.ma_khuyen_mai FROM public.su_dung_khuyen_mai s JOIN public.khuyen_mai k ON k.id=s.khuyen_mai_id WHERE s.dat_phong_id=$1',[id])).rows[0];
+   const voucherChanged=x.ma_voucher!==undefined || !!oldVoucher&&(room!==d.phong_id||amount!==Number(d.tien_phong));
+   const voucher=voucherChanged?await traVoucher(c,x.ma_voucher===undefined?oldVoucher?.ma_khuyen_mai:x.ma_voucher,p.homestay_id,amount+Number(d.tien_dich_vu),id,true):undefined;
+   if(voucherChanged)d.tien_giam=voucher?.tien_giam||0;
    const payment=x.trang_thai_thanh_toan===undefined?d.trang_thai_thanh_toan:String(x.trang_thai_thanh_toan);
    const received=x.tien_da_thanh_toan===undefined&&x.trang_thai_thanh_toan===undefined?Number(d.tien_da_thanh_toan):soTienDaGhiNhan(payment,x.tien_da_thanh_toan,amount+Number(d.tien_dich_vu)-Number(d.tien_giam));
    if(x.trang_thai_thanh_toan===undefined&&x.tien_da_thanh_toan===undefined&&payment==='Đủ'&&received!==amount+Number(d.tien_dich_vu)-Number(d.tien_giam))throw new ConflictException('Tổng tiền thay đổi; hãy kiểm tra và cập nhật lại trạng thái thanh toán trong form sửa');
@@ -85,6 +90,7 @@ export class DonLichService{
     ghi_chu=$11,cau_hinh_gia_chot=$12::jsonb,goi_gia_id=NULL,combo_id=$13,ngay_cap_nhat=now() WHERE id=$1`,
     [id,name,room,p.homestay_id,kind,start.toISOString(),end.toISOString(),guests,amount,phone,note,JSON.stringify(snapshot),comboId||null]);
    await c.query(`UPDATE public.dat_phong SET trang_thai=$2,trang_thai_thanh_toan=$3,tien_da_thanh_toan=$4,da_nhan_phong_luc=CASE WHEN $5 THEN CASE WHEN $2 IN ('Đã nhận phòng','Đã trả phòng') THEN COALESCE(da_nhan_phong_luc,now()) ELSE NULL END ELSE da_nhan_phong_luc END,da_tra_phong_luc=CASE WHEN $5 THEN CASE WHEN $2='Đã trả phòng' THEN COALESCE(da_tra_phong_luc,now()) ELSE NULL END ELSE da_tra_phong_luc END WHERE id=$1`,[id,target,payment,received,correction]);
+   if(voucherChanged)await luuVoucher(c,id,voucher||null);
    await c.query('INSERT INTO public.nhat_ky_don_dat_phong(dat_phong_id,nguoi_thuc_hien_id,hanh_dong,du_lieu_cu,du_lieu_moi) VALUES($1,$2,$3,$4::jsonb,$5::jsonb)',[id,uid,'sua_tu_lich',JSON.stringify({ten_khach:d.ten_don,ten_phong:oldRoom.rows[0]?.ten_phong,phong_id:d.phong_id,nhan_phong_luc:d.nhan_phong_luc,tra_phong_luc:d.tra_phong_luc,tien_phong:d.tien_phong,trang_thai:d.trang_thai,trang_thai_thanh_toan:d.trang_thai_thanh_toan,tien_da_thanh_toan:d.tien_da_thanh_toan}),JSON.stringify({...x,ten_phong:p.ten_phong})]);
    await c.query('COMMIT');return {ok:true};
   }catch(e){await c.query('ROLLBACK');this.failure(e);}finally{await c.end();}

@@ -12,6 +12,7 @@ const names: Record<string, string> = {
   "danh-gia": "Đánh giá",
   "bao-cao": "Báo cáo thống kê",
   "tin-nhan": "Tin nhắn",
+  "ve-sinh":"Vệ sinh",
 };
 type Role = {
   id: string;

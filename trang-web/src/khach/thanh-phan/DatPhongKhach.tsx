@@ -93,6 +93,8 @@ export default function DatPhongKhach({
     [surcharge, setSurcharge] = useState(0),
     [combos, setCombos] = useState<Combo[]>([]),
     [price, setPrice] = useState<number | null>(null),
+    [voucher,setVoucher]=useState(""),
+    [discount,setDiscount]=useState(0),
     [quoteKey, setQuoteKey] = useState(""),
     [error, setError] = useState(""),
     [quoting, setQuoting] = useState(false),
@@ -159,12 +161,13 @@ export default function DatPhongKhach({
               : "Theo đêm",
         combo_id: comboIds[0] || null,
         combo_ids: comboIds,
+        ma_voucher:voucher,
         gio_nhan_som: kind === "gio" ? 0 : early,
         gio_tra_muon: kind === "gio" ? 0 : late,
       },
       message: "",
     };
-  }, [roomId, kind, start, end, st, et, config, comboIds, room, early, late]);
+  }, [roomId, kind, start, end, st, et, config, comboIds, room, early, late,voucher]);
   const serialized = JSON.stringify(request.q),
     key = useRef(crypto.randomUUID()),
     inFlight = useRef(false),
@@ -201,7 +204,7 @@ export default function DatPhongKhach({
           }
           return list;
         }),
-        khachApi<{ tien_phong: number; tien_phu_thu?: number }>(
+        khachApi<{ tien_phong: number; tien_phu_thu?: number;tong_tien?:number;tien_giam?:number }>(
           "/bao-gia",
           "POST",
           q,
@@ -220,7 +223,8 @@ export default function DatPhongKhach({
             throw Error(
               "Combo không áp dụng cho phòng hoặc lịch này. Vui lòng chọn lại combo.",
             );
-          setPrice(Number(total.tien_phong));
+          setPrice(Number(total.tong_tien??total.tien_phong));
+          setDiscount(Number(total.tien_giam||0));
           setSurcharge(Number(total.tien_phu_thu || 0));
           setQuoteKey(serialized);
         })
@@ -697,6 +701,8 @@ export default function DatPhongKhach({
                 ))
               )}
             </div>
+            <label className="kh-reserve-voucher">Voucher<input aria-label="Voucher đặt phòng" placeholder="Nhập mã voucher" maxLength={40} value={voucher} onChange={e=>setVoucher(e.target.value.toUpperCase())}/></label>
+            {discount>0&&<small>Giảm {money(discount)}</small>}
             <div className="kh-reserve-total">
               <span>Tổng dự kiến</span>
               <strong>

@@ -1,3 +1,4 @@
+import {traVoucher,luuVoucher} from '../quan-tri/voucher.sql.js';
 import {TRANG_THAI_PHONG} from '../quan-tri/trang-thai-phong.sql.js';
 import {
   BadRequestException,
@@ -270,7 +271,9 @@ export class TrangKhachService {
     if(!Number.isSafeInteger(baseAmount)||baseAmount<0||baseAmount>1e12)throw new BadRequestException('Tổng giá combo không hợp lệ');
     const surcharge = tinhTienPhuThu(extra.early, extra.late, p.gia_phu_thu_gio);
     if(!Number.isSafeInteger(baseAmount+surcharge)||baseAmount+surcharge>1e12)throw new BadRequestException("Tổng tiền không hợp lệ");
+    const voucher=await traVoucher(c,x.ma_voucher,p.homestay_id,baseAmount+surcharge,undefined,lock);
     return {
+      voucher, tong_tien:baseAmount+surcharge-(voucher?.tien_giam||0),
       extra, baseAmount, surcharge, comboIds, selectedCombos,
       p,
       start,
@@ -285,7 +288,7 @@ export class TrangKhachService {
     try {
       await this.expire(c);
       const q = await this.prepare(c, x);
-      return { tien_phong: q.amount, gia_co_ban: q.baseAmount, tien_phu_thu: q.surcharge, don_vi: 'VND' };
+      return { tong_tien:q.tong_tien,tien_giam:q.voucher?.tien_giam||0,tien_phong: q.amount, gia_co_ban: q.baseAmount, tien_phu_thu: q.surcharge, don_vi: 'VND' };
     } finally {
       await c.end();
     }
@@ -315,7 +318,7 @@ export class TrangKhachService {
   async combos(x: Record<string, unknown>) {
     const c = await this.conn.db();
     try {
-      const { p, start, end, kind, extra, surcharge } = await this.prepare(c, {...x, combo_id: null,combo_ids:[]});
+      const { p, start, end, kind, extra, surcharge } = await this.prepare(c, {...x, ma_voucher:'',combo_id: null,combo_ids:[]});
       const r = await c.query(
         `SELECT co.*,ARRAY(SELECT homestay_id FROM public.combo_chi_nhanh WHERE combo_id=co.id) AS chi_nhanh_ids FROM public.combo co WHERE co.trang_thai='Đang bán' AND (co.bat_dau IS NULL OR co.bat_dau<=$2) AND (co.ket_thuc IS NULL OR co.ket_thuc>=$3) AND (co.so_gio_bao_gom IS NULL OR $4='Theo giờ') AND (co.pham_vi='toan_he_thong' OR co.pham_vi='chi_nhanh' AND EXISTS(SELECT 1 FROM public.combo_chi_nhanh cc WHERE cc.combo_id=co.id AND cc.homestay_id=$5) OR co.pham_vi='phong' AND EXISTS(SELECT 1 FROM public.combo_phong cp WHERE cp.combo_id=co.id AND cp.phong_id=$1)) ORDER BY co.ten_combo`,
         [p.id, start.toISOString(), end.toISOString(), kind, p.homestay_id],
@@ -377,7 +380,7 @@ export class TrangKhachService {
       if (guests > q.p.suc_chua)
         throw new BadRequestException('Số khách vượt sức chứa phòng');
       const result = await c.query(
-        `INSERT INTO public.dat_phong(ma_dat_phong,ten_don,nguoi_dung_id,homestay_id,phong_id,hinh_thuc_dat,nhan_phong_luc,tra_phong_luc,so_khach,trang_thai,tien_phong,het_han_giu_cho,ghi_chu,so_dien_thoai_dat,nguon_dat,combo_id,cau_hinh_gia_chot,khoa_yeu_cau) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'Chờ xác nhận',$10,now()+interval '15 minutes',$11,$12,'khach',$13,$14::jsonb,$15) RETURNING ma_dat_phong,tong_tien,trang_thai,het_han_giu_cho`,
+        `INSERT INTO public.dat_phong(ma_dat_phong,ten_don,nguoi_dung_id,homestay_id,phong_id,hinh_thuc_dat,nhan_phong_luc,tra_phong_luc,so_khach,trang_thai,tien_phong,het_han_giu_cho,ghi_chu,so_dien_thoai_dat,nguon_dat,combo_id,cau_hinh_gia_chot,khoa_yeu_cau) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'Chờ xác nhận',$10,now()+interval '15 minutes',$11,$12,'khach',$13,$14::jsonb,$15) RETURNING id,ma_dat_phong,tong_tien,trang_thai,het_han_giu_cho`,
         [
           'DP' + randomUUID().replaceAll('-', '').toUpperCase(),
           name,
@@ -407,8 +410,10 @@ export class TrangKhachService {
           requestId,
         ],
       );
+      if(q.voucher)await luuVoucher(c,result.rows[0].id,q.voucher);
+      const saved=(await c.query('SELECT ma_dat_phong,tong_tien,trang_thai,het_han_giu_cho FROM public.dat_phong WHERE id=$1',[result.rows[0].id])).rows[0];
       await c.query('COMMIT');
-      return result.rows[0];
+      return saved;
     } catch (e) {
       await c.query('ROLLBACK');
       if (['23P01', '23505', 'P0001'].includes((e as any).code))

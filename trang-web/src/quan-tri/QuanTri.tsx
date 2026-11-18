@@ -1,3 +1,6 @@
+import KhachHang from './khach-hang/KhachHang';
+import LichSu from './lich-su/LichSu';
+import VeSinh from './ve-sinh/VeSinh';
 import Chatbot from "./chatbot/Chatbot";
 import BieuTuong, {type TenBieuTuong} from "../dung-chung/giao-dien/BieuTuong";
 import { useBamNgoai } from "../dung-chung/bieu-mau/lua-chon-noi";
@@ -13,7 +16,7 @@ import { useEffect, useState } from "react";
 import PhongPage from "./phong/Phong.js";
 import LichPhong from "./lich/LichPhong.js";
 import DonDatPhong from "./don-dat-phong/DonDatPhong.js";
-import GoiGiaCombo from "./combo/GoiGiaCombo.js";
+import GoiGiaCombo from "./combo/ComboVaVoucher";
 import LoaiPhongPage from "./loai-phong/LoaiPhong.js";
 import ChiNhanhPage from "./chi-nhanh/ChiNhanh.js";
 
@@ -56,6 +59,9 @@ type Muc =
   | "goi-combo"
   | "dat-phong"
   | "trang-chu"
+  | "khach-hang"
+  | "lich-su"
+  | "ve-sinh"
   | "chatbot"
   | "nhan-vien"
   | "danh-gia"
@@ -71,6 +77,9 @@ const danhMuc: { id: Muc; nhan: string; icon: string }[] = [
   { id: "goi-combo", nhan: "Combo", icon: "gift" },
   { id: "dat-phong", nhan: "Đơn đặt phòng", icon: "calendar" },
   { id: "trang-chu", nhan: "Trang chủ", icon: "home" },
+  { id:"khach-hang",nhan:"Khách hàng",icon:"users" },
+  { id:"lich-su",nhan:"Lịch sử",icon:"calendar" },
+  { id:"ve-sinh",nhan:"Vệ sinh",icon:"bed" },
   { id: "chatbot", nhan: "Chatbot AI", icon: "message" },
   { id: "nhan-vien", nhan: "Nhân viên", icon: "users" },
   { id: "tin-nhan", nhan: "Tin nhắn", icon: "message" },
@@ -555,7 +564,7 @@ export default function QuanTri() {
             )}
           </div>
           <div className="qt-top-actions">
-            {permissions.includes("dat-phong") && <ThongBaoDon token={token} />}
+            {(permissions.includes("dat-phong")||permissions.includes("ve-sinh")) && <ThongBaoDon token={token} onVeSinh={()=>go("ve-sinh")} />}
             {permissions.includes("nhan-vien") && (
               <button
                 title="Người dùng"
@@ -578,7 +587,7 @@ export default function QuanTri() {
               {thongBao}
             </div>
           )}
-          {muc === "chatbot" ? (
+          {muc === "khach-hang" ? <KhachHang token={token}/> : muc === "lich-su" ? <LichSu token={token}/> : muc === "ve-sinh" ? <VeSinh token={token}/> : muc === "chatbot" ? (
             <Chatbot token={token} />
           ) : muc === "trang-chu" ? (
             <TrangChuQuanTri token={token} />

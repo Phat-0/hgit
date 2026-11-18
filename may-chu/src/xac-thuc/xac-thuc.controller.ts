@@ -41,7 +41,7 @@ export class XacThucController {
   async dangNhap(@Req() req:Request,@Body() body: unknown) {
     await this.limiter.limit(req.ip||'unknown','email-login',30,300);
     const { email, matKhau } = kiemTraDuLieu(body);
-    return this.xacThucService.dangNhap(email, matKhau);
+    return this.xacThucService.dangNhap(email, matKhau, req.ip, req.headers['user-agent']);
   }
 
   @Post('lam-moi')

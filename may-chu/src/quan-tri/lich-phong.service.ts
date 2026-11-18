@@ -1,3 +1,4 @@
+import {traVoucher,luuVoucher} from './voucher.sql.js';
 import {soTienDaGhiNhan} from './thanh-toan-don.js';
 import {TRANG_THAI_PHONG} from './trang-thai-phong.sql.js';
 import {COMBO_THEO_PHONG} from './combo.input.js';
@@ -77,7 +78,7 @@ export class LichPhongService{
   // Đơn được tạo tại API quản trị luôn xác nhận, không tin trạng thái từ client.
   const state='Đã xác nhận',payment=String(x.trang_thai_thanh_toan||'Chưa thanh toán');
   if(!['Chưa thanh toán','Cọc','Đủ'].includes(payment))throw new BadRequestException('Trạng thái thanh toán không hợp lệ');
-  const paidAmount=soTienDaGhiNhan(payment,x.tien_da_thanh_toan,amount);
+  let paidAmount=soTienDaGhiNhan(payment,x.tien_da_thanh_toan,amount);
   const c=await this.db();try{
    await c.query('BEGIN');
    const selected=await c.query('SELECT p.*,'+TRANG_THAI_PHONG+' AS trang_thai_hien_thi,l.suc_chua,h.trang_thai AS trang_thai_chi_nhanh FROM public.phong p JOIN public.loai_phong l ON l.id=p.loai_phong_id JOIN public.homestay h ON h.id=p.homestay_id WHERE p.id=$1 FOR UPDATE OF p',[room]);
@@ -90,12 +91,15 @@ export class LichPhongService{
    const hours=kiemTraCauHinhGio(config.rows[0]?.khung_gio);
    kiemTraThoiGianDat(kind,start,end,hours,Number(o.so_gio_toi_thieu));
    if(comboId){const combo=await c.query(COMBO_THEO_PHONG+" AND co.trang_thai='Đang bán' AND (co.bat_dau IS NULL OR co.bat_dau<=$4) AND (co.ket_thuc IS NULL OR co.ket_thuc>=$5) AND (co.so_gio_bao_gom IS NULL OR $6='Theo giờ') FOR SHARE OF co",[comboId,o.homestay_id,room,start.toISOString(),end.toISOString(),kind]);if(!combo.rowCount)throw new BadRequestException('Combo không áp dụng cho phòng, kiểu đặt hoặc thời gian đã chọn');}
+   const voucher=await traVoucher(c,x.ma_voucher,o.homestay_id,amount,undefined,true);
+   paidAmount=soTienDaGhiNhan(payment,x.tien_da_thanh_toan,amount-(voucher?.tien_giam||0));
    const customer=await c.query('SELECT id FROM public.nguoi_dung WHERE so_dien_thoai=$1 LIMIT 1',[phone]);
    const code='DP'+randomUUID().replace(/-/g,'').toUpperCase();
    const snapshot={so_gio_toi_thieu:o.so_gio_toi_thieu,gia_moi_gio:o.gia_moi_gio,gia_moi_ngay:o.gia_moi_ngay,gia_moi_dem:o.gia_moi_dem,gia_phu_thu_gio:o.gia_phu_thu_gio,khung_gio:hours,tien_phong_chot:amount,nguoi_tao_id:uid};
    const r=await c.query(`INSERT INTO public.dat_phong(ma_dat_phong,ten_don,nguoi_dung_id,homestay_id,phong_id,hinh_thuc_dat,nhan_phong_luc,tra_phong_luc,so_khach,trang_thai,tien_phong,het_han_giu_cho,ghi_chu,so_dien_thoai_dat,nguon_dat,can_xac_nhan_lai,trang_thai_thanh_toan,combo_id,cau_hinh_gia_chot)
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NULL,$12,$13,'quan_tri',false,$14,$15,$16::jsonb) RETURNING id,ma_dat_phong,ten_don,hinh_thuc_dat`,
     [code,name,customer.rows[0]?.id??null,o.homestay_id,room,kind,start.toISOString(),end.toISOString(),guests,state,amount,String(x.ghi_chu||'').slice(0,2000),phone,payment,comboId||null,JSON.stringify(snapshot)]);
+   if(voucher)await luuVoucher(c,r.rows[0].id,voucher);
    await c.query('UPDATE public.dat_phong SET xac_nhan_luc=now(),nguoi_xac_nhan_id=$1,tien_da_thanh_toan=$3 WHERE id=$2',[uid,r.rows[0].id,paidAmount]);
    await c.query('COMMIT');return r.rows[0];
   }catch(e){await c.query('ROLLBACK');this.failure(e);}finally{await c.end();}

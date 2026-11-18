@@ -194,9 +194,9 @@ export class TienIchChatService {
     }
   }
   async notifications(uid: string, filter = '', offset = 0) {
-    await this.admin.kiemTraTrang(uid,'dat-phong');
+    await this.admin.kiemTraTrang(uid,'dat-phong|ve-sinh');
     if (
-      !['', 'Đơn mới', 'Đơn hủy'].includes(filter) ||
+      !['', 'Đơn mới', 'Đơn hủy', 'Sắp trả phòng'].includes(filter) ||
       !Number.isInteger(offset) ||
       offset < 0 ||
       offset > 1000000
@@ -204,7 +204,7 @@ export class TienIchChatService {
       throw new BadRequestException('Bộ lọc không hợp lệ');
     const c = await this.db();
     try {
-      const base = "nguoi_dung_id=$1 AND loai IN ('Đơn mới','Đơn hủy')";
+      const base = "nguoi_dung_id=$1 AND loai IN ('Đơn mới','Đơn hủy','Sắp trả phòng')";
       const list = await c.query(
         'SELECT * FROM public.thong_bao WHERE ' +
           base +
@@ -222,12 +222,12 @@ export class TienIchChatService {
     }
   }
   async readNotification(uid: string, id?: string) {
-    await this.admin.kiemTraTrang(uid,'dat-phong');
+    await this.admin.kiemTraTrang(uid,'dat-phong|ve-sinh');
     if (id) this.id(id);
     const c = await this.db();
     try {
       const r = await c.query(
-        "UPDATE public.thong_bao SET da_doc_luc=coalesce(da_doc_luc,now()) WHERE nguoi_dung_id=$1 AND loai IN ('Đơn mới','Đơn hủy') AND ($2::uuid IS NULL OR id=$2) RETURNING id",
+        "UPDATE public.thong_bao SET da_doc_luc=coalesce(da_doc_luc,now()) WHERE nguoi_dung_id=$1 AND loai IN ('Đơn mới','Đơn hủy','Sắp trả phòng') AND ($2::uuid IS NULL OR id=$2) RETURNING id",
         [uid, id || null],
       );
       if (id && !r.rowCount)

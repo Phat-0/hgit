@@ -16,8 +16,9 @@ export const TRANG_NHAN_VIEN = [
   'danh-gia',
   'bao-cao',
   'tin-nhan',
+  've-sinh',
 ];
-export const TRANG_QUAN_TRI = [...TRANG_NHAN_VIEN, 'nhan-vien', 'chatbot'];
+export const TRANG_QUAN_TRI = [...TRANG_NHAN_VIEN, 'nhan-vien', 'chatbot', 'khach-hang', 'lich-su'];
 
 @Injectable()
 export class QuanTriService {

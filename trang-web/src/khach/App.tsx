@@ -1,3 +1,4 @@
+import ThongBaoKhach from "./thanh-phan/ThongBaoKhach";
 import KhungDatDonChim from "./thanh-phan/KhungDatDonChim";
 import ChanTrangKhach from "./thanh-phan/ChanTrangKhach";
 import ConSoLuuTru from "./thanh-phan/ConSoLuuTru";
@@ -423,6 +424,7 @@ export default function App() {
           <a href="/" aria-current={page==='home'?'page':undefined}>Trang chủ</a>
           {home?.hien_phong&&<a href="/phong-gia" aria-current={page==='phong'||page==='chi-tiet'?'page':undefined}>Phòng & Giá</a>}
           {home?.hien_phong&&home.hien_combo!==false&&<a href="/uu-dai-combo" aria-current={page==='combo'?'page':undefined}>Ưu đãi Combo</a>}
+          {token&&<ThongBaoKhach token={token}/>}
           <button className="kh-cart-link" onClick={()=>{setCartOnly(true);void myBookings();}}>Giỏ hàng {cartCount!==null&&<span className="kh-cart-count" aria-label={cartCount+' đơn chưa hoàn thành'}>{cartCount>99?'99+':cartCount}</span>}</button>
           {home?.hien_phong&&<a className="kh-nav-book" onClick={()=>setBookingOpen(true)} href={page==='home'?'#dat-phong':'/#dat-phong'}><BieuTuong ten="calendar"/>Đặt phòng ngay <span aria-hidden="true">→</span></a>}
         </nav>

@@ -20,6 +20,7 @@ export type DonSua = {
   tien_phong: string;
   ghi_chu: string | null;
   ten_phong: string;
+  ma_khuyen_mai?:string;
   combo_id?: string | null;
   trang_thai?:string;trang_thai_thanh_toan?:string;tien_da_thanh_toan?:string;tien_dich_vu?:string;tien_giam?:string;
 };
@@ -96,7 +97,9 @@ export default function FormDonDatPhong({
     [payment, setPayment] = useState(don?.trang_thai_thanh_toan||"Chưa thanh toán");
   const [paymentTouched,setPaymentTouched]=useState(!don);
   const [paid,setPaid]=useState(String(don?.tien_da_thanh_toan||'0')),[newState,setNewState]=useState(don?.trang_thai||'Đã xác nhận'),[stateReason,setStateReason]=useState('');
-  const fullAmount=Number(price||0)+Number(don?.tien_dich_vu||0)-Number(don?.tien_giam||0);
+  const [voucher,setVoucher]=useState(don?.ma_khuyen_mai||""),[voucherTouched,setVoucherTouched]=useState(false),[discount,setDiscount]=useState(Number(don?.tien_giam||0)),[voucherError,setVoucherError]=useState(""),[voucherBusy,setVoucherBusy]=useState(false);
+  const fullAmount=Number(price||0)+Number(don?.tien_dich_vu||0)-discount;
+  useEffect(()=>{if(!voucherTouched&&(!voucher||(Number(price)===Number(don?.tien_phong)&&roomId===don?.phong_id)))return;let active=true;setVoucherError("");if(!voucher.trim()){setDiscount(0);setVoucherBusy(false);return;}setVoucherBusy(true);const t=setTimeout(()=>void quanTriApi<{tien_giam:number}>(token,"voucher/thu","POST",{ma_voucher:voucher,dat_phong_id:don?.id,phong_id:roomId,tong_tien:Number(price||0)+Number(don?.tien_dich_vu||0)}).then(x=>{if(active)setDiscount(x.tien_giam)}).catch(e=>{if(active)setVoucherError(e.message)}).finally(()=>{if(active)setVoucherBusy(false)}),300);return()=>{active=false;clearTimeout(t)}},[voucher,voucherTouched,roomId,price,token]);
   useEffect(()=>{if(!paymentTouched)return;if(payment==='Đủ')setPaid(String(fullAmount));else if(payment==='Chưa thanh toán')setPaid('0')},[payment,fullAmount,paymentTouched]);
   const [start, setStart] = useState(seed?.date || ngayVN()),
     [end, setEnd] = useState(seed?.date || ngayVN()),
@@ -235,7 +238,7 @@ export default function FormDonDatPhong({
   async function save(e: FormEvent) {
     e.preventDefault();
     setError("");
-    if (!ready || !roomId) return;
+    if (!ready || !roomId || voucherBusy || voucherError) return;
     if (
       !Number.isFinite(interval.start.getTime()) ||
       !Number.isFinite(interval.end.getTime()) ||
@@ -257,6 +260,7 @@ export default function FormDonDatPhong({
               ? "Theo ngày"
               : "Theo đêm",
         combo_id: combo || null,
+        ...(!don||voucherTouched?{ma_voucher:voucher}:{}),
         nhan_phong_luc: interval.start.toISOString(),
         tra_phong_luc: interval.end.toISOString(),
         so_khach: Number(guests),
@@ -435,7 +439,8 @@ export default function FormDonDatPhong({
                 {lucVN(interval.end.toISOString())}
               </p>
             )}
-            <label>
+            <label>Voucher<input aria-label="Voucher đơn quản trị" value={voucher} maxLength={40} onChange={e=>{setVoucher(e.target.value.toUpperCase());setVoucherTouched(true)}}/>{voucherBusy&&<small>Đang kiểm tra…</small>}{voucherError&&<small role="alert">{voucherError}</small>}{discount>0&&<small>Giảm {vnd(discount)}</small>}</label>
+              <label>
               Combo
               <select
                 value={combo}
@@ -498,7 +503,7 @@ export default function FormDonDatPhong({
                   {vnd(room.gia_moi_gio)} / {room.so_gio_toi_thieu} giờ đầu
                 </span>
               )}
-              Giá tự tính: {vnd(auto)}{" "}
+              Tổng sau giảm: {vnd(fullAmount)} · Giá tự tính: {vnd(auto)}{" "}
               {priceManual && (
                 <button type="button" onClick={() => setPriceManual(false)}>
                   Dùng giá tự tính
@@ -536,7 +541,7 @@ export default function FormDonDatPhong({
             <button type="button" disabled={busy} onClick={onClose}>
               Thoát
             </button>
-            <button type="submit" disabled={busy || !ready}>
+            <button type="submit" disabled={busy || !ready || voucherBusy || !!voucherError}>
               {busy ? "Đang lưu…" : "Lưu đơn"}
             </button>
           </footer>
