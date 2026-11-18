@@ -26,6 +26,58 @@ export default function ThongTinChung({
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [edit]);
+  const editor = () =>
+    edit && (
+      <form
+        className="cb-info-editor"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (edit.tieu_de.startsWith("Tình huống: ")) return;
+          try {
+            await onSave(edit);
+            setEdit(null);
+          } catch {}
+        }}
+      >
+        <label>
+          Tiêu đề
+          <input
+            required
+            maxLength={150}
+            value={edit.tieu_de}
+            onChange={(e) => setEdit({ ...edit, tieu_de: e.target.value })}
+          />
+        </label>
+        <label>
+          Nội dung
+          <textarea
+            aria-label="Nội dung"
+            required
+            rows={5}
+            maxLength={6000}
+            value={edit.noi_dung}
+            onChange={(e) => setEdit({ ...edit, noi_dung: e.target.value })}
+          />
+        </label>
+        <label className="cb-toggle">
+          <input
+            type="checkbox"
+            checked={edit.xuat_ban}
+            onChange={(e) => setEdit({ ...edit, xuat_ban: e.target.checked })}
+          />
+          Cho phép sử dụng
+        </label>
+        <footer>
+          <button type="button" onClick={() => setEdit(null)}>
+            Đóng
+          </button>
+          <button className="cb-primary" disabled={busy}>
+            Lưu thông tin
+          </button>
+        </footer>
+      </form>
+    );
+
   return (
     <section className="cb-card cb-common-info">
       <div className="cb-card-title">
@@ -45,16 +97,23 @@ export default function ThongTinChung({
           + Thêm thông tin
         </button>
       </div>
+      {edit && !edit.id && editor()}
       <div className="cb-info-list">
         {rows.map((x) => (
-          <button
-            type="button"
+          <div
+            className={"cb-info-item " + (edit?.id === x.id ? "is-open" : "")}
             key={x.id}
-            className={"cb-entry " + (x.xuat_ban ? "is-enabled" : "")}
-            onClick={() => setEdit({ ...x })}
           >
-            <strong>{x.tieu_de}</strong>
-          </button>
+            <button
+              type="button"
+              className={"cb-entry " + (x.xuat_ban ? "is-enabled" : "")}
+              aria-expanded={edit?.id === x.id}
+              onClick={() => setEdit(edit?.id === x.id ? null : { ...x })}
+            >
+              <strong>{x.tieu_de}</strong>
+            </button>
+            {edit?.id === x.id && editor()}
+          </div>
         ))}
       </div>
       {!rows.length && (
@@ -62,56 +121,6 @@ export default function ThongTinChung({
           Chưa có thông tin chung. Thêm nội dung rồi bật để làm nguồn cho
           chatbot.
         </p>
-      )}
-      {edit && (
-        <form
-          className="cb-info-editor"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            if (edit.tieu_de.startsWith("Tình huống: ")) return;
-            try {
-              await onSave(edit);
-              setEdit(null);
-            } catch {}
-          }}
-        >
-          <label>
-            Tiêu đề
-            <input
-              required
-              maxLength={150}
-              value={edit.tieu_de}
-              onChange={(e) => setEdit({ ...edit, tieu_de: e.target.value })}
-            />
-          </label>
-          <label>
-            Nội dung
-            <textarea
-              aria-label="Nội dung"
-              required
-              rows={5}
-              maxLength={6000}
-              value={edit.noi_dung}
-              onChange={(e) => setEdit({ ...edit, noi_dung: e.target.value })}
-            />
-          </label>
-          <label className="cb-toggle">
-            <input
-              type="checkbox"
-              checked={edit.xuat_ban}
-              onChange={(e) => setEdit({ ...edit, xuat_ban: e.target.checked })}
-            />
-            Cho phép sử dụng
-          </label>
-          <footer>
-            <button type="button" onClick={() => setEdit(null)}>
-              Đóng
-            </button>
-            <button className="cb-primary" disabled={busy}>
-              Lưu thông tin
-            </button>
-          </footer>
-        </form>
       )}
     </section>
   );

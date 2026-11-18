@@ -47,7 +47,22 @@ export async function kiemTraChatbot({db,conn,chat,root,admin,direct}){
   const stale={...draft,phien_ban:deepRow.phien_ban};await db.query('UPDATE public.chatbot_kien_thuc SET phien_ban=phien_ban+1 WHERE id=$1',[sourceDoc.id]);await assert.rejects(()=>drafts.approve(admin,stale),/Tài liệu đã thay đổi/);
   await db.query('UPDATE public.chatbot_kien_thuc SET xuat_ban=false WHERE id=$1',[sourceDoc.id]);await assert.rejects(()=>drafts.approve(admin,stale),/Tài liệu đã thay đổi/);await assert.rejects(()=>drafts.generate(admin,{id:deepCase.id,phien_ban:deepRow.phien_ban,cau_hoi:'Hỏi lại'}),/Có nguồn đã tắt/);await assert.rejects(()=>drafts.approve(admin,{...stale,nguon:[{id:related.id,phien_ban:related.phien_ban}]}),/không thuộc phạm vi/);
  }finally{globalThis.fetch=fetchBeforeDraft;}
+
+ // A conversation opened before enabling AI must join auto-routing on its next guest message.
+ await db.query('UPDATE public.chatbot_cau_hinh SET bat=false');
+ const legacy=await chat.start({});
+ const paused=await chat.start({});
+ await chat.aiMode(paused.id,'Nhân viên tiếp quản','admin');
  await db.query('UPDATE public.chatbot_cau_hinh SET bat=true');
+ await chat.send(legacy.id,{noi_dung:'Tìm phòng sau khi bật AI',ma_phia_khach:randomUUID()},undefined,legacy.guest_token);
+ assert.equal((await db.query('SELECT che_do_xu_ly FROM public.cuoc_tro_chuyen WHERE id=$1',[legacy.id])).rows[0].che_do_xu_ly,'AI hỗ trợ');
+ assert.equal((await db.query('SELECT count(*)::int n FROM public.chatbot_tac_vu WHERE cuoc_tro_chuyen_id=$1',[legacy.id])).rows[0].n,1);
+ await chat.send(paused.id,{noi_dung:'Không tự bật lại AI đã tạm dừng',ma_phia_khach:randomUUID()},undefined,paused.guest_token);
+ assert.equal((await db.query('SELECT count(*)::int n FROM public.chatbot_tac_vu WHERE cuoc_tro_chuyen_id=$1',[paused.id])).rows[0].n,0);
+ assert.equal((await db.query('SELECT count(*)::int n FROM public.phan_cong_tro_chuyen WHERE cuoc_tro_chuyen_id=$1 AND ket_thuc_luc IS NULL',[paused.id])).rows[0].n,1);
+ await chat.aiMode(paused.id,'AI hỗ trợ','admin');
+ assert.equal((await db.query('SELECT count(*)::int n FROM public.phan_cong_tro_chuyen WHERE cuoc_tro_chuyen_id=$1 AND ket_thuc_luc IS NULL',[paused.id])).rows[0].n,0);
+ await db.query("UPDATE public.chatbot_tac_vu SET trang_thai='bo_qua' WHERE cuoc_tro_chuyen_id=$1",[legacy.id]);
  const support=await chat.start({});
  const send=async(text='Tìm phòng')=>chat.send(support.id,{noi_dung:text,ma_phia_khach:randomUUID()},undefined,support.guest_token);
  const countAI=async()=>Number((await db.query("SELECT count(*) n FROM public.tin_nhan WHERE cuoc_tro_chuyen_id=$1 AND loai_nguoi_gui='AI'",[support.id])).rows[0].n);

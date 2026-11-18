@@ -117,7 +117,7 @@ export function useChatPosition(admin: boolean) {
   };
   const hideStyle: CSSProperties = {
     left: Math.min(screen.w - 32, position.x + 38),
-    top: Math.max(0, position.y - 9),
+    top: Math.max(0, position.y - 6),
     right: "auto",
     bottom: "auto",
   };
@@ -127,8 +127,8 @@ export function useChatPosition(admin: boolean) {
     right: dockRight ? 0 : "auto",
     left: dockRight ? "auto" : 0,
   };
-  const width = Math.max(1, Math.min(admin ? 850 : 760, screen.w - 24)),
-    height = Math.max(1, Math.min(640, screen.h - 115));
+  const width = Math.max(1, Math.min(admin ? 760 : 460, screen.w - 24)),
+    height = Math.max(1, Math.min(620, screen.h - 96));
   let top = position.y - height - 12;
   if (top < 8)
     top =

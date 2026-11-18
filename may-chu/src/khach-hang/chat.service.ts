@@ -1,3 +1,4 @@
+import { assignStaff, releaseStaff, resumeUnassigned } from '../chatbot/tiep-quan.js';
 import {
   chatStorage,
   docTepChat,
@@ -463,6 +464,7 @@ export class ChatService {
         [id],
       );
       if(t.loai==='ho_tro'){
+        if(staff) await assignStaff(c,id,user!.id);
         await c.query("UPDATE public.cuoc_tro_chuyen SET che_do_xu_ly='Nhân viên tiếp quản' WHERE id=$1",[id]);
         if(!staff&&t.che_do_xu_ly==='AI hỗ trợ') await c.query("INSERT INTO public.tin_nhan(cuoc_tro_chuyen_id,loai_nguoi_gui,noi_dung) VALUES($1,'Hệ thống','Ảnh hoặc tệp của bạn đã được chuyển đến nhân viên để xem và hỗ trợ.')",[id]);
       }
@@ -592,6 +594,7 @@ export class ChatService {
         const cfg=(await c.query('SELECT bat FROM public.chatbot_cau_hinh WHERE id=true')).rows[0];
         if(!cfg?.bat||!(process.env.GEMINI_API_KEY?.trim()||process.env.GOOGLE_API_KEY?.trim()))throw new BadRequestException('Bot chưa được bật trong thiết lập hoặc chưa có khóa');
       }
+      if(mode==='AI hỗ trợ') await releaseStaff(c,id); else await assignStaff(c,id,user.id);
       await c.query('UPDATE public.cuoc_tro_chuyen SET che_do_xu_ly=$2,ngay_cap_nhat=now() WHERE id=$1',[id,mode]);
       if(mode==='Nhân viên tiếp quản')await c.query("UPDATE public.chatbot_tac_vu SET trang_thai='bo_qua',hoan_thanh_luc=now() WHERE cuoc_tro_chuyen_id=$1 AND trang_thai IN ('cho','dang_chay')",[id]);
       await c.query('COMMIT');return {che_do_ai:mode};
@@ -631,8 +634,8 @@ export class ChatService {
           [id],
         );
       if(r.rowCount && t.loai==='ho_tro') {
-        if(staff) await c.query("UPDATE public.cuoc_tro_chuyen SET che_do_xu_ly='Nhân viên tiếp quản' WHERE id=$1",[id]);
-        else if(t.che_do_xu_ly==='AI hỗ trợ') {
+        if(staff) { await assignStaff(c,id,user!.id); await c.query("UPDATE public.cuoc_tro_chuyen SET che_do_xu_ly='Nhân viên tiếp quản' WHERE id=$1",[id]); }
+        else if(t.che_do_xu_ly==='AI hỗ trợ' || ((process.env.GEMINI_API_KEY?.trim()||process.env.GOOGLE_API_KEY?.trim()) && await resumeUnassigned(c,id))) {
           // Serialize the budget check across processes; enqueue and customer send commit together.
           await c.query('SELECT pg_advisory_xact_lock(776635)');
           const cfg=(await c.query('SELECT bat,gioi_han_ngay FROM public.chatbot_cau_hinh WHERE id=true')).rows[0];

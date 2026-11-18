@@ -1,3 +1,4 @@
+import { assignStaff, releaseStaff } from './tiep-quan.js';
 import { previewHistory } from './thu-hoi-thoai.js';
 import { parseCondition, matchSituations } from './tinh-huong.js';
 import {
@@ -234,6 +235,8 @@ export class ChatbotService {
       throw new BadRequestException('Chế độ không hợp lệ');
     const c = await this.conn.db();
     try {
+      await c.query('BEGIN');
+      await c.query('SELECT id FROM public.cuoc_tro_chuyen WHERE id=$1 FOR UPDATE', [id]);
       if (mode === 'AI hỗ trợ') {
         const cf = await this.config(c);
         if (!cf.bat || !getBotKey())
@@ -249,7 +252,16 @@ export class ChatbotService {
         throw new BadRequestException(
           'Không tìm thấy hội thoại hỗ trợ đang mở',
         );
+      if (mode === 'AI hỗ trợ') await releaseStaff(c, id);
+      else {
+        await assignStaff(c, id, uid);
+        await c.query("UPDATE public.chatbot_tac_vu SET trang_thai='bo_qua',hoan_thanh_luc=now() WHERE cuoc_tro_chuyen_id=$1 AND trang_thai IN ('cho','dang_chay')", [id]);
+      }
+      await c.query('COMMIT');
       return { ok: true };
+    } catch (e) {
+      await c.query('ROLLBACK');
+      throw e;
     } finally {
       await c.end();
     }

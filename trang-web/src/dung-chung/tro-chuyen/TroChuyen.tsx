@@ -14,6 +14,7 @@ import { khachApi } from "../api/khach-api";
 import "./tro-chuyen.css";
 import "./chat-bo-cuc.css";
 import "./chat-khach.css";
+import "./chat-bong-bong.css";
 import BieuTuong from "../giao-dien/BieuTuong";
 type Thread = {
   id: string;
@@ -98,9 +99,9 @@ export default function TroChuyen({
     ),
     [tool, setTool] = useState<"tim" | "anh" | "tep" | "mau" | null>(null),
     [canReply, setCanReply] = useState(false),
-    [aiMode,setAiMode]=useState<string|null>(null),
-    [canEnableAi,setCanEnableAi]=useState(false),
-    [aiBusy,setAiBusy]=useState(false),
+    [aiMode, setAiMode] = useState<string | null>(null),
+    [canEnableAi, setCanEnableAi] = useState(false),
+    [aiBusy, setAiBusy] = useState(false),
     [selectedFile, setSelectedFile] = useState<File | null>(null),
     [preview, setPreview] = useState(""),
     [contextMode, setContextMode] = useState(false),
@@ -114,13 +115,19 @@ export default function TroChuyen({
     autoAttempted = useRef(""),
     latestPoll = useRef("");
   useEffect(() => {
-    const fn = (event:Event) => {
+    const fn = (event: Event) => {
       setHidden(false);
       sessionStorage.removeItem(
         "homestay_chat_hidden:" + (admin ? "admin" : "guest"),
       );
-      const detail=(event as CustomEvent<{id?:string;ten_hien_thi?:string}>).detail;
-      if(detail?.id){setCurrent(detail.id);setCurrentName(detail.ten_hien_thi||'Tin nhắn của đơn');setPeopleMode(false);}
+      const detail = (
+        event as CustomEvent<{ id?: string; ten_hien_thi?: string }>
+      ).detail;
+      if (detail?.id) {
+        setCurrent(detail.id);
+        setCurrentName(detail.ten_hien_thi || "Tin nhắn của đơn");
+        setPeopleMode(false);
+      }
       setOpen(true);
     };
     window.addEventListener("homestay:mo-chat", fn);
@@ -283,7 +290,8 @@ export default function TroChuyen({
         }>("/chat/" + current + "/tin-nhan", "GET", undefined, token, guest);
         if (alive) {
           setCanReply(!!r.duoc_dung_mau);
-          setAiMode(r.che_do_ai||null);setCanEnableAi(!!r.co_the_bat_ai);
+          setAiMode(r.che_do_ai || null);
+          setCanEnableAi(!!r.co_the_bat_ai);
           const last = r.tin_nhan.at(-1)?.id || "";
           if (
             latestPoll.current &&
@@ -580,46 +588,87 @@ export default function TroChuyen({
       olderLock.current = false;
     }
   }
-  const activeConversation=useRef(current);
-  activeConversation.current=current;
-  useEffect(()=>{setAiMode(null);setCanEnableAi(false);},[current]);
-  async function toggleAi(){
-    if(!current||!aiMode||aiBusy)return;const id=current;
-    setAiBusy(true);setError('');
-    try{const r=await khachApi<{che_do_ai:string}>('/chat/'+id+'/ai','POST',{che_do:aiMode==='AI hỗ trợ'?'Nhân viên tiếp quản':'AI hỗ trợ'},token,guest);if(activeConversation.current===id)setAiMode(r.che_do_ai);}
-    catch(e){setError((e as Error).message);}finally{setAiBusy(false);}
+  const activeConversation = useRef(current);
+  activeConversation.current = current;
+  useEffect(() => {
+    setAiMode(null);
+    setCanEnableAi(false);
+  }, [current]);
+  async function toggleAi() {
+    if (!current || !aiMode || aiBusy) return;
+    const id = current;
+    setAiBusy(true);
+    setError("");
+    try {
+      const r = await khachApi<{ che_do_ai: string }>(
+        "/chat/" + id + "/ai",
+        "POST",
+        {
+          che_do: aiMode === "AI hỗ trợ" ? "Nhân viên tiếp quản" : "AI hỗ trợ",
+        },
+        token,
+        guest,
+      );
+      if (activeConversation.current === id) setAiMode(r.che_do_ai);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setAiBusy(false);
+    }
   }
   const toolsBar = (
-                <div className="chat-tool-buttons">
-                  {admin && canReply && aiMode && <button type="button" className={'chat-ai-toggle '+(aiMode==='AI hỗ trợ'?'is-on':'')} disabled={aiBusy||!current||(aiMode!=='AI hỗ trợ'&&!canEnableAi)} aria-label={aiMode==='AI hỗ trợ'?'Tắt AI trả lời':'Bật AI trả lời'} aria-pressed={aiMode==='AI hỗ trợ'} title={aiMode==='AI hỗ trợ'?'Tắt AI và tiếp quản hội thoại':'Bật AI từ tin khách tiếp theo'} onClick={()=>void toggleAi()}>{aiBusy?'…':aiMode==='AI hỗ trợ'?'AI · Tắt':'AI · Bật'}</button>}
-                  <button
-                    disabled={!current}
-                    aria-label="Tìm tin nhắn"
-                    aria-pressed={tool === "tim"}
-                    title="Tìm tin nhắn"
-                    onClick={() => setTool(tool === "tim" ? null : "tim")}
-                  >
-                    <BieuTuong ten="search" />
-                  </button>
-                  <button
-                    disabled={!current}
-                    aria-label="Xem ảnh đã gửi"
-                    aria-pressed={tool === "anh"}
-                    title="Ảnh đã gửi"
-                    onClick={() => setTool(tool === "anh" ? null : "anh")}
-                  >
-                    <BieuTuong ten="image" />
-                  </button>
-                  <button
-                    disabled={!current}
-                    aria-label="Xem tệp đã gửi"
-                    aria-pressed={tool === "tep"}
-                    title="Tệp đã gửi"
-                    onClick={() => setTool(tool === "tep" ? null : "tep")}
-                  >
-                    <BieuTuong ten="file" />
-                  </button>
-                </div>
+    <div className="chat-tool-buttons">
+      {admin && canReply && aiMode && (
+        <button
+          type="button"
+          className={
+            "chat-ai-toggle " + (aiMode === "AI hỗ trợ" ? "is-on" : "")
+          }
+          disabled={
+            aiBusy || !current || (aiMode !== "AI hỗ trợ" && !canEnableAi)
+          }
+          aria-label={
+            aiMode === "AI hỗ trợ" ? "Tắt AI trả lời" : "Bật AI trả lời"
+          }
+          aria-pressed={aiMode === "AI hỗ trợ"}
+          title={
+            aiMode === "AI hỗ trợ"
+              ? "Tắt AI và tiếp quản hội thoại"
+              : "Bật AI từ tin khách tiếp theo"
+          }
+          onClick={() => void toggleAi()}
+        >
+          {aiBusy ? "…" : aiMode === "AI hỗ trợ" ? "AI · Tắt" : "AI · Bật"}
+        </button>
+      )}
+      <button
+        disabled={!current}
+        aria-label="Tìm tin nhắn"
+        aria-pressed={tool === "tim"}
+        title="Tìm tin nhắn"
+        onClick={() => setTool(tool === "tim" ? null : "tim")}
+      >
+        <BieuTuong ten="search" />
+      </button>
+      <button
+        disabled={!current}
+        aria-label="Xem ảnh đã gửi"
+        aria-pressed={tool === "anh"}
+        title="Ảnh đã gửi"
+        onClick={() => setTool(tool === "anh" ? null : "anh")}
+      >
+        <BieuTuong ten="image" />
+      </button>
+      <button
+        disabled={!current}
+        aria-label="Xem tệp đã gửi"
+        aria-pressed={tool === "tep"}
+        title="Tệp đã gửi"
+        onClick={() => setTool(tool === "tep" ? null : "tep")}
+      >
+        <BieuTuong ten="file" />
+      </button>
+    </div>
   );
   const title =
     threads.find((t) => t.id === current)?.ten_hien_thi ||
@@ -649,18 +698,7 @@ export default function TroChuyen({
               inline ? input.current?.focus() : setOpen((v) => !v);
             }}
           >
-            <svg
-              aria-hidden="true"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-            >
-              <path d="M21 11.5a9 9 0 0 1-9 9H4l-3 2v-10a10 10 0 0 1 20-1z" />
-              <path d="M6 10h10M6 14h6" />
-            </svg>
+            <BieuTuong ten="message" size={24} />
             {unread > 0 && (
               <span className="chat-total-badge">
                 {unread.toLocaleString("vi-VN")}
@@ -675,7 +713,14 @@ export default function TroChuyen({
               title="Thu gọn vào mép màn hình"
               onClick={hideBubble}
             >
-              <span style={{ transform: floating.dockRight ? undefined : "rotate(180deg)", display: "flex" }}><BieuTuong ten="chevron" size={16} /></span>
+              <span
+                style={{
+                  transform: floating.dockRight ? undefined : "rotate(180deg)",
+                  display: "flex",
+                }}
+              >
+                <BieuTuong ten="chevron" size={16} />
+              </span>
             </button>
           }
         </>
@@ -693,7 +738,9 @@ export default function TroChuyen({
             );
           }}
         >
-          <span style={{ transform: floating.dockRight ? "rotate(180deg)" : undefined, display: "flex" }}><BieuTuong ten="message" size={18} /></span>
+          <span style={{ transform: undefined, display: "flex" }}>
+            <BieuTuong ten="message" size={18} />
+          </span>
           {unread > 0 && <span>{unread.toLocaleString("vi-VN")}</span>}
         </button>
       )}
@@ -713,10 +760,30 @@ export default function TroChuyen({
           }}
         >
           <header>
-            {admin ? <div><h2>Tin nhắn</h2><small>Kết nối cùng HomeStay</small></div> :
-              <span className="chat-home-avatar" role="img" aria-label="HomeStay" title="HomeStay">
-                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m5 15 11-10 11 10M9 13v14h14V13M13 27v-9h6v9"/><path d="M23 6c5-1 6-4 6-4 1 5-1 8-5 8"/></svg>
-              </span>}
+            {admin ? (
+              <div>
+                <h2>Tin nhắn</h2>
+                <small>Kết nối cùng HomeStay</small>
+              </div>
+            ) : (
+              <span
+                className="chat-home-avatar"
+                role="img"
+                aria-label="HomeStay"
+                title="HomeStay"
+              >
+                <svg
+                  viewBox="0 0 32 32"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  aria-hidden="true"
+                >
+                  <path d="m5 15 11-10 11 10M9 13v14h14V13M13 27v-9h6v9" />
+                  <path d="M23 6c5-1 6-4 6-4 1 5-1 8-5 8" />
+                </svg>
+              </span>
+            )}
             {!admin && toolsBar}
             {!inline && (
               <button aria-label="Đóng chat" onClick={() => setOpen(false)}>
@@ -1091,7 +1158,10 @@ export default function TroChuyen({
                   disabled={!current}
                   maxLength={4000}
                   value={text}
-                  onChange={(e) => { setText(e.target.value); if (!admin) onNhapDatPhong?.(e.target.value); }}
+                  onChange={(e) => {
+                    setText(e.target.value);
+                    if (!admin) onNhapDatPhong?.(e.target.value);
+                  }}
                   placeholder="Nhập tin nhắn…"
                 />
                 <button
