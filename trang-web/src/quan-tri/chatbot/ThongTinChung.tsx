@@ -29,7 +29,7 @@ export default function ThongTinChung({
   return (
     <section className="cb-card cb-common-info">
       <div className="cb-card-title">
-        <h2>Thông tin cần biết</h2>
+        <h2>Kiến thức</h2>
         <button
           type="button"
           disabled={busy}
@@ -45,21 +45,15 @@ export default function ThongTinChung({
           + Thêm thông tin
         </button>
       </div>
-      <p className="cb-note">
-        Nội quy, chính sách, dịch vụ và tài liệu dùng chung. Chỉ bật những thông
-        tin được phép công khai; tình huống có thể chọn các nguồn này để tham
-        khảo.
-      </p>
       <div className="cb-info-list">
         {rows.map((x) => (
           <button
             type="button"
             key={x.id}
-            className="cb-entry"
+            className={"cb-entry " + (x.xuat_ban ? "is-enabled" : "")}
             onClick={() => setEdit({ ...x })}
           >
             <strong>{x.tieu_de}</strong>
-            <span>{x.xuat_ban ? "Được phép dùng" : "Chưa cho phép"}</span>
           </button>
         ))}
       </div>
@@ -78,13 +72,11 @@ export default function ThongTinChung({
             try {
               await onSave(edit);
               setEdit(null);
-            } catch {
-              /* Parent keeps the error and editor visible. */
-            }
+            } catch {}
           }}
         >
           <label>
-            Tiêu đề thông tin
+            Tiêu đề
             <input
               required
               maxLength={150}
@@ -93,9 +85,9 @@ export default function ThongTinChung({
             />
           </label>
           <label>
-            Nội dung thông tin
+            Nội dung
             <textarea
-              aria-label="Nội dung thông tin"
+              aria-label="Nội dung"
               required
               rows={5}
               maxLength={6000}
@@ -109,7 +101,7 @@ export default function ThongTinChung({
               checked={edit.xuat_ban}
               onChange={(e) => setEdit({ ...edit, xuat_ban: e.target.checked })}
             />
-            Cho phép bot sử dụng nguồn này
+            Cho phép sử dụng
           </label>
           <footer>
             <button type="button" onClick={() => setEdit(null)}>

@@ -1,3 +1,4 @@
+import { previewHistory } from './thu-hoi-thoai.js';
 import { parseCondition, matchSituations } from './tinh-huong.js';
 import {
   BadRequestException,
@@ -53,7 +54,7 @@ export function validateConfig(b: Record<string, unknown>): BotConfig {
     throw new BadRequestException('Cấu hình không hợp lệ');
   return {
     bat: b.bat,
-    ten_bot: text(b.ten_bot, 1, 80),
+    ten_bot: text(b.ten_bot, 0, 80) || 'Trợ lý Homestay',
     huong_dan: text(b.huong_dan, 0, 6000),
     loi_chuyen: text(b.loi_chuyen, 1, 500),
     gioi_han_ngay: Number(b.gioi_han_ngay),
@@ -256,6 +257,7 @@ export class ChatbotService {
   async preview(uid: string, b: Record<string, unknown>) {
     await this.allowed(uid);
     const question = text(b.cau_hoi, 1, 2000);
+    const history = previewHistory(b.lich_su);
     if (!getBotKey())
       throw new ServiceUnavailableException(
         'Chưa cấu hình GEMINI_API_KEY trên máy chủ',
@@ -269,7 +271,7 @@ export class ChatbotService {
     }
     const result = await this.answer(
       cf!,
-      [{ role: 'user', parts: [{ text: cleanText(question) }] }],
+      [...history, { role: 'user', parts: [{ text: cleanText(question) }] }],
       null,
     );
     return { ...result, text: result.handoff ? cf!.loi_chuyen : result.text };

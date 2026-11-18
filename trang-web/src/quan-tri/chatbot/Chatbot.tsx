@@ -1,3 +1,4 @@
+import ChatbotThu from "./ChatbotThu";
 import ThongTinChung from "./ThongTinChung";
 import { useCallback, useEffect, useState, useRef } from "react";
 import "./chatbot.css";
@@ -142,17 +143,9 @@ export default function Chatbot({ token }: { token: string }) {
     [cfg, setCfg] = useState<Config | null>(null),
     [tab, setTab] = useState("cau-hinh"),
     [error, setError] = useState(""),
-    [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false),
     [entry, setEntry] = useState<Knowledge | null>(null),
-    [query, setQuery] = useState(""),
-    [question, setQuestion] = useState(""),
-    [reply, setReply] = useState<{
-      text: string;
-      tools: string[];
-      handoff: boolean;
-      tinh_huong_khop?: { ten: string; ly_do: string }[];
-    } | null>(null);
+    [query, setQuery] = useState("");
   const [draftQuestion, setDraftQuestion] = useState(""),
     [proposal, setProposal] = useState<Proposal | null>(null);
   useEffect(() => {
@@ -207,7 +200,6 @@ export default function Chatbot({ token }: { token: string }) {
   async function act(fn: () => Promise<unknown>) {
     setBusy(true);
     setError("");
-    setNotice("");
     try {
       await fn();
     } catch (e) {
@@ -231,26 +223,529 @@ export default function Chatbot({ token }: { token: string }) {
         : e,
     );
   }
+  const editor = () =>
+    entry &&
+    data && (
+      <form
+        className="cb-card cb-situation-editor"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void act(async () => {
+            const saved = await api("/kien-thuc", "POST", {
+              ...entry,
+              dieu_kien: {
+                ...(entry.dieu_kien || condition()),
+                hoi_dap_doc_lap: true,
+                cac_tra_loi: (entry.dieu_kien?.cac_tra_loi || []).map((x) => ({
+                  ...x,
+                  cau_hoi_mau: x.cau_hoi_mau
+                    .map((q) => q.trim())
+                    .filter(Boolean),
+                  tu_khoa: x.tu_khoa.map((k) => k.trim()).filter(Boolean),
+                })),
+                cau_hoi_mau: (entry.dieu_kien?.cau_hoi_mau || [])
+                  .map((x) => x.trim())
+                  .filter(Boolean),
+                tu_khoa: (entry.dieu_kien?.tu_khoa || [])
+                  .map((x) => x.trim())
+                  .filter(Boolean),
+              },
+            });
+            const fresh = await load(true);
+            setEntry(
+              fresh.kien_thuc.find((k) => k.id === (saved.id || entry.id)) ||
+                fresh.kien_thuc.find((k) => k.tieu_de === entry.tieu_de) ||
+                null,
+            );
+          });
+        }}
+      >
+        <div className="cb-card-title">
+          <h2>{entry.id ? "Chỉnh sửa" : "Tình huống mới"}</h2>
+          <button
+            type="button"
+            aria-label="Đóng chỉnh sửa"
+            onClick={() => setEntry(null)}
+          >
+            ×
+          </button>
+        </div>
+        <label>
+          Tên tình huống
+          <input
+            required
+            maxLength={130}
+            value={nameOf(entry.tieu_de)}
+            onChange={(e) =>
+              setEntry({
+                ...entry,
+                tieu_de:
+                  (entry.tieu_de.startsWith("Tình huống: ")
+                    ? "Tình huống: "
+                    : "") + e.target.value,
+              })
+            }
+          />
+        </label>
+        <div className="cb-qa-pair">
+          {" "}
+          <label>
+            Khách hỏi
+            <textarea
+              aria-label="Khách hỏi chính"
+              rows={2}
+              maxLength={4200}
+              value={(entry.dieu_kien?.cau_hoi_mau || []).join("\n")}
+              placeholder="Mỗi dòng một cách hỏi. Ví dụ: Phòng này bao nhiêu tiền?"
+              onChange={(e) =>
+                setEntry({
+                  ...entry,
+                  dieu_kien: {
+                    ...(entry.dieu_kien || condition()),
+                    cau_hoi_mau: e.target.value.split("\n"),
+                  },
+                })
+              }
+            />
+          </label>
+          <label>
+            Bot trả lời
+            <textarea
+              aria-label="Bot trả lời chính"
+              required
+              rows={3}
+              maxLength={entry.tieu_de.startsWith("Tình huống: ") ? 1000 : 6000}
+              value={entry.noi_dung}
+              onChange={(e) => setEntry({ ...entry, noi_dung: e.target.value })}
+            />
+          </label>
+        </div>
+        <div className="cb-rules">
+          <label>
+            Mẫu tình huống
+            <select
+              aria-label="Mẫu tình huống"
+              value={
+                scenarios.some((x) => x.name === nameOf(entry.tieu_de))
+                  ? nameOf(entry.tieu_de)
+                  : ""
+              }
+              onChange={(e) => {
+                const item = scenarios.find((x) => x.name === e.target.value);
+                if (item)
+                  setEntry({
+                    ...entry,
+                    tieu_de: "Tình huống: " + item.name,
+                    nhom: groups[3],
+                    noi_dung: item.text,
+                    dieu_kien: condition(item.name),
+                  });
+                else
+                  setEntry({
+                    ...entry,
+                    tieu_de: "Tình huống: ",
+                    noi_dung: "",
+                  });
+              }}
+            >
+              <option value="">Tự thiết lập</option>
+              {scenarios.map((x) => (
+                <option key={x.name}>{x.name}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Từ khóa liên quan
+            <textarea
+              aria-label="Từ khóa liên quan"
+              rows={2}
+              maxLength={1700}
+              value={(entry.dieu_kien?.tu_khoa || []).join("\n")}
+              placeholder="Mỗi dòng một từ hoặc cụm từ: giá phòng, phụ thu…"
+              onChange={(e) =>
+                setEntry({
+                  ...entry,
+                  dieu_kien: {
+                    ...(entry.dieu_kien || condition()),
+                    tu_khoa: e.target.value.split(/\n|,/g),
+                  },
+                })
+              }
+            />
+          </label>
+          <div className="cb-two">
+            <label>
+              Cách khớp từ khóa
+              <select
+                aria-label="Cách khớp từ khóa"
+                value={entry.dieu_kien?.kieu_khop || "bat_ky"}
+                onChange={(e) =>
+                  setEntry({
+                    ...entry,
+                    dieu_kien: {
+                      ...(entry.dieu_kien || condition()),
+                      kieu_khop: e.target.value as DieuKien["kieu_khop"],
+                    },
+                  })
+                }
+              >
+                <option value="bat_ky">Có một từ khóa</option>
+                <option value="tat_ca">Có đủ các từ khóa</option>
+              </select>
+            </label>
+            <label>
+              Ưu tiên
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={entry.dieu_kien?.uu_tien || 0}
+                onChange={(e) =>
+                  setEntry({
+                    ...entry,
+                    dieu_kien: {
+                      ...(entry.dieu_kien || condition()),
+                      uu_tien: Number(e.target.value),
+                    },
+                  })
+                }
+              />
+            </label>
+          </div>
+
+          <section className="cb-deep">
+            <label className="cb-toggle">
+              <input
+                type="checkbox"
+                checked={!!entry.dieu_kien?.suy_nghi_sau}
+                onChange={(e) =>
+                  setEntry({
+                    ...entry,
+                    dieu_kien: {
+                      ...(entry.dieu_kien || condition()),
+                      suy_nghi_sau: e.target.checked,
+                    },
+                  })
+                }
+              />
+              Suy nghĩ sâu
+            </label>
+
+            {entry.dieu_kien?.suy_nghi_sau && (
+              <>
+                <strong className="cb-source-title">Nguồn tham khảo</strong>
+                {!!entry.dieu_kien?.nguon_ids?.length && (
+                  <button
+                    type="button"
+                    className="cb-clear-sources"
+                    onClick={() =>
+                      setEntry({
+                        ...entry,
+                        dieu_kien: {
+                          ...(entry.dieu_kien || condition()),
+                          nguon_ids: [],
+                        },
+                      })
+                    }
+                  >
+                    Bỏ chọn
+                  </button>
+                )}
+                <div className="cb-source-list">
+                  {data.kien_thuc
+                    .filter(
+                      (k) =>
+                        k.id &&
+                        !k.tieu_de.startsWith("Tình huống: ") &&
+                        k.xuat_ban,
+                    )
+                    .map((k) => (
+                      <label className="cb-toggle" key={k.id}>
+                        <input
+                          type="checkbox"
+                          checked={
+                            entry.dieu_kien?.nguon_ids?.includes(k.id!) || false
+                          }
+                          disabled={
+                            !entry.dieu_kien?.nguon_ids?.includes(k.id!) &&
+                            (entry.dieu_kien?.nguon_ids?.length || 0) >= 10
+                          }
+                          onChange={(e) =>
+                            setEntry({
+                              ...entry,
+                              dieu_kien: {
+                                ...(entry.dieu_kien || condition()),
+                                nguon_ids: e.target.checked
+                                  ? [
+                                      ...(entry.dieu_kien?.nguon_ids || []),
+                                      k.id!,
+                                    ]
+                                  : (entry.dieu_kien?.nguon_ids || []).filter(
+                                      (id) => id !== k.id,
+                                    ),
+                              },
+                            })
+                          }
+                        />
+                        {k.tieu_de}
+                      </label>
+                    ))}
+                </div>
+                {!data.kien_thuc.some(
+                  (k) => !k.tieu_de.startsWith("Tình huống: ") && k.xuat_ban,
+                ) && (
+                  <p>
+                    Thêm và cho phép nguồn tại Thiết lập → Thông tin cần biết.
+                  </p>
+                )}
+                <label>
+                  Câu hỏi đề xuất
+                  <textarea
+                    aria-label="Câu hỏi đề xuất"
+                    rows={2}
+                    maxLength={1500}
+                    value={draftQuestion}
+                    onChange={(e) => setDraftQuestion(e.target.value)}
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={
+                    busy ||
+                    !entry.id ||
+                    (entry.dieu_kien?.cac_tra_loi?.length || 0) >= 10 ||
+                    !draftQuestion.trim() ||
+                    !entry.dieu_kien?.nguon_ids?.length ||
+                    JSON.stringify(entry) !==
+                      JSON.stringify(
+                        data.kien_thuc.find((k) => k.id === entry.id),
+                      )
+                  }
+                  onClick={() =>
+                    void act(async () => {
+                      const key = entry.id + ":" + entry.phien_ban;
+                      const result = await api("/de-xuat", "POST", {
+                        id: entry.id,
+                        phien_ban: entry.phien_ban,
+                        cau_hoi: draftQuestion,
+                      });
+                      if (activeDraftCase.current === key) setProposal(result);
+                    })
+                  }
+                >
+                  Tạo bản nháp
+                </button>
+                <small className="cb-draft-hint">
+                  Lưu tình huống và chọn nguồn trước khi tạo bản nháp
+                </small>
+                {proposal && (
+                  <div className="cb-proposal">
+                    <strong>Bản nháp — cần bạn kiểm tra</strong>
+                    <p>
+                      Nguồn:{" "}
+                      {proposal.nguon
+                        .map((x) => x.tieu_de + " (v" + x.phien_ban + ")")
+                        .join(", ")}
+                    </p>
+                    <label>
+                      Cách hỏi cho bản nháp
+                      <textarea
+                        aria-label="Cách hỏi cho bản nháp"
+                        rows={2}
+                        value={proposal.cau_hoi_mau.join("\n")}
+                        onChange={(e) =>
+                          setProposal({
+                            ...proposal,
+                            cau_hoi_mau: e.target.value.split("\n"),
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Kiểm tra và sửa câu trả lời
+                      <textarea
+                        aria-label="Kiểm tra và sửa câu trả lời"
+                        rows={4}
+                        maxLength={1000}
+                        value={proposal.tra_loi}
+                        onChange={(e) =>
+                          setProposal({
+                            ...proposal,
+                            tra_loi: e.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                    <div className="cb-proposal-actions">
+                      <button type="button" onClick={() => setProposal(null)}>
+                        Bỏ bản nháp
+                      </button>
+                      <button
+                        type="button"
+                        className="cb-primary"
+                        disabled={
+                          busy ||
+                          proposal.id !== entry.id ||
+                          proposal.phien_ban !== entry.phien_ban ||
+                          JSON.stringify(entry) !==
+                            JSON.stringify(
+                              data.kien_thuc.find((k) => k.id === entry.id),
+                            )
+                        }
+                        onClick={() =>
+                          void act(async () => {
+                            await api("/chap-thuan", "POST", {
+                              ...proposal,
+                              cau_hoi_mau: proposal.cau_hoi_mau
+                                .map((x) => x.trim())
+                                .filter(Boolean),
+                            });
+                            const fresh = await load(true);
+                            setEntry(
+                              fresh.kien_thuc.find((k) => k.id === entry.id) ||
+                                null,
+                            );
+                            setProposal(null);
+                          })
+                        }
+                      >
+                        Duyệt và lưu
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+        </div>
+        <div className="cb-answer-group">
+          <div className="cb-card-title">
+            <h3>Các cặp hỏi – đáp</h3>
+            <button
+              type="button"
+              disabled={(entry.dieu_kien?.cac_tra_loi?.length || 0) >= 10}
+              onClick={() =>
+                setEntry({
+                  ...entry,
+                  dieu_kien: {
+                    ...(entry.dieu_kien || condition()),
+                    cac_tra_loi: [
+                      ...(entry.dieu_kien?.cac_tra_loi || []),
+                      { cau_hoi_mau: [], tu_khoa: [], tra_loi: "" },
+                    ],
+                  },
+                })
+              }
+            >
+              + Thêm cặp hỏi – đáp
+            </button>
+          </div>
+
+          {(entry.dieu_kien?.cac_tra_loi || []).map((answer, index) => (
+            <details
+              className="cb-answer-item"
+              key={index}
+              open={index === (entry.dieu_kien?.cac_tra_loi?.length || 0) - 1}
+            >
+              <summary>
+                Hỏi – đáp {index + 2}
+                {answer.cau_hoi_mau[0]
+                  ? " · " + answer.cau_hoi_mau[0].slice(0, 45)
+                  : ""}
+              </summary>
+              <button
+                className="cb-remove-answer"
+                type="button"
+                aria-label={"Bỏ cách trả lời " + (index + 1)}
+                onClick={() =>
+                  setEntry({
+                    ...entry,
+                    dieu_kien: {
+                      ...(entry.dieu_kien || condition()),
+                      cac_tra_loi: (entry.dieu_kien?.cac_tra_loi || []).filter(
+                        (_, i) => i !== index,
+                      ),
+                    },
+                  })
+                }
+              >
+                ×
+              </button>
+              <div className="cb-qa-pair">
+                {" "}
+                <label>
+                  Khách hỏi
+                  <textarea
+                    aria-label={"Câu hỏi mục " + (index + 1)}
+                    rows={2}
+                    value={answer.cau_hoi_mau.join("\n")}
+                    onChange={(e) =>
+                      updateAnswer(index, {
+                        cau_hoi_mau: e.target.value.split("\n"),
+                      })
+                    }
+                    placeholder="Mỗi dòng một cách hỏi tương đương"
+                  />
+                </label>
+                <label>
+                  Bot trả lời
+                  <textarea
+                    required
+                    aria-label={"Trả lời mục " + (index + 1)}
+                    rows={3}
+                    maxLength={1000}
+                    value={answer.tra_loi}
+                    onChange={(e) =>
+                      updateAnswer(index, {
+                        tra_loi: e.target.value,
+                      })
+                    }
+                  />
+                </label>
+              </div>
+              <details className="cb-qa-advanced">
+                <summary>Từ khóa liên quan</summary>{" "}
+                <label>
+                  Từ khóa / cách gọi liên quan
+                  <textarea
+                    aria-label={"Từ khóa mục " + (index + 1)}
+                    rows={2}
+                    value={answer.tu_khoa.join("\n")}
+                    onChange={(e) =>
+                      updateAnswer(index, {
+                        tu_khoa: e.target.value.split(/\n|,/g),
+                      })
+                    }
+                  />
+                </label>
+              </details>
+            </details>
+          ))}
+        </div>
+        <label className="cb-toggle">
+          <input
+            type="checkbox"
+            checked={entry.xuat_ban}
+            onChange={(e) => setEntry({ ...entry, xuat_ban: e.target.checked })}
+          />{" "}
+          Bật tình huống
+        </label>
+
+        <button className="cb-primary" disabled={busy}>
+          Lưu
+        </button>
+      </form>
+    );
   const field = (key: keyof Config, value: unknown) =>
     setCfg((c) => (c ? { ...c, [key]: value } : c));
   return (
     <section className="cb-page" aria-label="Thiết lập chatbot">
-      <header className="cb-heading">
-        <div>
-          <span className="cb-eyebrow">CHĂM SÓC KHÁCH HÀNG</span>
-          <h2>Trợ lý tư vấn</h2>
-          <p>Tư vấn từ dữ liệu thật, nhân viên luôn có thể tiếp quản.</p>
-        </div>
-        <span className={"cb-status " + (data?.co_khoa ? "ready" : "")}>
-          {data?.co_khoa
-            ? "Đã cấu hình khóa Gemini"
-            : "Chưa cấu hình khóa Gemini"}
-        </span>
-      </header>
       <nav className="cb-tabs" aria-label="Mục chatbot">
         {[
           ["cau-hinh", "Thiết lập"],
-          ["kien-thuc", "Tình huống trả lời"],
+          ["kien-thuc", "Tình huống"],
+          ["hoi-thoai", "Hội thoại"],
+          ["nhat-ky", "Nhật ký"],
         ].map(([id, label]) => (
           <button
             key={id}
@@ -260,22 +755,13 @@ export default function Chatbot({ token }: { token: string }) {
             {label}
           </button>
         ))}
-        <details className="cb-advanced">
-          <summary>Nâng cao</summary>
-          <div>
-            <button onClick={() => setTab("hoi-thoai")}>Hội thoại</button>
-            <button onClick={() => setTab("nhat-ky")}>Nhật ký</button>
-          </div>
-        </details>
+        <span className={"cb-status " + (data?.co_khoa ? "ready" : "")}>
+          {data?.co_khoa ? "Đã kết nối" : "Chưa có khóa API"}
+        </span>
       </nav>
       {error && (
         <div className="cb-error" role="alert">
           {error}
-        </div>
-      )}
-      {notice && (
-        <div className="cb-notice" role="status">
-          {notice}
         </div>
       )}
       {!data || !cfg ? (
@@ -293,14 +779,16 @@ export default function Chatbot({ token }: { token: string }) {
               onSubmit={(e) => {
                 e.preventDefault();
                 void act(async () => {
-                  await api("", "PUT", cfg);
+                  await api("", "PUT", {
+                    ...cfg,
+                    ten_bot: cfg.ten_bot.trim() || "Trợ lý Homestay",
+                  });
                   await load();
-                  setNotice("Đã lưu thiết lập.");
                 });
               }}
             >
               <div className="cb-card-title">
-                <h2>Trợ lý tư vấn tự động</h2>
+                <h2>Thiết lập</h2>
                 <label className="cb-toggle">
                   <input
                     type="checkbox"
@@ -311,25 +799,19 @@ export default function Chatbot({ token }: { token: string }) {
                   Bật trả lời tự động
                 </label>
               </div>
-              {!data.co_khoa && (
-                <p className="cb-note">
-                  Thiết lập GEMINI_API_KEY trong môi trường máy chủ rồi khởi
-                  động lại. Khóa không được lưu trong trình duyệt hoặc kho kiến
-                  thức.
-                </p>
-              )}
+
               <div className="cb-two">
                 <label>
-                  Tên trợ lý
+                  Tên hiển thị (tùy chọn)
                   <input
                     maxLength={80}
-                    required
+                    placeholder="Trợ lý Homestay"
                     value={cfg.ten_bot}
                     onChange={(e) => field("ten_bot", e.target.value)}
                   />
                 </label>
                 <label>
-                  Giới hạn lượt tự động / ngày
+                  Lượt / ngày
                   <input
                     type="number"
                     min={1}
@@ -343,7 +825,7 @@ export default function Chatbot({ token }: { token: string }) {
                 </label>
               </div>
               <label>
-                Điều chung, quy tắc và cách tư vấn
+                Quy tắc chung
                 <textarea
                   rows={5}
                   maxLength={6000}
@@ -353,7 +835,7 @@ export default function Chatbot({ token }: { token: string }) {
                 />
               </label>
               <label>
-                Tin nhắn khi chuyển nhân viên
+                Khi chuyển nhân viên
                 <textarea
                   rows={2}
                   required
@@ -362,50 +844,7 @@ export default function Chatbot({ token }: { token: string }) {
                   onChange={(e) => field("loi_chuyen", e.target.value)}
                 />
               </label>
-              <div className="cb-boundaries">
-                <strong>Quyền và riêng tư</strong>
-                <p>
-                  Tra chi nhánh, tiện nghi, phòng trống, giá và combo; trả lời
-                  kiến thức đã xuất bản. Bot không tạo hay thay đổi đơn, không
-                  giữ phòng, không xác nhận thanh toán. Tin nhắn riêng giữa các
-                  tài khoản không được gửi đến AI.
-                </p>
-              </div>
-              <details className="cb-privacy">
-                <summary>Quy tắc bắt buộc của hệ thống</summary>
-                <ul>
-                  <li>
-                    Chỉ tra dữ liệu công khai về chi nhánh, phòng, loại phòng,
-                    combo, giá và lịch trống.
-                  </li>
-                  <li>
-                    Không trả tên khách, số điện thoại, hồ sơ, nội dung đơn hoặc
-                    tệp của người khác. Lịch chỉ trả khả năng đặt phòng.
-                  </li>
-                  <li>
-                    Không tạo/sửa/hủy đơn, giữ chỗ, xác nhận thanh toán hoặc đổi
-                    trạng thái phòng.
-                  </li>
-                  <li>
-                    Không nhận yêu cầu bỏ qua quy tắc, chạy SQL hoặc tiết lộ
-                    khóa và chỉ dẫn nội bộ.
-                  </li>
-                  <li>
-                    Không bịa giá, lịch và chính sách; thiếu thông tin thì hỏi
-                    lại hoặc chuyển nhân viên.
-                  </li>
-                </ul>
-                <p>
-                  Quyền bắt buộc được khóa ở máy chủ. Bạn chỉnh cách tư vấn và
-                  hướng dẫn bổ sung trong ô phía trên; hướng dẫn đó không thể
-                  cấp thêm quyền cho bot.
-                </p>
-              </details>
               <footer>
-                <small>
-                  {data.model} · Múi giờ Việt Nam · Hội thoại mới áp dụng chế độ
-                  đã lưu
-                </small>
                 <button className="cb-primary" disabled={busy}>
                   {busy ? "Đang lưu…" : "Lưu thiết lập"}
                 </button>
@@ -424,7 +863,6 @@ export default function Chatbot({ token }: { token: string }) {
                 try {
                   await api("/kien-thuc", "POST", x);
                   await load(true);
-                  setNotice("Đã lưu thông tin chung.");
                 } catch (e) {
                   setError(e instanceof Error ? e.message : "Không lưu được");
                   throw e;
@@ -434,737 +872,92 @@ export default function Chatbot({ token }: { token: string }) {
               }}
             />
           )}
-          {tab === "kien-thuc" && (
-            <div className="cb-knowledge cb-situation-list">
-              <div className="cb-card">
-                <div className="cb-card-title">
-                  <h2>
-                    Tình huống trả lời{" "}
-                    <small>
-                      {
+          <div
+            className={
+              tab === "kien-thuc" ? "cb-workspace" : "cb-workspace-hidden"
+            }
+          >
+            {tab === "kien-thuc" && (
+              <div className="cb-knowledge cb-situation-list">
+                <div className="cb-card">
+                  <div className="cb-card-title">
+                    <h2>Tình huống</h2>
+                    <button
+                      onClick={() => setEntry(blank())}
+                      disabled={
+                        busy ||
+                        data.kien_thuc.length >= 300 ||
                         data.kien_thuc.filter((x) =>
                           x.tieu_de.startsWith("Tình huống: "),
-                        ).length
+                        ).length >= 20
                       }
-                      /20
-                    </small>
-                  </h2>
-                  <button
-                    onClick={() => setEntry(blank())}
-                    disabled={
-                      busy ||
-                      data.kien_thuc.length >= 300 ||
-                      data.kien_thuc.filter((x) =>
-                        x.tieu_de.startsWith("Tình huống: "),
-                      ).length >= 20
-                    }
-                  >
-                    + Thêm tình huống
-                  </button>
-                </div>
-                <input
-                  aria-label="Tìm tình huống"
-                  placeholder="Tìm tình huống…"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
-                <p className="cb-note">
-                  Chọn tình huống, viết cách bot nên trả lời rồi bật để áp dụng.
-                  Phòng, lịch, giá và combo vẫn lấy từ hệ thống.
-                </p>
-                <div className="cb-entries">
-                  {data.kien_thuc
-                    .filter((k) => k.tieu_de.startsWith("Tình huống: "))
-                    .filter((k) =>
-                      (k.tieu_de + " " + k.noi_dung)
-                        .toLocaleLowerCase("vi")
-                        .includes(query.toLocaleLowerCase("vi")),
-                    )
-                    .map((k) => (
-                      <button
-                        className="cb-entry"
-                        key={k.id}
-                        aria-expanded={entry?.id === k.id}
-                        onClick={() =>
-                          setEntry(entry?.id === k.id ? null : { ...k })
-                        }
-                      >
-                        <span>
-                          <strong>{nameOf(k.tieu_de)}</strong>
-                          <small>
-                            {k.tieu_de.startsWith("Tình huống: ")
-                              ? "Hướng dẫn theo tình huống"
-                              : k.nhom}
-                          </small>
-                        </span>
-                        <span className={k.xuat_ban ? "cb-published" : ""}>
-                          {k.xuat_ban ? "Đang bật" : "Đang tắt"}
-                        </span>
-                      </button>
-                    ))}
-                  {!data.kien_thuc.some((k) =>
-                    k.tieu_de.startsWith("Tình huống: "),
-                  ) && (
-                    <p>
-                      Chưa có tình huống. Nhấn Thêm tình huống để chọn mẫu có
-                      sẵn.
-                    </p>
-                  )}
-                </div>
-              </div>
-              {entry && (
-                <form
-                  className="cb-card cb-situation-editor"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    void act(async () => {
-                      const saved = await api("/kien-thuc", "POST", {
-                        ...entry,
-                        dieu_kien: {
-                          ...(entry.dieu_kien || condition()),
-                          hoi_dap_doc_lap: true,
-                          cac_tra_loi: (entry.dieu_kien?.cac_tra_loi || []).map(
-                            (x) => ({
-                              ...x,
-                              cau_hoi_mau: x.cau_hoi_mau
-                                .map((q) => q.trim())
-                                .filter(Boolean),
-                              tu_khoa: x.tu_khoa
-                                .map((k) => k.trim())
-                                .filter(Boolean),
-                            }),
-                          ),
-                          cau_hoi_mau: (entry.dieu_kien?.cau_hoi_mau || [])
-                            .map((x) => x.trim())
-                            .filter(Boolean),
-                          tu_khoa: (entry.dieu_kien?.tu_khoa || [])
-                            .map((x) => x.trim())
-                            .filter(Boolean),
-                        },
-                      });
-                      const fresh = await load(true);
-                      setEntry(
-                        fresh.kien_thuc.find(
-                          (k) => k.id === (saved.id || entry.id),
-                        ) ||
-                          fresh.kien_thuc.find(
-                            (k) => k.tieu_de === entry.tieu_de,
-                          ) ||
-                          null,
-                      );
-                      setNotice("Đã lưu tình huống.");
-                    });
-                  }}
-                >
-                  <div className="cb-card-title">
-                    <h2>{entry.id ? "Sửa tình huống" : "Tình huống mới"}</h2>
-                    <button
-                      type="button"
-                      aria-label="Đóng chỉnh sửa"
-                      onClick={() => setEntry(null)}
                     >
-                      ×
+                      + Thêm
                     </button>
                   </div>
-                  <label>
-                    Tên nhóm tình huống
-                    <input
-                      required
-                      maxLength={130}
-                      value={nameOf(entry.tieu_de)}
-                      onChange={(e) =>
-                        setEntry({
-                          ...entry,
-                          tieu_de:
-                            (entry.tieu_de.startsWith("Tình huống: ")
-                              ? "Tình huống: "
-                              : "") + e.target.value,
-                        })
-                      }
-                    />
-                  </label>
-                  <div className="cb-qa-pair">
-                    {" "}
-                    <label>
-                      Khách hỏi
-                      <textarea
-                        aria-label="Khách hỏi chính"
-                        rows={2}
-                        maxLength={4200}
-                        value={(entry.dieu_kien?.cau_hoi_mau || []).join("\n")}
-                        placeholder="Mỗi dòng một cách hỏi. Ví dụ: Phòng này bao nhiêu tiền?"
-                        onChange={(e) =>
-                          setEntry({
-                            ...entry,
-                            dieu_kien: {
-                              ...(entry.dieu_kien || condition()),
-                              cau_hoi_mau: e.target.value.split("\n"),
-                            },
-                          })
-                        }
-                      />
-                    </label>
-                    <label>
-                      Bot trả lời
-                      <textarea
-                        aria-label="Bot trả lời chính"
-                        required
-                        rows={3}
-                        maxLength={
-                          entry.tieu_de.startsWith("Tình huống: ") ? 1000 : 6000
-                        }
-                        value={entry.noi_dung}
-                        onChange={(e) =>
-                          setEntry({ ...entry, noi_dung: e.target.value })
-                        }
-                      />
-                    </label>
-                  </div>
-                  <details className="cb-qa-advanced">
-                    <summary>Nâng cao: từ khóa, quy tắc và nguồn</summary>{" "}
-                    <label>
-                      Mẫu tình huống
-                      <select
-                        aria-label="Mẫu tình huống"
-                        value={
-                          scenarios.some(
-                            (x) => x.name === nameOf(entry.tieu_de),
-                          )
-                            ? nameOf(entry.tieu_de)
-                            : ""
-                        }
-                        onChange={(e) => {
-                          const item = scenarios.find(
-                            (x) => x.name === e.target.value,
-                          );
-                          if (item)
-                            setEntry({
-                              ...entry,
-                              tieu_de: "Tình huống: " + item.name,
-                              nhom: groups[3],
-                              noi_dung: item.text,
-                              dieu_kien: condition(item.name),
-                            });
-                          else
-                            setEntry({
-                              ...entry,
-                              tieu_de: "Tình huống: ",
-                              noi_dung: "",
-                            });
-                        }}
-                      >
-                        <option value="">Tự thiết lập</option>
-                        {scenarios.map((x) => (
-                          <option key={x.name}>{x.name}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      Từ khóa liên quan
-                      <textarea
-                        aria-label="Từ khóa liên quan"
-                        rows={2}
-                        maxLength={1700}
-                        value={(entry.dieu_kien?.tu_khoa || []).join("\n")}
-                        placeholder="Mỗi dòng một từ hoặc cụm từ: giá phòng, phụ thu…"
-                        onChange={(e) =>
-                          setEntry({
-                            ...entry,
-                            dieu_kien: {
-                              ...(entry.dieu_kien || condition()),
-                              tu_khoa: e.target.value.split(/\n|,/g),
-                            },
-                          })
-                        }
-                      />
-                    </label>
-                    <div className="cb-two">
-                      <label>
-                        Cách khớp từ khóa
-                        <select
-                          aria-label="Cách khớp từ khóa"
-                          value={entry.dieu_kien?.kieu_khop || "bat_ky"}
-                          onChange={(e) =>
-                            setEntry({
-                              ...entry,
-                              dieu_kien: {
-                                ...(entry.dieu_kien || condition()),
-                                kieu_khop: e.target
-                                  .value as DieuKien["kieu_khop"],
-                              },
-                            })
-                          }
-                        >
-                          <option value="bat_ky">Có một từ khóa</option>
-                          <option value="tat_ca">Có đủ các từ khóa</option>
-                        </select>
-                      </label>
-                      <label>
-                        Ưu tiên
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={entry.dieu_kien?.uu_tien || 0}
-                          onChange={(e) =>
-                            setEntry({
-                              ...entry,
-                              dieu_kien: {
-                                ...(entry.dieu_kien || condition()),
-                                uu_tien: Number(e.target.value),
-                              },
-                            })
-                          }
-                        />
-                      </label>
-                    </div>
-                    <p className="cb-note">
-                      Khớp cách hỏi mẫu hoặc từ khóa; không phân biệt
-                      hoa/thường, có dấu/không dấu. Tối đa 20 dòng mỗi ô. Ưu
-                      tiên lớn được chọn trước. Để trống cả hai ô để làm hướng
-                      dẫn chung khi chưa khớp tình huống cụ thể.
-                    </p>
-                    <section className="cb-deep">
-                      <label className="cb-toggle">
-                        <input
-                          type="checkbox"
-                          checked={!!entry.dieu_kien?.suy_nghi_sau}
-                          onChange={(e) =>
-                            setEntry({
-                              ...entry,
-                              dieu_kien: {
-                                ...(entry.dieu_kien || condition()),
-                                suy_nghi_sau: e.target.checked,
-                              },
-                            })
-                          }
-                        />
-                        Suy nghĩ sâu hơn từ nguồn cho phép
-                      </label>
-                      <p className="cb-note">
-                        Có thể chậm hơn và dùng thêm token. Giữ nguyên quyền và
-                        riêng tư; đề xuất mới chỉ được lưu sau khi bạn kiểm tra
-                        và chấp thuận.
-                      </p>
-                      {entry.dieu_kien?.suy_nghi_sau && (
-                        <>
-                          <strong className="cb-source-title">
-                            Nguồn được phép tham khảo (tối đa 10)
-                          </strong>
-                          {!!entry.dieu_kien?.nguon_ids?.length && (
-                            <button
-                              type="button"
-                              className="cb-clear-sources"
-                              onClick={() =>
-                                setEntry({
-                                  ...entry,
-                                  dieu_kien: {
-                                    ...(entry.dieu_kien || condition()),
-                                    nguon_ids: [],
-                                  },
-                                })
-                              }
-                            >
-                              Bỏ chọn tất cả nguồn
-                            </button>
-                          )}
-                          <div className="cb-source-list">
-                            {data.kien_thuc
-                              .filter(
-                                (k) =>
-                                  k.id &&
-                                  !k.tieu_de.startsWith("Tình huống: ") &&
-                                  k.xuat_ban,
-                              )
-                              .map((k) => (
-                                <label className="cb-toggle" key={k.id}>
-                                  <input
-                                    type="checkbox"
-                                    checked={
-                                      entry.dieu_kien?.nguon_ids?.includes(
-                                        k.id!,
-                                      ) || false
-                                    }
-                                    disabled={
-                                      !entry.dieu_kien?.nguon_ids?.includes(
-                                        k.id!,
-                                      ) &&
-                                      (entry.dieu_kien?.nguon_ids?.length ||
-                                        0) >= 10
-                                    }
-                                    onChange={(e) =>
-                                      setEntry({
-                                        ...entry,
-                                        dieu_kien: {
-                                          ...(entry.dieu_kien || condition()),
-                                          nguon_ids: e.target.checked
-                                            ? [
-                                                ...(entry.dieu_kien
-                                                  ?.nguon_ids || []),
-                                                k.id!,
-                                              ]
-                                            : (
-                                                entry.dieu_kien?.nguon_ids || []
-                                              ).filter((id) => id !== k.id),
-                                        },
-                                      })
-                                    }
-                                  />
-                                  {k.tieu_de}
-                                </label>
-                              ))}
-                          </div>
-                          {!data.kien_thuc.some(
-                            (k) =>
-                              !k.tieu_de.startsWith("Tình huống: ") &&
-                              k.xuat_ban,
-                          ) && (
-                            <p>
-                              Thêm và cho phép nguồn tại Thiết lập → Thông tin
-                              cần biết.
-                            </p>
-                          )}
-                          <label>
-                            Câu hỏi cần đề xuất
-                            <textarea
-                              aria-label="Câu hỏi cần đề xuất"
-                              rows={2}
-                              maxLength={1500}
-                              value={draftQuestion}
-                              onChange={(e) => setDraftQuestion(e.target.value)}
-                            />
-                          </label>
-                          <button
-                            type="button"
-                            disabled={
-                              busy ||
-                              !entry.id ||
-                              (entry.dieu_kien?.cac_tra_loi?.length || 0) >=
-                                10 ||
-                              !draftQuestion.trim() ||
-                              !entry.dieu_kien?.nguon_ids?.length ||
-                              JSON.stringify(entry) !==
-                                JSON.stringify(
-                                  data.kien_thuc.find((k) => k.id === entry.id),
-                                )
-                            }
-                            onClick={() =>
-                              void act(async () => {
-                                const key = entry.id + ":" + entry.phien_ban;
-                                const result = await api("/de-xuat", "POST", {
-                                  id: entry.id,
-                                  phien_ban: entry.phien_ban,
-                                  cau_hoi: draftQuestion,
-                                });
-                                if (activeDraftCase.current === key)
-                                  setProposal(result);
-                              })
-                            }
-                          >
-                            Tạo bản nháp để kiểm tra
-                          </button>
-                          <small className="cb-draft-hint">
-                            Lưu tình huống và nguồn đã chọn trước khi tạo. Bản
-                            nháp chưa chấp thuận không được dùng cho khách và sẽ
-                            mất khi tải lại trang.
-                          </small>
-                          {proposal && (
-                            <div className="cb-proposal">
-                              <strong>Bản nháp — cần bạn kiểm tra</strong>
-                              <p>
-                                Nguồn:{" "}
-                                {proposal.nguon
-                                  .map(
-                                    (x) =>
-                                      x.tieu_de + " (v" + x.phien_ban + ")",
-                                  )
-                                  .join(", ")}
-                              </p>
-                              <label>
-                                Cách hỏi cho bản nháp
-                                <textarea
-                                  aria-label="Cách hỏi cho bản nháp"
-                                  rows={2}
-                                  value={proposal.cau_hoi_mau.join("\n")}
-                                  onChange={(e) =>
-                                    setProposal({
-                                      ...proposal,
-                                      cau_hoi_mau: e.target.value.split("\n"),
-                                    })
-                                  }
-                                />
-                              </label>
-                              <label>
-                                Kiểm tra và sửa câu trả lời
-                                <textarea
-                                  aria-label="Kiểm tra và sửa câu trả lời"
-                                  rows={4}
-                                  maxLength={1000}
-                                  value={proposal.tra_loi}
-                                  onChange={(e) =>
-                                    setProposal({
-                                      ...proposal,
-                                      tra_loi: e.target.value,
-                                    })
-                                  }
-                                />
-                              </label>
-                              <div className="cb-proposal-actions">
-                                <button
-                                  type="button"
-                                  onClick={() => setProposal(null)}
-                                >
-                                  Bỏ bản nháp
-                                </button>
-                                <button
-                                  type="button"
-                                  className="cb-primary"
-                                  disabled={
-                                    busy ||
-                                    proposal.id !== entry.id ||
-                                    proposal.phien_ban !== entry.phien_ban ||
-                                    JSON.stringify(entry) !==
-                                      JSON.stringify(
-                                        data.kien_thuc.find(
-                                          (k) => k.id === entry.id,
-                                        ),
-                                      )
-                                  }
-                                  onClick={() =>
-                                    void act(async () => {
-                                      await api("/chap-thuan", "POST", {
-                                        ...proposal,
-                                        cau_hoi_mau: proposal.cau_hoi_mau
-                                          .map((x) => x.trim())
-                                          .filter(Boolean),
-                                      });
-                                      const fresh = await load(true);
-                                      setEntry(
-                                        fresh.kien_thuc.find(
-                                          (k) => k.id === entry.id,
-                                        ) || null,
-                                      );
-                                      setProposal(null);
-                                      setNotice(
-                                        "Đã chấp thuận và thêm cách trả lời mới.",
-                                      );
-                                    })
-                                  }
-                                >
-                                  Chấp thuận và lưu cách trả lời
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </section>
-                  </details>
-                  <div className="cb-answer-group">
-                    <div className="cb-card-title">
-                      <h3>Các cặp hỏi – đáp</h3>
-                      <button
-                        type="button"
-                        disabled={
-                          (entry.dieu_kien?.cac_tra_loi?.length || 0) >= 10
-                        }
-                        onClick={() =>
-                          setEntry({
-                            ...entry,
-                            dieu_kien: {
-                              ...(entry.dieu_kien || condition()),
-                              cac_tra_loi: [
-                                ...(entry.dieu_kien?.cac_tra_loi || []),
-                                { cau_hoi_mau: [], tu_khoa: [], tra_loi: "" },
-                              ],
-                            },
-                          })
-                        }
-                      >
-                        + Thêm cặp hỏi – đáp
-                      </button>
-                    </div>
-                    <p className="cb-note">
-                      Mỗi ô Khách hỏi có thể nhập nhiều cách hỏi, mỗi dòng một
-                      câu. Quy tắc chung đặt tại Thiết lập.
-                    </p>
-                    {(entry.dieu_kien?.cac_tra_loi || []).map(
-                      (answer, index) => (
-                        <details
-                          className="cb-answer-item"
-                          key={index}
-                          open={
-                            index ===
-                            (entry.dieu_kien?.cac_tra_loi?.length || 0) - 1
-                          }
-                        >
-                          <summary>
-                            Hỏi – đáp {index + 2}
-                            {answer.cau_hoi_mau[0]
-                              ? " · " + answer.cau_hoi_mau[0].slice(0, 45)
-                              : ""}
-                          </summary>
-                          <button
-                            className="cb-remove-answer"
-                            type="button"
-                            aria-label={"Bỏ cách trả lời " + (index + 1)}
-                            onClick={() =>
-                              setEntry({
-                                ...entry,
-                                dieu_kien: {
-                                  ...(entry.dieu_kien || condition()),
-                                  cac_tra_loi: (
-                                    entry.dieu_kien?.cac_tra_loi || []
-                                  ).filter((_, i) => i !== index),
-                                },
-                              })
-                            }
-                          >
-                            ×
-                          </button>
-                          <div className="cb-qa-pair">
-                            {" "}
-                            <label>
-                              Khách hỏi
-                              <textarea
-                                aria-label={"Câu hỏi mục " + (index + 1)}
-                                rows={2}
-                                value={answer.cau_hoi_mau.join("\n")}
-                                onChange={(e) =>
-                                  updateAnswer(index, {
-                                    cau_hoi_mau: e.target.value.split("\n"),
-                                  })
-                                }
-                                placeholder="Mỗi dòng một cách hỏi tương đương"
-                              />
-                            </label>
-                            <label>
-                              Bot trả lời
-                              <textarea
-                                required
-                                aria-label={"Trả lời mục " + (index + 1)}
-                                rows={3}
-                                maxLength={1000}
-                                value={answer.tra_loi}
-                                onChange={(e) =>
-                                  updateAnswer(index, {
-                                    tra_loi: e.target.value,
-                                  })
-                                }
-                              />
-                            </label>
-                          </div>
-                          <details className="cb-qa-advanced">
-                            <summary>Từ khóa liên quan</summary>{" "}
-                            <label>
-                              Từ khóa / cách gọi liên quan
-                              <textarea
-                                aria-label={"Từ khóa mục " + (index + 1)}
-                                rows={2}
-                                value={answer.tu_khoa.join("\n")}
-                                onChange={(e) =>
-                                  updateAnswer(index, {
-                                    tu_khoa: e.target.value.split(/\n|,/g),
-                                  })
-                                }
-                              />
-                            </label>
-                          </details>
-                        </details>
-                      ),
-                    )}
-                  </div>
-                  <label className="cb-toggle">
-                    <input
-                      type="checkbox"
-                      checked={entry.xuat_ban}
-                      onChange={(e) =>
-                        setEntry({ ...entry, xuat_ban: e.target.checked })
-                      }
-                    />{" "}
-                    Bật tình huống này
-                  </label>
-                  <p className="cb-note">
-                    Bot chỉ dùng hướng dẫn đã lưu và bật. Quy tắc bảo mật, quyền
-                    truy cập và tính giá luôn do hệ thống kiểm soát.
-                  </p>
-                  <button className="cb-primary" disabled={busy}>
-                    Lưu tình huống
-                  </button>
-                </form>
-              )}
-            </div>
-          )}
-          {tab === "kien-thuc" && (
-            <details className="cb-card cb-preview cb-inline-test">
-              <summary>Thử tình huống đã lưu</summary>
-
-              <p>
-                Nhập câu hỏi mẫu để thử các tình huống đã lưu và bật. Không gửi
-                tin vào hội thoại khách; mỗi lần thử độc lập và dùng hạn mức
-                Gemini.
-              </p>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void act(async () => {
-                    setReply(null);
-                    setReply(await api("/thu", "POST", { cau_hoi: question }));
-                  });
-                }}
-              >
-                <label>
-                  Câu hỏi của khách
-                  <textarea
-                    rows={3}
-                    required
-                    maxLength={2000}
-                    value={question}
-                    onChange={(e) => setQuestion(e.target.value)}
-                    placeholder="Mình cần phòng cho 2 người, có bồn tắm không?"
+                  <input
+                    aria-label="Tìm tình huống"
+                    placeholder="Tìm tình huống…"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
                   />
-                </label>
-                <button className="cb-primary" disabled={busy || !data.co_khoa}>
-                  {busy ? "Đang tra cứu…" : "Thử trả lời"}
-                </button>
-              </form>
-              {!data.co_khoa && (
-                <p className="cb-note">
-                  Cần khóa Gemini trên máy chủ để chạy thử thực tế.
-                </p>
-              )}
-              {reply && (
-                <div className="cb-answer">
-                  <strong>{cfg.ten_bot} · AI</strong>
-                  <p>{reply.text}</p>
-                  <small>
-                    Đã khớp:{" "}
-                    {reply.tinh_huong_khop?.length
-                      ? reply.tinh_huong_khop
-                          .map((x) => x.ten + " (" + x.ly_do + ")")
-                          .join("; ")
-                      : "Chưa có tình huống phù hợp — dùng quy tắc chung"}
-                  </small>
-                  <small>
-                    Công cụ: {reply.tools.join(", ") || "Không gọi công cụ"}
-                    {reply.handoff ? " · Sẽ chuyển nhân viên" : ""}
-                  </small>
+
+                  {entry && !entry.id && editor()}
+                  <div className="cb-entries">
+                    {data.kien_thuc
+                      .filter((k) => k.tieu_de.startsWith("Tình huống: "))
+                      .filter((k) =>
+                        (k.tieu_de + " " + k.noi_dung)
+                          .toLocaleLowerCase("vi")
+                          .includes(query.toLocaleLowerCase("vi")),
+                      )
+                      .map((k) => (
+                        <div className="cb-case" key={k.id}>
+                          <button
+                            className={
+                              "cb-entry " + (k.xuat_ban ? "is-enabled" : "")
+                            }
+                            aria-expanded={entry?.id === k.id}
+                            aria-label={
+                              nameOf(k.tieu_de) +
+                              (k.xuat_ban ? ", đang bật" : ", đang tắt")
+                            }
+                            onClick={() =>
+                              setEntry(entry?.id === k.id ? null : { ...k })
+                            }
+                          >
+                            <strong>{nameOf(k.tieu_de)}</strong>
+                            <span aria-hidden="true">
+                              {entry?.id === k.id ? "−" : "+"}
+                            </span>
+                          </button>
+                          {entry?.id === k.id && editor()}
+                        </div>
+                      ))}
+                    {!data.kien_thuc.some((k) =>
+                      k.tieu_de.startsWith("Tình huống: "),
+                    ) && <p>Chưa có tình huống</p>}
+                  </div>
                 </div>
-              )}
-            </details>
-          )}
+              </div>
+            )}
+            {tab === "kien-thuc" && (
+              <ChatbotThu
+                api={api}
+                available={data.co_khoa}
+                name={cfg.ten_bot || "Trợ lý Homestay"}
+              />
+            )}
+          </div>
           {tab === "hoi-thoai" && (
             <div className="cb-card">
               <div className="cb-card-title">
-                <h2>Hội thoại đang mở</h2>
+                <h2>Hội thoại</h2>
                 <button disabled={busy} onClick={() => void act(load)}>
                   Làm mới
                 </button>
               </div>
-              <p className="cb-note">
-                Nhân viên gửi tin sẽ tự chuyển sang tiếp quản. Bật lại AI áp
-                dụng cho tin khách tiếp theo.
-              </p>
+
               {data.hoi_thoai.map((t) => (
                 <div key={t.id} className="cb-thread">
                   <span>
@@ -1208,15 +1001,12 @@ export default function Chatbot({ token }: { token: string }) {
           {tab === "nhat-ky" && (
             <div className="cb-card">
               <div className="cb-card-title">
-                <h2>50 lượt gần nhất</h2>
+                <h2>Nhật ký</h2>
                 <button disabled={busy} onClick={() => void act(load)}>
                   Làm mới
                 </button>
               </div>
-              <p className="cb-note">
-                Lượt cũ được bỏ qua nếu khách đã gửi tin mới, nhân viên tiếp
-                quản hoặc thiết lập thay đổi.
-              </p>
+
               <div className="cb-table-wrap">
                 <table>
                   <thead>

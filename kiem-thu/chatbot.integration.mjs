@@ -21,12 +21,15 @@ export async function kiemTraChatbot({db,conn,chat,root,admin,direct}){
  await bot.knowledge(admin,{tieu_de:'Tình huống: Gửi xe',nhom:'Dịch vụ',noi_dung:'CHI_HUONG_DAN_GUI_XE',xuat_ban:true,dieu_kien:relatedRule});
  const related=(await db.query("SELECT * FROM public.chatbot_kien_thuc WHERE tieu_de='Tình huống: Gửi xe'")).rows[0];assert.deepEqual(related.dieu_kien,relatedRule);
  await bot.knowledge(admin,{id:related.id,phien_ban:related.phien_ban,tieu_de:related.tieu_de,nhom:related.nhom,noi_dung:related.noi_dung,xuat_ban:true});assert.deepEqual((await db.query('SELECT dieu_kien FROM public.chatbot_kien_thuc WHERE id=$1',[related.id])).rows[0].dieu_kien,relatedRule);
- const originalFetch=globalThis.fetch;let capturedPrompt='',providerRound=0;
+ const originalFetch=globalThis.fetch;let capturedPrompt='',capturedContents=[],providerRound=0;
  try{
-   globalThis.fetch=async(url,init)=>{capturedPrompt=JSON.parse(init.body).systemInstruction.parts[0].text;return new Response(JSON.stringify({candidates:[{content:{role:'model',parts:providerRound++===0?[{functionCall:{name:'tra_kien_thuc',args:{tu_khoa:'chào'}}}]:[{text:'Chào bạn, mình có thể giúp gì?'}]},finishReason:'STOP'}]}));};
+   globalThis.fetch=async(url,init)=>{capturedPrompt=JSON.parse(init.body).systemInstruction.parts[0].text;capturedContents=JSON.parse(init.body).contents;return new Response(JSON.stringify({candidates:[{content:{role:'model',parts:providerRound++===0?[{functionCall:{name:'tra_kien_thuc',args:{tu_khoa:'chào'}}}]:[{text:'Chào bạn, mình có thể giúp gì?'}]},finishReason:'STOP'}]}));};
    const previewBot=new ChatbotService(conn,adminAccess,{run:async()=>({noi_dung:'Chào bạn'})});
    await previewBot.preview(admin,{cau_hoi:'Xin chào'});
    assert.ok(capturedPrompt.includes('CHAO_KHACH_DUNG_TRONG_TAM'));assert.ok(!capturedPrompt.includes('KHONG_DUOC_GUI_BAN_NHAP'));assert.ok(!capturedPrompt.includes('CHI_HUONG_DAN_GUI_XE'));providerRound=0;const matchedReply=await previewBot.preview(admin,{cau_hoi:'Cho minh hoi bai xe o dau'});assert.ok(capturedPrompt.includes('CHI_HUONG_DAN_GUI_XE'));assert.ok(!capturedPrompt.includes('CHAO_KHACH_DUNG_TRONG_TAM'));assert.equal(matchedReply.tinh_huong_khop[0].ten,'Gửi xe');providerRound=0;const childReply=await previewBot.preview(admin,{cau_hoi:'Xe máy gửi ở đâu?'});assert.ok(capturedPrompt.includes('CHI_TRA_LOI_XE_MAY'));assert.ok(!capturedPrompt.includes('CHI_TRA_LOI_O_TO'));assert.equal(childReply.tinh_huong_khop[0].ten,'Gửi xe / Cách trả lời 1');
+
+ providerRound=0;await previewBot.preview(admin,{cau_hoi:'Tối mai',lich_su:[{role:'user',text:'Tôi cần phòng cho 2 người'},{role:'model',text:'Bạn muốn ngày nào?'}]});
+ assert.equal(capturedContents[0].parts[0].text,'Tôi cần phòng cho 2 người');assert.equal(capturedContents[1].role,'model');assert.equal(capturedContents[2].parts[0].text,'Tối mai');
  }finally{globalThis.fetch=originalFetch;}
  // Deep proposals never save themselves. Approval is explicit and checks both versions and allowed sources.
  const {ChatbotDeXuatService}=await import(root+'/may-chu/dist/chatbot/de-xuat.service.js');
