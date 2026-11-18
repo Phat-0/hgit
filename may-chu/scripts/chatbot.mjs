@@ -66,6 +66,7 @@ try {
     'utf8',
   );
   await client.query(sql);
+  await client.query(await readFile(new URL('../../co-so-du-lieu/migrations/20261118-chatbot-dieu-kien.sql',import.meta.url),'utf8'));
   await client.query('COMMIT');
   console.log('Đã đồng bộ cấu hình, kiến thức và hàng đợi chatbot; mặc định bot tắt.');
 } catch (error) {

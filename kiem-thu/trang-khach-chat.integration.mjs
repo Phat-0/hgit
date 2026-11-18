@@ -172,6 +172,7 @@ const { ChatService } = await import(
 );
 await db.query('UPDATE public.loai_phong SET mo_ta=$1 WHERE id=$2',['Mô tả chuyển từ loại',type]);
 await db.exec(fs.readFileSync(root+'/co-so-du-lieu/migrations/20261118-chatbot.sql','utf8'));
+await db.exec(fs.readFileSync(root+'/co-so-du-lieu/migrations/20261118-chatbot-dieu-kien.sql','utf8'));
 const descriptionMigration=fs.readFileSync(root+'/co-so-du-lieu/migrations/chuyen-mo-ta-loai-phong-sang-phong.sql','utf8');
 await db.exec(descriptionMigration);
 assert.equal((await db.query('SELECT mo_ta FROM public.phong WHERE id=$1',[room])).rows[0].mo_ta,'Mô tả chuyển từ loại');

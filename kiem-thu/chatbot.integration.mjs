@@ -17,12 +17,16 @@ export async function kiemTraChatbot({db,conn,chat,root,admin,direct}){
  await bot.knowledge(admin,{tieu_de:'Tình huống: Chào hỏi',nhom:'Hướng dẫn đặt phòng',noi_dung:'CHAO_KHACH_DUNG_TRONG_TAM',xuat_ban:true});
  await bot.knowledge(admin,{tieu_de:'Tình huống: Nháp',nhom:'Hướng dẫn đặt phòng',noi_dung:'KHONG_DUOC_GUI_BAN_NHAP',xuat_ban:false});
  await assert.rejects(()=>bot.knowledge(admin,{tieu_de:'Tình huống: Dài',nhom:'Hướng dẫn đặt phòng',noi_dung:'a'.repeat(1001),xuat_ban:true}));
+ const relatedRule={cau_hoi_mau:['Có chỗ gửi xe không?'],tu_khoa:['gửi xe','bãi xe'],kieu_khop:'bat_ky',uu_tien:10};
+ await bot.knowledge(admin,{tieu_de:'Tình huống: Gửi xe',nhom:'Dịch vụ',noi_dung:'CHI_HUONG_DAN_GUI_XE',xuat_ban:true,dieu_kien:relatedRule});
+ const related=(await db.query("SELECT * FROM public.chatbot_kien_thuc WHERE tieu_de='Tình huống: Gửi xe'")).rows[0];assert.deepEqual(related.dieu_kien,relatedRule);
+ await bot.knowledge(admin,{id:related.id,phien_ban:related.phien_ban,tieu_de:related.tieu_de,nhom:related.nhom,noi_dung:related.noi_dung,xuat_ban:true});assert.deepEqual((await db.query('SELECT dieu_kien FROM public.chatbot_kien_thuc WHERE id=$1',[related.id])).rows[0].dieu_kien,relatedRule);
  const originalFetch=globalThis.fetch;let capturedPrompt='',providerRound=0;
  try{
    globalThis.fetch=async(url,init)=>{capturedPrompt=JSON.parse(init.body).systemInstruction.parts[0].text;return new Response(JSON.stringify({candidates:[{content:{role:'model',parts:providerRound++===0?[{functionCall:{name:'tra_kien_thuc',args:{tu_khoa:'chào'}}}]:[{text:'Chào bạn, mình có thể giúp gì?'}]},finishReason:'STOP'}]}));};
    const previewBot=new ChatbotService(conn,adminAccess,{run:async()=>({noi_dung:'Chào bạn'})});
    await previewBot.preview(admin,{cau_hoi:'Xin chào'});
-   assert.ok(capturedPrompt.includes('CHAO_KHACH_DUNG_TRONG_TAM'));assert.ok(!capturedPrompt.includes('KHONG_DUOC_GUI_BAN_NHAP'));
+   assert.ok(capturedPrompt.includes('CHAO_KHACH_DUNG_TRONG_TAM'));assert.ok(!capturedPrompt.includes('KHONG_DUOC_GUI_BAN_NHAP'));assert.ok(!capturedPrompt.includes('CHI_HUONG_DAN_GUI_XE'));providerRound=0;const matchedReply=await previewBot.preview(admin,{cau_hoi:'Cho minh hoi bai xe o dau'});assert.ok(capturedPrompt.includes('CHI_HUONG_DAN_GUI_XE'));assert.ok(!capturedPrompt.includes('CHAO_KHACH_DUNG_TRONG_TAM'));assert.equal(matchedReply.tinh_huong_khop[0].ten,'Gửi xe');
  }finally{globalThis.fetch=originalFetch;}
  await db.query('UPDATE public.chatbot_cau_hinh SET bat=true');
  const support=await chat.start({});

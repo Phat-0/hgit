@@ -8,6 +8,12 @@ type Config = {
   gioi_han_ngay: number;
   phien_ban: number;
 };
+type DieuKien = {
+  cau_hoi_mau: string[];
+  tu_khoa: string[];
+  kieu_khop: "bat_ky" | "tat_ca";
+  uu_tien: number;
+};
 type Knowledge = {
   id?: string;
   tieu_de: string;
@@ -15,6 +21,7 @@ type Knowledge = {
   noi_dung: string;
   xuat_ban: boolean;
   phien_ban?: number;
+  dieu_kien?: DieuKien;
 };
 type State = {
   cau_hinh: Config;
@@ -75,12 +82,39 @@ const scenarios = [
     text: "Khi khách yêu cầu nhân viên, khiếu nại, thanh toán, đổi/hủy đơn hoặc thông tin chưa được xác nhận: chuyển nhân viên. Không khẳng định đã xử lý đơn hoặc thanh toán.",
   },
 ];
+const starter: Record<string, { q: string[]; k: string[] }> = {
+  "Chào hỏi": { q: ["Xin chào", "Chào homestay"], k: ["xin chào", "hello"] },
+  "Thiếu thông tin": {
+    q: ["Mình muốn đặt phòng"],
+    k: ["muốn đặt phòng", "tìm phòng"],
+  },
+  "Tư vấn phòng": {
+    q: ["Có phòng nào có bồn tắm không?"],
+    k: ["tư vấn", "tiện nghi", "bồn tắm", "máy chiếu"],
+  },
+  "Báo giá": {
+    q: ["Phòng này bao nhiêu tiền?", "Cho mình hỏi giá phòng"],
+    k: ["giá phòng", "bao nhiêu tiền", "phụ thu"],
+  },
+  "Không có kết quả": { q: [], k: [] },
+  "Chuyển nhân viên": {
+    q: ["Mình muốn gặp nhân viên"],
+    k: ["gặp nhân viên", "khiếu nại", "hủy đơn", "đổi đơn", "thanh toán"],
+  },
+};
+const condition = (name = ""): DieuKien => ({
+  cau_hoi_mau: starter[name]?.q || [],
+  tu_khoa: starter[name]?.k || [],
+  kieu_khop: "bat_ky",
+  uu_tien: 0,
+});
 const nameOf = (title: string) => title.replace(/^Tình huống: /, "");
 const blank = (): Knowledge => ({
   tieu_de: "Tình huống: " + scenarios[0].name,
   nhom: groups[3],
   noi_dung: scenarios[0].text,
   xuat_ban: false,
+  dieu_kien: condition(scenarios[0].name),
 });
 const status: Record<string, string> = {
   cho: "Chờ xử lý",
@@ -103,6 +137,7 @@ export default function Chatbot({ token }: { token: string }) {
       text: string;
       tools: string[];
       handoff: boolean;
+      tinh_huong_khop?: { ten: string; ly_do: string }[];
     } | null>(null);
   const api = useCallback(
     async (path = "", method = "GET", body?: unknown) => {
@@ -385,7 +420,18 @@ export default function Chatbot({ token }: { token: string }) {
                   onSubmit={(e) => {
                     e.preventDefault();
                     void act(async () => {
-                      await api("/kien-thuc", "POST", entry);
+                      await api("/kien-thuc", "POST", {
+                        ...entry,
+                        dieu_kien: {
+                          ...(entry.dieu_kien || condition()),
+                          cau_hoi_mau: (entry.dieu_kien?.cau_hoi_mau || [])
+                            .map((x) => x.trim())
+                            .filter(Boolean),
+                          tu_khoa: (entry.dieu_kien?.tu_khoa || [])
+                            .map((x) => x.trim())
+                            .filter(Boolean),
+                        },
+                      });
                       setEntry(null);
                       await load();
                       setNotice("Đã lưu tình huống.");
@@ -404,7 +450,8 @@ export default function Chatbot({ token }: { token: string }) {
                   </div>
                   <label>
                     Mẫu tình huống
-                    <select aria-label="Mẫu tình huống"
+                    <select
+                      aria-label="Mẫu tình huống"
                       value={
                         scenarios.some((x) => x.name === nameOf(entry.tieu_de))
                           ? nameOf(entry.tieu_de)
@@ -420,8 +467,14 @@ export default function Chatbot({ token }: { token: string }) {
                             tieu_de: "Tình huống: " + item.name,
                             nhom: groups[3],
                             noi_dung: item.text,
+                            dieu_kien: condition(item.name),
                           });
-                        else setEntry({...entry,tieu_de:'Tình huống: ',noi_dung:''});
+                        else
+                          setEntry({
+                            ...entry,
+                            tieu_de: "Tình huống: ",
+                            noi_dung: "",
+                          });
                       }}
                     >
                       <option value="">Tự thiết lập</option>
@@ -448,8 +501,90 @@ export default function Chatbot({ token }: { token: string }) {
                     />
                   </label>
                   <label>
+                    Khách thường hỏi như thế nào?
+                    <textarea aria-label="Khách thường hỏi như thế nào?"
+                      rows={3}
+                      maxLength={4200}
+                      value={(entry.dieu_kien?.cau_hoi_mau || []).join("\n")}
+                      placeholder="Mỗi dòng một cách hỏi. Ví dụ: Phòng này bao nhiêu tiền?"
+                      onChange={(e) =>
+                        setEntry({
+                          ...entry,
+                          dieu_kien: {
+                            ...(entry.dieu_kien || condition()),
+                            cau_hoi_mau: e.target.value.split("\n"),
+                          },
+                        })
+                      }
+                    />
+                  </label>
+                  <label>
+                    Từ khóa liên quan
+                    <textarea aria-label="Từ khóa liên quan"
+                      rows={2}
+                      maxLength={1700}
+                      value={(entry.dieu_kien?.tu_khoa || []).join("\n")}
+                      placeholder="Mỗi dòng một từ hoặc cụm từ: giá phòng, phụ thu…"
+                      onChange={(e) =>
+                        setEntry({
+                          ...entry,
+                          dieu_kien: {
+                            ...(entry.dieu_kien || condition()),
+                            tu_khoa: e.target.value.split(/\n|,/g),
+                          },
+                        })
+                      }
+                    />
+                  </label>
+                  <div className="cb-two">
+                    <label>
+                      Cách khớp từ khóa
+                      <select
+                        aria-label="Cách khớp từ khóa"
+                        value={entry.dieu_kien?.kieu_khop || "bat_ky"}
+                        onChange={(e) =>
+                          setEntry({
+                            ...entry,
+                            dieu_kien: {
+                              ...(entry.dieu_kien || condition()),
+                              kieu_khop: e.target
+                                .value as DieuKien["kieu_khop"],
+                            },
+                          })
+                        }
+                      >
+                        <option value="bat_ky">Có một từ khóa</option>
+                        <option value="tat_ca">Có đủ các từ khóa</option>
+                      </select>
+                    </label>
+                    <label>
+                      Ưu tiên
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={entry.dieu_kien?.uu_tien || 0}
+                        onChange={(e) =>
+                          setEntry({
+                            ...entry,
+                            dieu_kien: {
+                              ...(entry.dieu_kien || condition()),
+                              uu_tien: Number(e.target.value),
+                            },
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                  <p className="cb-note">
+                    Khớp cách hỏi mẫu hoặc từ khóa; không phân biệt hoa/thường,
+                    có dấu/không dấu. Tối đa 20 dòng mỗi ô. Ưu tiên lớn được
+                    chọn trước. Để trống cả hai ô để làm hướng dẫn chung khi
+                    chưa khớp tình huống cụ thể.
+                  </p>
+                  <label>
                     Cách bot nên trả lời
-                    <textarea
+                    <textarea aria-label="Cách bot nên trả lời"
                       required
                       rows={5}
                       maxLength={
@@ -524,6 +659,14 @@ export default function Chatbot({ token }: { token: string }) {
                 <div className="cb-answer">
                   <strong>{cfg.ten_bot} · AI</strong>
                   <p>{reply.text}</p>
+                  <small>
+                    Đã khớp:{" "}
+                    {reply.tinh_huong_khop?.length
+                      ? reply.tinh_huong_khop
+                          .map((x) => x.ten + " (" + x.ly_do + ")")
+                          .join("; ")
+                      : "Chưa có tình huống phù hợp — dùng quy tắc chung"}
+                  </small>
                   <small>
                     Công cụ: {reply.tools.join(", ") || "Không gọi công cụ"}
                     {reply.handoff ? " · Sẽ chuyển nhân viên" : ""}

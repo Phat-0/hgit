@@ -1,3 +1,4 @@
+import { parseCondition, matchSituations } from './tinh-huong.js';
 import {
   BadRequestException,
   ConflictException,
@@ -166,9 +167,14 @@ export class ChatbotService {
         1,
         String(b.tieu_de).startsWith('Tình huống: ') ? 1000 : 6000,
       );
-    if(/^Tình huống:\s*$/.test(title))throw new BadRequestException('Cần nhập tên tình huống');
+    if (/^Tình huống:\s*$/.test(title))
+      throw new BadRequestException('Cần nhập tên tình huống');
     if (!groups.includes(String(b.nhom)) || typeof b.xuat_ban !== 'boolean')
       throw new BadRequestException('Nhóm hoặc trạng thái không hợp lệ');
+    const condition =
+      b.dieu_kien === undefined
+        ? null
+        : JSON.stringify(parseCondition(b.dieu_kien));
     const c = await this.conn.db();
     try {
       await c.query('BEGIN');
@@ -190,8 +196,8 @@ export class ChatbotService {
         if (!Number.isInteger(b.phien_ban))
           throw new BadRequestException('Thiếu phiên bản');
         const r = await c.query(
-          'UPDATE public.chatbot_kien_thuc SET tieu_de=$1,noi_dung=$2,nhom=$3,xuat_ban=$4,nguoi_sua_id=$5,phien_ban=phien_ban+1,ngay_sua=now() WHERE id=$6 AND phien_ban=$7',
-          [title, body, b.nhom, b.xuat_ban, uid, b.id, b.phien_ban],
+          'UPDATE public.chatbot_kien_thuc SET tieu_de=$1,noi_dung=$2,nhom=$3,xuat_ban=$4,nguoi_sua_id=$5,dieu_kien=coalesce($8::jsonb,dieu_kien),phien_ban=phien_ban+1,ngay_sua=now() WHERE id=$6 AND phien_ban=$7',
+          [title, body, b.nhom, b.xuat_ban, uid, b.id, b.phien_ban, condition],
         );
         if (!r.rowCount)
           throw new ConflictException('Bài viết đã thay đổi, hãy tải lại');
@@ -205,8 +211,8 @@ export class ChatbotService {
             'Tối đa 300 bài, hãy cập nhật bài hiện có',
           );
         await c.query(
-          'INSERT INTO public.chatbot_kien_thuc(tieu_de,noi_dung,nhom,xuat_ban,nguoi_sua_id) VALUES($1,$2,$3,$4,$5)',
-          [title, body, b.nhom, b.xuat_ban, uid],
+          "INSERT INTO public.chatbot_kien_thuc(tieu_de,noi_dung,nhom,xuat_ban,nguoi_sua_id,dieu_kien) VALUES($1,$2,$3,$4,$5,coalesce($6::jsonb,'{}'::jsonb))",
+          [title, body, b.nhom, b.xuat_ban, uid, condition],
         );
       }
       await c.query('COMMIT');
@@ -273,20 +279,29 @@ export class ChatbotService {
   ) {
     const c = await this.conn.db();
     let situations = '';
+    let matched: ReturnType<typeof matchSituations> = [];
     try {
       const rows = (
         await c.query(
-          "SELECT tieu_de,noi_dung FROM public.chatbot_kien_thuc WHERE xuat_ban AND tieu_de LIKE 'Tình huống: %' ORDER BY ngay_sua DESC LIMIT 20",
+          "SELECT id,tieu_de,noi_dung,dieu_kien FROM public.chatbot_kien_thuc WHERE xuat_ban AND tieu_de LIKE 'Tình huống: %' ORDER BY ngay_sua DESC LIMIT 20",
         )
       ).rows;
-      situations = rows
+      const question =
+        history
+          .filter((x) => x.role === 'user')
+          .at(-1)
+          ?.parts.map((p) => p.text || '')
+          .join(' ') || '';
+      matched = matchSituations(rows, question);
+      situations = matched
+        .map((x) => x.row)
         .map((r) => r.tieu_de + '\n' + r.noi_dung.slice(0, 1000))
         .join('\n\n')
         .slice(0, 24000);
     } finally {
       await c.end();
     }
-    return answerGemini({
+    const result = await answerGemini({
       key: getBotKey(),
       system:
         botSystem(cf) +
@@ -298,6 +313,13 @@ export class ChatbotService {
       tools: BOT_TOOLS,
       run: (name, args) => this.tools.run(name, args, branch),
     });
+    return {
+      ...result,
+      tinh_huong_khop: matched.map((x) => ({
+        ten: x.row.tieu_de.replace(/^Tình huống: /, ''),
+        ly_do: x.ly_do,
+      })),
+    };
   }
   async tick() {
     if (this.running || this.stopped || !getBotKey()) return;

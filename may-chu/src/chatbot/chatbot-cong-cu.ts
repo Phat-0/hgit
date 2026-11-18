@@ -197,7 +197,7 @@ export class ChatbotCongCu {
         return rankKnowledge(
           (
             await c.query(
-              'SELECT id,tieu_de,noi_dung FROM public.chatbot_kien_thuc WHERE xuat_ban ORDER BY ngay_sua DESC LIMIT 300',
+              "SELECT id,tieu_de,noi_dung FROM public.chatbot_kien_thuc WHERE xuat_ban AND tieu_de NOT LIKE 'Tình huống: %' ORDER BY ngay_sua DESC LIMIT 300",
             )
           ).rows,
           String(args.tu_khoa),
