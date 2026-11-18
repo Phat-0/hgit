@@ -295,7 +295,7 @@ export class ChatbotService {
       matched = matchSituations(rows, question);
       situations = matched
         .map((x) => x.row)
-        .map((r) => r.tieu_de + '\n' + r.noi_dung.slice(0, 1000))
+        .map((r) => r.tieu_de + '\n' + r.noi_dung.slice(0, 2200))
         .join('\n\n')
         .slice(0, 24000);
     } finally {

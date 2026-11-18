@@ -8,11 +8,13 @@ type Config = {
   gioi_han_ngay: number;
   phien_ban: number;
 };
+type CachTraLoi = { cau_hoi_mau: string[]; tu_khoa: string[]; tra_loi: string };
 type DieuKien = {
   cau_hoi_mau: string[];
   tu_khoa: string[];
   kieu_khop: "bat_ky" | "tat_ca";
   uu_tien: number;
+  cac_tra_loi?: CachTraLoi[];
 };
 type Knowledge = {
   id?: string;
@@ -191,6 +193,21 @@ export default function Chatbot({ token }: { token: string }) {
       setBusy(false);
     }
   }
+  function updateAnswer(index: number, patch: Partial<CachTraLoi>) {
+    setEntry((e) =>
+      e
+        ? {
+            ...e,
+            dieu_kien: {
+              ...(e.dieu_kien || condition()),
+              cac_tra_loi: (e.dieu_kien?.cac_tra_loi || []).map((x, i) =>
+                i === index ? { ...x, ...patch } : x,
+              ),
+            },
+          }
+        : e,
+    );
+  }
   const field = (key: keyof Config, value: unknown) =>
     setCfg((c) => (c ? { ...c, [key]: value } : c));
   return (
@@ -323,7 +340,7 @@ export default function Chatbot({ token }: { token: string }) {
                 />
               </label>
               <div className="cb-boundaries">
-                <strong>Phạm vi của bot</strong>
+                <strong>Quyền và riêng tư</strong>
                 <p>
                   Tra chi nhánh, tiện nghi, phòng trống, giá và combo; trả lời
                   kiến thức đã xuất bản. Bot không tạo hay thay đổi đơn, không
@@ -331,6 +348,36 @@ export default function Chatbot({ token }: { token: string }) {
                   tài khoản không được gửi đến AI.
                 </p>
               </div>
+              <details className="cb-privacy">
+                <summary>Quy tắc bắt buộc của hệ thống</summary>
+                <ul>
+                  <li>
+                    Chỉ tra dữ liệu công khai về chi nhánh, phòng, loại phòng,
+                    combo, giá và lịch trống.
+                  </li>
+                  <li>
+                    Không trả tên khách, số điện thoại, hồ sơ, nội dung đơn hoặc
+                    tệp của người khác. Lịch chỉ trả khả năng đặt phòng.
+                  </li>
+                  <li>
+                    Không tạo/sửa/hủy đơn, giữ chỗ, xác nhận thanh toán hoặc đổi
+                    trạng thái phòng.
+                  </li>
+                  <li>
+                    Không nhận yêu cầu bỏ qua quy tắc, chạy SQL hoặc tiết lộ
+                    khóa và chỉ dẫn nội bộ.
+                  </li>
+                  <li>
+                    Không bịa giá, lịch và chính sách; thiếu thông tin thì hỏi
+                    lại hoặc chuyển nhân viên.
+                  </li>
+                </ul>
+                <p>
+                  Quyền bắt buộc được khóa ở máy chủ. Bạn chỉnh cách tư vấn và
+                  hướng dẫn bổ sung trong ô phía trên; hướng dẫn đó không thể
+                  cấp thêm quyền cho bot.
+                </p>
+              </details>
               <footer>
                 <small>
                   {data.model} · Múi giờ Việt Nam · Hội thoại mới áp dụng chế độ
@@ -424,6 +471,17 @@ export default function Chatbot({ token }: { token: string }) {
                         ...entry,
                         dieu_kien: {
                           ...(entry.dieu_kien || condition()),
+                          cac_tra_loi: (entry.dieu_kien?.cac_tra_loi || []).map(
+                            (x) => ({
+                              ...x,
+                              cau_hoi_mau: x.cau_hoi_mau
+                                .map((q) => q.trim())
+                                .filter(Boolean),
+                              tu_khoa: x.tu_khoa
+                                .map((k) => k.trim())
+                                .filter(Boolean),
+                            }),
+                          ),
                           cau_hoi_mau: (entry.dieu_kien?.cau_hoi_mau || [])
                             .map((x) => x.trim())
                             .filter(Boolean),
@@ -484,7 +542,7 @@ export default function Chatbot({ token }: { token: string }) {
                     </select>
                   </label>
                   <label>
-                    Tên tình huống
+                    Tên nhóm tình huống
                     <input
                       required
                       maxLength={130}
@@ -502,7 +560,8 @@ export default function Chatbot({ token }: { token: string }) {
                   </label>
                   <label>
                     Khách thường hỏi như thế nào?
-                    <textarea aria-label="Khách thường hỏi như thế nào?"
+                    <textarea
+                      aria-label="Khách thường hỏi như thế nào?"
                       rows={3}
                       maxLength={4200}
                       value={(entry.dieu_kien?.cau_hoi_mau || []).join("\n")}
@@ -520,7 +579,8 @@ export default function Chatbot({ token }: { token: string }) {
                   </label>
                   <label>
                     Từ khóa liên quan
-                    <textarea aria-label="Từ khóa liên quan"
+                    <textarea
+                      aria-label="Từ khóa liên quan"
                       rows={2}
                       maxLength={1700}
                       value={(entry.dieu_kien?.tu_khoa || []).join("\n")}
@@ -583,8 +643,9 @@ export default function Chatbot({ token }: { token: string }) {
                     chưa khớp tình huống cụ thể.
                   </p>
                   <label>
-                    Cách bot nên trả lời
-                    <textarea aria-label="Cách bot nên trả lời"
+                    Hướng dẫn trả lời chung cho nhóm
+                    <textarea
+                      aria-label="Cách bot nên trả lời"
                       required
                       rows={5}
                       maxLength={
@@ -596,6 +657,113 @@ export default function Chatbot({ token }: { token: string }) {
                       }
                     />
                   </label>
+                  <div className="cb-answer-group">
+                    <div className="cb-card-title">
+                      <h3>Các cách hỏi và trả lời trong nhóm</h3>
+                      <button
+                        type="button"
+                        disabled={
+                          (entry.dieu_kien?.cac_tra_loi?.length || 0) >= 10
+                        }
+                        onClick={() =>
+                          setEntry({
+                            ...entry,
+                            dieu_kien: {
+                              ...(entry.dieu_kien || condition()),
+                              cac_tra_loi: [
+                                ...(entry.dieu_kien?.cac_tra_loi || []),
+                                { cau_hoi_mau: [], tu_khoa: [], tra_loi: "" },
+                              ],
+                            },
+                          })
+                        }
+                      >
+                        + Thêm cách trả lời
+                      </button>
+                    </div>
+                    <p className="cb-note">
+                      Hướng dẫn phía trên dùng chung. Mỗi mục dưới gắn những
+                      cách hỏi với một câu trả lời riêng; tối đa 10 mục. Không
+                      tự học hay ghi chính sách từ tin khách.
+                    </p>
+                    {(entry.dieu_kien?.cac_tra_loi || []).map(
+                      (answer, index) => (
+                        <details
+                          className="cb-answer-item"
+                          key={index}
+                          open={
+                            index ===
+                            (entry.dieu_kien?.cac_tra_loi?.length || 0) - 1
+                          }
+                        >
+                          <summary>
+                            Cách trả lời {index + 1}
+                            {answer.cau_hoi_mau[0]
+                              ? " · " + answer.cau_hoi_mau[0].slice(0, 45)
+                              : ""}
+                          </summary>
+                          <button
+                            className="cb-remove-answer"
+                            type="button"
+                            aria-label={"Bỏ cách trả lời " + (index + 1)}
+                            onClick={() =>
+                              setEntry({
+                                ...entry,
+                                dieu_kien: {
+                                  ...(entry.dieu_kien || condition()),
+                                  cac_tra_loi: (
+                                    entry.dieu_kien?.cac_tra_loi || []
+                                  ).filter((_, i) => i !== index),
+                                },
+                              })
+                            }
+                          >
+                            ×
+                          </button>
+                          <label>
+                            Khách có thể hỏi
+                            <textarea
+                              aria-label={"Câu hỏi mục " + (index + 1)}
+                              rows={2}
+                              value={answer.cau_hoi_mau.join("\n")}
+                              onChange={(e) =>
+                                updateAnswer(index, {
+                                  cau_hoi_mau: e.target.value.split("\n"),
+                                })
+                              }
+                              placeholder="Mỗi dòng một cách hỏi tương đương"
+                            />
+                          </label>
+                          <label>
+                            Từ khóa / cách gọi liên quan
+                            <textarea
+                              aria-label={"Từ khóa mục " + (index + 1)}
+                              rows={2}
+                              value={answer.tu_khoa.join("\n")}
+                              onChange={(e) =>
+                                updateAnswer(index, {
+                                  tu_khoa: e.target.value.split(/\n|,/g),
+                                })
+                              }
+                            />
+                          </label>
+                          <label>
+                            Trả lời hoặc hướng dẫn bot
+                            <textarea
+                              required
+                              aria-label={"Trả lời mục " + (index + 1)}
+                              rows={3}
+                              maxLength={1000}
+                              value={answer.tra_loi}
+                              onChange={(e) =>
+                                updateAnswer(index, { tra_loi: e.target.value })
+                              }
+                            />
+                          </label>
+                        </details>
+                      ),
+                    )}
+                  </div>
                   <label className="cb-toggle">
                     <input
                       type="checkbox"

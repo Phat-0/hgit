@@ -1,9 +1,15 @@
 import { BadRequestException } from '@nestjs/common';
+export type CachTraLoi = {
+  cau_hoi_mau: string[];
+  tu_khoa: string[];
+  tra_loi: string;
+};
 export type DieuKien = {
   cau_hoi_mau: string[];
   tu_khoa: string[];
   kieu_khop: 'bat_ky' | 'tat_ca';
   uu_tien: number;
+  cac_tra_loi?: CachTraLoi[];
 };
 export const normalize = (s: string) =>
   s
@@ -13,14 +19,25 @@ export const normalize = (s: string) =>
     .replace(/đ/g, 'd')
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
-    .replace(/\s+/g, ' ');
+    .replace(/\s+/g, ' ')
+    .replace(/\b(?:chi phi|gia tien|price|cost)\b/g, 'gia')
+    .replace(/\b(?:check in|checkin)\b/g, 'nhan phong')
+    .replace(/\b(?:check out|checkout)\b/g, 'tra phong')
+    .replace(/\b(?:booking|thue phong)\b/g, 'dat phong');
 export function parseCondition(value: unknown): DieuKien {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new BadRequestException('Điều kiện tình huống không hợp lệ');
   const x = value as Record<string, unknown>;
   if (
     Object.keys(x).some(
-      (k) => !['cau_hoi_mau', 'tu_khoa', 'kieu_khop', 'uu_tien'].includes(k),
+      (k) =>
+        ![
+          'cau_hoi_mau',
+          'tu_khoa',
+          'kieu_khop',
+          'uu_tien',
+          'cac_tra_loi',
+        ].includes(k),
     )
   )
     throw new BadRequestException('Trường điều kiện không hợp lệ');
@@ -47,11 +64,47 @@ export function parseCondition(value: unknown): DieuKien {
     Number(priority) > 100
   )
     throw new BadRequestException('Cách khớp hoặc ưu tiên không hợp lệ');
+  let answers: CachTraLoi[] | undefined;
+  if (x.cac_tra_loi !== undefined) {
+    if (!Array.isArray(x.cac_tra_loi) || x.cac_tra_loi.length > 10)
+      throw new BadRequestException('Tối đa 10 cách trả lời trong một nhóm');
+    answers = x.cac_tra_loi.map((raw) => {
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw))
+        throw new BadRequestException('Cách trả lời không hợp lệ');
+      const item = raw as Record<string, unknown>;
+      if (
+        Object.keys(item).some(
+          (k) => !['cau_hoi_mau', 'tu_khoa', 'tra_loi'].includes(k),
+        )
+      )
+        throw new BadRequestException('Trường câu trả lời không hợp lệ');
+      const questions = list(item.cau_hoi_mau, 200),
+        keywords = list(item.tu_khoa, 80);
+      if (!questions.length && !keywords.length)
+        throw new BadRequestException(
+          'Mỗi cách trả lời cần câu hỏi mẫu hoặc từ khóa',
+        );
+      if (
+        typeof item.tra_loi !== 'string' ||
+        !item.tra_loi.trim() ||
+        item.tra_loi.trim().length > 1000
+      )
+        throw new BadRequestException(
+          'Nội dung mỗi cách trả lời cần 1–1.000 ký tự',
+        );
+      return {
+        cau_hoi_mau: questions,
+        tu_khoa: keywords,
+        tra_loi: item.tra_loi.trim(),
+      };
+    });
+  }
   return {
     cau_hoi_mau: list(x.cau_hoi_mau, 200),
     tu_khoa: list(x.tu_khoa, 80),
     kieu_khop: mode as DieuKien['kieu_khop'],
     uu_tien: Number(priority),
+    ...(answers ? { cac_tra_loi: answers } : {}),
   };
 }
 const stop = new Set(
@@ -72,10 +125,34 @@ export type TinhHuong = {
 };
 /** Matching only selects trusted admin guidance; it never changes tool permissions or bookings. */
 export function matchSituations(rows: TinhHuong[], question: string) {
+  const expanded = rows.flatMap((row) => {
+    try {
+      const rule = parseCondition(row.dieu_kien || {});
+      return [
+        { ...row, groupKey: row.id || row.tieu_de, isVariant: false },
+        ...(rule.cac_tra_loi || []).map((item, index) => ({
+          ...row,
+          groupKey: row.id || row.tieu_de,
+          isVariant: true,
+          tieu_de: row.tieu_de + ' / Cách trả lời ' + (index + 1),
+          noi_dung:
+            row.noi_dung + '\nHướng dẫn cho cách hỏi đã khớp:\n' + item.tra_loi,
+          dieu_kien: {
+            cau_hoi_mau: item.cau_hoi_mau,
+            tu_khoa: item.tu_khoa,
+            kieu_khop: rule.kieu_khop,
+            uu_tien: rule.uu_tien,
+          },
+        })),
+      ];
+    } catch {
+      return [];
+    }
+  });
   const query = normalize(question),
     padded = ' ' + query + ' ',
     words = new Set(terms(question));
-  const matches = rows
+  const matches = expanded
     .map((row) => {
       let rule: DieuKien;
       try {
@@ -119,9 +196,17 @@ export function matchSituations(rows: TinhHuong[], question: string) {
       };
     })
     .filter((x): x is NonNullable<typeof x> => !!x);
-  const selected = matches.some((x) => x.configured)
-    ? matches.filter((x) => x.configured)
-    : matches;
+  const childGroups = new Set(
+    matches
+      .filter((x) => x.row.isVariant && x.configured)
+      .map((x) => x.row.groupKey),
+  );
+  const relevant = matches.filter(
+    (x) => x.row.isVariant || !childGroups.has(x.row.groupKey),
+  );
+  const selected = relevant.some((x) => x.configured)
+    ? relevant.filter((x) => x.configured)
+    : relevant;
   return selected
     .sort(
       (a, b) =>
@@ -129,5 +214,5 @@ export function matchSituations(rows: TinhHuong[], question: string) {
         b.score - a.score ||
         a.row.tieu_de.localeCompare(b.row.tieu_de, 'vi'),
     )
-    .slice(0, selected.some(x=>x.configured)?3:20);
+    .slice(0, selected.some((x) => x.configured) ? 3 : 20);
 }
