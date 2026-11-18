@@ -12,6 +12,7 @@ export type DieuKien = {
   uu_tien: number;
   cac_tra_loi?: CachTraLoi[];
   suy_nghi_sau?: boolean;
+  hoi_dap_doc_lap?: boolean;
   nguon_ids?: string[];
 };
 export const normalize = (s: string) =>
@@ -41,6 +42,7 @@ export function parseCondition(value: unknown): DieuKien {
           'uu_tien',
           'cac_tra_loi',
           'suy_nghi_sau',
+          'hoi_dap_doc_lap',
           'nguon_ids',
         ].includes(k),
     )
@@ -127,8 +129,13 @@ export function parseCondition(value: unknown): DieuKien {
   }
   if (x.suy_nghi_sau !== undefined && typeof x.suy_nghi_sau !== 'boolean')
     throw new BadRequestException('Chế độ suy nghĩ không hợp lệ');
+  if (x.hoi_dap_doc_lap !== undefined && typeof x.hoi_dap_doc_lap !== 'boolean')
+    throw new BadRequestException('Kiểu hỏi đáp không hợp lệ');
   const sources = sourceIds(x.nguon_ids);
   return {
+    ...(x.hoi_dap_doc_lap !== undefined
+      ? { hoi_dap_doc_lap: x.hoi_dap_doc_lap as boolean }
+      : {}),
     ...(x.suy_nghi_sau !== undefined
       ? { suy_nghi_sau: x.suy_nghi_sau as boolean }
       : {}),
@@ -168,8 +175,11 @@ export function matchSituations(rows: TinhHuong[], question: string) {
           groupKey: row.id || row.tieu_de,
           isVariant: true,
           tieu_de: row.tieu_de + ' / Cách trả lời ' + (index + 1),
-          noi_dung:
-            row.noi_dung + '\nHướng dẫn cho cách hỏi đã khớp:\n' + item.tra_loi,
+          noi_dung: rule.hoi_dap_doc_lap
+            ? item.tra_loi
+            : row.noi_dung +
+              '\nHướng dẫn cho cách hỏi đã khớp:\n' +
+              item.tra_loi,
           dieu_kien: {
             cau_hoi_mau: item.cau_hoi_mau,
             tu_khoa: item.tu_khoa,

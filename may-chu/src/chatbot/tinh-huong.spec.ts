@@ -22,4 +22,6 @@ describe('Chọn bộ trả lời theo câu hỏi và từ khóa',()=>{
 
  it('mục riêng đã khớp thay thế hướng dẫn cha trong cùng nhóm',()=>{const group=row('Giá',{cau_hoi_mau:['Giá phòng bao nhiêu?'],cac_tra_loi:[{cau_hoi_mau:['Giá phòng bao nhiêu?'],tu_khoa:['giá phòng'],tra_loi:'Tra báo giá cụ thể'}]});const result=matchSituations([group],'Giá phòng bao nhiêu?');expect(result).toHaveLength(1);expect(result[0].row.tieu_de).toContain('Cách trả lời 1');});
 
+ it('cặp độc lập không trộn câu trả lời chính với cặp con',()=>{const group=row('Hỏi đáp',{hoi_dap_doc_lap:true,cac_tra_loi:[{cau_hoi_mau:['Giờ nhận phòng?'],tu_khoa:['nhận phòng'],tra_loi:'Chỉ câu trả lời nhận phòng'}]});group.noi_dung='Câu trả lời khác';const result=matchSituations([group],'nhận phòng');expect(result[0].row.noi_dung).toBe('Chỉ câu trả lời nhận phòng');});
+
 });
