@@ -3,6 +3,7 @@ export type CachTraLoi = {
   cau_hoi_mau: string[];
   tu_khoa: string[];
   tra_loi: string;
+  nguon_ids?: string[];
 };
 export type DieuKien = {
   cau_hoi_mau: string[];
@@ -10,6 +11,8 @@ export type DieuKien = {
   kieu_khop: 'bat_ky' | 'tat_ca';
   uu_tien: number;
   cac_tra_loi?: CachTraLoi[];
+  suy_nghi_sau?: boolean;
+  nguon_ids?: string[];
 };
 export const normalize = (s: string) =>
   s
@@ -37,6 +40,8 @@ export function parseCondition(value: unknown): DieuKien {
           'kieu_khop',
           'uu_tien',
           'cac_tra_loi',
+          'suy_nghi_sau',
+          'nguon_ids',
         ].includes(k),
     )
   )
@@ -64,6 +69,23 @@ export function parseCondition(value: unknown): DieuKien {
     Number(priority) > 100
   )
     throw new BadRequestException('Cách khớp hoặc ưu tiên không hợp lệ');
+  function sourceIds(v: unknown) {
+    if (v === undefined) return undefined;
+    if (
+      !Array.isArray(v) ||
+      v.length > 10 ||
+      v.some(
+        (id) =>
+          typeof id !== 'string' ||
+          !/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/i.test(
+            id,
+          ) ||
+          id.length !== 36,
+      )
+    )
+      throw new BadRequestException('Tối đa 10 nguồn tài liệu có mã hợp lệ');
+    return [...new Set(v as string[])];
+  }
   let answers: CachTraLoi[] | undefined;
   if (x.cac_tra_loi !== undefined) {
     if (!Array.isArray(x.cac_tra_loi) || x.cac_tra_loi.length > 10)
@@ -74,7 +96,8 @@ export function parseCondition(value: unknown): DieuKien {
       const item = raw as Record<string, unknown>;
       if (
         Object.keys(item).some(
-          (k) => !['cau_hoi_mau', 'tu_khoa', 'tra_loi'].includes(k),
+          (k) =>
+            !['cau_hoi_mau', 'tu_khoa', 'tra_loi', 'nguon_ids'].includes(k),
         )
       )
         throw new BadRequestException('Trường câu trả lời không hợp lệ');
@@ -96,10 +119,20 @@ export function parseCondition(value: unknown): DieuKien {
         cau_hoi_mau: questions,
         tu_khoa: keywords,
         tra_loi: item.tra_loi.trim(),
+        ...(item.nguon_ids !== undefined
+          ? { nguon_ids: sourceIds(item.nguon_ids) }
+          : {}),
       };
     });
   }
+  if (x.suy_nghi_sau !== undefined && typeof x.suy_nghi_sau !== 'boolean')
+    throw new BadRequestException('Chế độ suy nghĩ không hợp lệ');
+  const sources = sourceIds(x.nguon_ids);
   return {
+    ...(x.suy_nghi_sau !== undefined
+      ? { suy_nghi_sau: x.suy_nghi_sau as boolean }
+      : {}),
+    ...(sources ? { nguon_ids: sources } : {}),
     cau_hoi_mau: list(x.cau_hoi_mau, 200),
     tu_khoa: list(x.tu_khoa, 80),
     kieu_khop: mode as DieuKien['kieu_khop'],
@@ -142,6 +175,8 @@ export function matchSituations(rows: TinhHuong[], question: string) {
             tu_khoa: item.tu_khoa,
             kieu_khop: rule.kieu_khop,
             uu_tien: rule.uu_tien,
+            suy_nghi_sau: rule.suy_nghi_sau,
+            nguon_ids: item.nguon_ids || rule.nguon_ids,
           },
         })),
       ];

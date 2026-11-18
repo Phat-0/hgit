@@ -1,3 +1,4 @@
+import { ChatbotDeXuatService } from './de-xuat.service.js';
 import {
   Body,
   Controller,
@@ -19,6 +20,7 @@ export class ChatbotController {
   constructor(
     private readonly bot: ChatbotService,
     private readonly limiter: GioiHanTruyCapService,
+    private readonly drafts: ChatbotDeXuatService,
   ) {}
   @Get() read(@Req() r: AuthRequest) {
     return this.bot.read(r.nguoiDung.id);
@@ -38,6 +40,19 @@ export class ChatbotController {
     @Body() b: Record<string, unknown>,
   ) {
     return this.bot.mode(r.nguoiDung.id, id, b.che_do);
+  }
+  @Post('de-xuat') async propose(
+    @Req() r: AuthRequest,
+    @Body() b: Record<string, unknown>,
+  ) {
+    await this.limiter.limit(r.nguoiDung.id, 'chatbot-de-xuat', 4);
+    return this.drafts.generate(r.nguoiDung.id, b);
+  }
+  @Post('chap-thuan') approve(
+    @Req() r: AuthRequest,
+    @Body() b: Record<string, unknown>,
+  ) {
+    return this.drafts.approve(r.nguoiDung.id, b);
   }
   @Post('thu') async preview(
     @Req() r: AuthRequest,

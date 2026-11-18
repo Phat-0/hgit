@@ -28,6 +28,22 @@ export async function kiemTraChatbot({db,conn,chat,root,admin,direct}){
    await previewBot.preview(admin,{cau_hoi:'Xin chào'});
    assert.ok(capturedPrompt.includes('CHAO_KHACH_DUNG_TRONG_TAM'));assert.ok(!capturedPrompt.includes('KHONG_DUOC_GUI_BAN_NHAP'));assert.ok(!capturedPrompt.includes('CHI_HUONG_DAN_GUI_XE'));providerRound=0;const matchedReply=await previewBot.preview(admin,{cau_hoi:'Cho minh hoi bai xe o dau'});assert.ok(capturedPrompt.includes('CHI_HUONG_DAN_GUI_XE'));assert.ok(!capturedPrompt.includes('CHAO_KHACH_DUNG_TRONG_TAM'));assert.equal(matchedReply.tinh_huong_khop[0].ten,'Gửi xe');providerRound=0;const childReply=await previewBot.preview(admin,{cau_hoi:'Xe máy gửi ở đâu?'});assert.ok(capturedPrompt.includes('CHI_TRA_LOI_XE_MAY'));assert.ok(!capturedPrompt.includes('CHI_TRA_LOI_O_TO'));assert.equal(childReply.tinh_huong_khop[0].ten,'Gửi xe / Cách trả lời 1');
  }finally{globalThis.fetch=originalFetch;}
+ // Deep proposals never save themselves. Approval is explicit and checks both versions and allowed sources.
+ const {ChatbotDeXuatService}=await import(root+'/may-chu/dist/chatbot/de-xuat.service.js');
+ const drafts=new ChatbotDeXuatService(conn,adminAccess);
+ const sourceDoc=(await db.query("SELECT * FROM public.chatbot_kien_thuc WHERE tieu_de='Thử FAQ'")).rows[0];
+ const deepCase=await bot.knowledge(admin,{tieu_de:'Tình huống: Hướng dẫn có nguồn',nhom:'Hướng dẫn đặt phòng',noi_dung:'Chỉ dựa trên nguồn đã cho phép',xuat_ban:false,dieu_kien:{suy_nghi_sau:true,nguon_ids:[sourceDoc.id]}});
+ let deepRow=(await db.query('SELECT * FROM public.chatbot_kien_thuc WHERE id=$1',[deepCase.id])).rows[0];
+ const fetchBeforeDraft=globalThis.fetch;let draftRound=0;
+ try{globalThis.fetch=async(_url,init)=>{const body=JSON.parse(init.body);assert.equal(body.generationConfig.maxOutputTokens,4096);if(draftRound===0)assert.ok(!JSON.stringify(body).includes('KHONG_DUOC_GUI_BAN_NHAP'));return new Response(JSON.stringify({candidates:[{content:{role:'model',parts:draftRound++===0?[{functionCall:{name:'doc_tai_lieu',args:{}}}]:[{text:'Câu trả lời đề xuất từ nguồn được duyệt'}]},finishReason:'STOP'}]}));};
+  const draft=await drafts.generate(admin,{id:deepCase.id,phien_ban:deepRow.phien_ban,cau_hoi:'Xin hướng dẫn'});
+  assert.equal((await db.query('SELECT dieu_kien FROM public.chatbot_kien_thuc WHERE id=$1',[deepCase.id])).rows[0].dieu_kien.cac_tra_loi,undefined);
+  await drafts.approve(admin,{...draft,tra_loi:'Nội dung đã được nhân viên kiểm tra'});
+  deepRow=(await db.query('SELECT * FROM public.chatbot_kien_thuc WHERE id=$1',[deepCase.id])).rows[0];assert.equal(deepRow.dieu_kien.cac_tra_loi[0].tra_loi,'Nội dung đã được nhân viên kiểm tra');assert.deepEqual(deepRow.dieu_kien.cac_tra_loi[0].nguon_ids,[sourceDoc.id]);assert.equal(deepRow.xuat_ban,false);
+  await assert.rejects(()=>drafts.approve(admin,draft),/đã thay đổi/);
+  const stale={...draft,phien_ban:deepRow.phien_ban};await db.query('UPDATE public.chatbot_kien_thuc SET phien_ban=phien_ban+1 WHERE id=$1',[sourceDoc.id]);await assert.rejects(()=>drafts.approve(admin,stale),/Tài liệu đã thay đổi/);
+  await db.query('UPDATE public.chatbot_kien_thuc SET xuat_ban=false WHERE id=$1',[sourceDoc.id]);await assert.rejects(()=>drafts.approve(admin,stale),/Tài liệu đã thay đổi/);await assert.rejects(()=>drafts.generate(admin,{id:deepCase.id,phien_ban:deepRow.phien_ban,cau_hoi:'Hỏi lại'}),/Có nguồn đã tắt/);await assert.rejects(()=>drafts.approve(admin,{...stale,nguon:[{id:related.id,phien_ban:related.phien_ban}]}),/không thuộc phạm vi/);
+ }finally{globalThis.fetch=fetchBeforeDraft;}
  await db.query('UPDATE public.chatbot_cau_hinh SET bat=true');
  const support=await chat.start({});
  const send=async(text='Tìm phòng')=>chat.send(support.id,{noi_dung:text,ma_phia_khach:randomUUID()},undefined,support.guest_token);

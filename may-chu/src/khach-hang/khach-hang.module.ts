@@ -1,3 +1,4 @@
+import { ChatbotDeXuatService } from '../chatbot/de-xuat.service.js';
 import { ChatbotService } from '../chatbot/chatbot.service.js';
 import { ChatbotCongCu } from '../chatbot/chatbot-cong-cu.js';
 import { ChatbotController } from '../chatbot/chatbot.controller.js';
@@ -11,6 +12,14 @@ import { ChatService } from './chat.service.js';
 @Module({
   imports: [XacThucModule],
   controllers: [KhachHangController, ChatbotController],
-  providers: [KetNoiKhachService, TrangKhachService, ChatService, ChatbotService, ChatbotCongCu, QuanTriService],
+  providers: [
+    KetNoiKhachService,
+    TrangKhachService,
+    ChatService,
+    ChatbotService,
+    ChatbotCongCu,
+    QuanTriService,
+    ChatbotDeXuatService,
+  ],
 })
 export class KhachHangModule {}

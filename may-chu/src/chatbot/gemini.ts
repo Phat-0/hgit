@@ -1,7 +1,12 @@
-export const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.5-flash-lite'] as const;
+export const GEMINI_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-3.5-flash-lite',
+] as const;
 export function getGeminiModel() {
   const model = process.env.GEMINI_MODEL?.trim() || 'gemini-2.5-flash';
-  if (!GEMINI_MODELS.some(value => value === model)) throw new Error('MODEL_KHONG_DUOC_PHEP');
+  if (!GEMINI_MODELS.some((value) => value === model))
+    throw new Error('MODEL_KHONG_DUOC_PHEP');
   return model;
 }
 export type Part = {
@@ -35,12 +40,13 @@ export async function answerGemini(input: {
   tools: Tool[];
   run: (name: string, args: Record<string, unknown>) => Promise<unknown>;
   request?: typeof fetch;
+  deep?: boolean;
 }): Promise<BotResult> {
   if (!input.key) throw new Error('THIEU_KHOA');
   const model = getGeminiModel();
   const history = structuredClone(input.history),
     used: string[] = [];
-  const signal = AbortSignal.timeout(35000);
+  const signal = AbortSignal.timeout(input.deep ? 55000 : 35000);
   let tokens = 0,
     handoff = false;
   let needs: Record<string, unknown> | undefined;
@@ -63,8 +69,10 @@ export async function answerGemini(input: {
           },
           generationConfig: {
             temperature: 0.2,
-            maxOutputTokens: 1800,
-            ...(model.startsWith('gemini-2.5-') ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+            maxOutputTokens: input.deep ? 4096 : 1800,
+            thinkingConfig: model.startsWith('gemini-2.5-')
+              ? { thinkingBudget: input.deep ? 1024 : 0 }
+              : { thinkingLevel: input.deep ? 'MEDIUM' : 'MINIMAL' },
           },
         }),
       },
@@ -91,8 +99,14 @@ export async function answerGemini(input: {
         .join('')
         .trim();
       if (!text || text.length > 4000) throw new Error('TRA_LOI_KHONG_HOP_LE');
-      if (!used.some(name => name !== 'ghi_nhu_cau')) throw new Error('CHUA_TRA_CUU');
-      if (/đã\s+(?:xác nhận\s+(?:thanh toán|đơn)|đặt\s+(?:phòng|đơn)\s+thành công|giữ\s+(?:phòng|chỗ)|hủy\s+(?:đơn|đặt phòng)|hoàn tiền)/iu.test(text)) throw new Error('TUYEN_BO_GIAO_DICH_KHONG_HOP_LE');
+      if (!used.some((name) => name !== 'ghi_nhu_cau'))
+        throw new Error('CHUA_TRA_CUU');
+      if (
+        /đã\s+(?:xác nhận\s+(?:thanh toán|đơn)|đặt\s+(?:phòng|đơn)\s+thành công|giữ\s+(?:phòng|chỗ)|hủy\s+(?:đơn|đặt phòng)|hoàn tiền)/iu.test(
+          text,
+        )
+      )
+        throw new Error('TUYEN_BO_GIAO_DICH_KHONG_HOP_LE');
       return {
         text,
         handoff,

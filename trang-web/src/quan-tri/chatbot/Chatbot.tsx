@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import ThongTinChung from "./ThongTinChung";
+import { useCallback, useEffect, useState, useRef } from "react";
 import "./chatbot.css";
 type Config = {
   bat: boolean;
@@ -15,6 +16,8 @@ type DieuKien = {
   kieu_khop: "bat_ky" | "tat_ca";
   uu_tien: number;
   cac_tra_loi?: CachTraLoi[];
+  suy_nghi_sau?: boolean;
+  nguon_ids?: string[];
 };
 type Knowledge = {
   id?: string;
@@ -24,6 +27,14 @@ type Knowledge = {
   xuat_ban: boolean;
   phien_ban?: number;
   dieu_kien?: DieuKien;
+};
+type Proposal = {
+  id: string;
+  phien_ban: number;
+  cau_hoi_mau: string[];
+  tu_khoa: string[];
+  tra_loi: string;
+  nguon: { id: string; tieu_de: string; phien_ban: number }[];
 };
 type State = {
   cau_hinh: Config;
@@ -141,6 +152,13 @@ export default function Chatbot({ token }: { token: string }) {
       handoff: boolean;
       tinh_huong_khop?: { ten: string; ly_do: string }[];
     } | null>(null);
+  const [draftQuestion, setDraftQuestion] = useState(""),
+    [proposal, setProposal] = useState<Proposal | null>(null);
+  useEffect(() => {
+    setProposal(null);
+  }, [entry?.id, entry?.phien_ban]);
+  const activeDraftCase = useRef("");
+  activeDraftCase.current = entry?.id + ":" + entry?.phien_ban;
   const api = useCallback(
     async (path = "", method = "GET", body?: unknown) => {
       const r = await fetch("/api/quan-tri/chatbot" + path, {
@@ -162,11 +180,15 @@ export default function Chatbot({ token }: { token: string }) {
     },
     [token],
   );
-  const load = useCallback(async () => {
-    const d: State = await api();
-    setData(d);
-    setCfg(d.cau_hinh);
-  }, [api]);
+  const load = useCallback(
+    async (keepConfig = false) => {
+      const d: State = await api();
+      setData(d);
+      setCfg((prev) => (keepConfig ? prev || d.cau_hinh : d.cau_hinh));
+      return d;
+    },
+    [api],
+  );
   useEffect(() => {
     void load().catch((e) => setError(e.message));
   }, [load]);
@@ -181,7 +203,7 @@ export default function Chatbot({ token }: { token: string }) {
     if (dirty) window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [cfg, data, entry]);
-  async function act(fn: () => Promise<void>) {
+  async function act(fn: () => Promise<unknown>) {
     setBusy(true);
     setError("");
     setNotice("");
@@ -320,7 +342,7 @@ export default function Chatbot({ token }: { token: string }) {
                 </label>
               </div>
               <label>
-                Phong cách và hướng dẫn tư vấn
+                Điều chung, quy tắc và cách tư vấn
                 <textarea
                   rows={5}
                   maxLength={6000}
@@ -389,8 +411,30 @@ export default function Chatbot({ token }: { token: string }) {
               </footer>
             </form>
           )}
+          {tab === "cau-hinh" && (
+            <ThongTinChung
+              rows={data.kien_thuc.filter(
+                (k) => !k.tieu_de.startsWith("Tình huống: "),
+              )}
+              busy={busy}
+              onSave={async (x) => {
+                setBusy(true);
+                setError("");
+                try {
+                  await api("/kien-thuc", "POST", x);
+                  await load(true);
+                  setNotice("Đã lưu thông tin chung.");
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Không lưu được");
+                  throw e;
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            />
+          )}
           {tab === "kien-thuc" && (
-            <div className="cb-knowledge">
+            <div className="cb-knowledge cb-situation-list">
               <div className="cb-card">
                 <div className="cb-card-title">
                   <h2>
@@ -429,6 +473,7 @@ export default function Chatbot({ token }: { token: string }) {
                 </p>
                 <div className="cb-entries">
                   {data.kien_thuc
+                    .filter((k) => k.tieu_de.startsWith("Tình huống: "))
                     .filter((k) =>
                       (k.tieu_de + " " + k.noi_dung)
                         .toLocaleLowerCase("vi")
@@ -438,7 +483,10 @@ export default function Chatbot({ token }: { token: string }) {
                       <button
                         className="cb-entry"
                         key={k.id}
-                        onClick={() => setEntry({ ...k })}
+                        aria-expanded={entry?.id === k.id}
+                        onClick={() =>
+                          setEntry(entry?.id === k.id ? null : { ...k })
+                        }
                       >
                         <span>
                           <strong>{nameOf(k.tieu_de)}</strong>
@@ -453,7 +501,9 @@ export default function Chatbot({ token }: { token: string }) {
                         </span>
                       </button>
                     ))}
-                  {!data.kien_thuc.length && (
+                  {!data.kien_thuc.some((k) =>
+                    k.tieu_de.startsWith("Tình huống: "),
+                  ) && (
                     <p>
                       Chưa có tình huống. Nhấn Thêm tình huống để chọn mẫu có
                       sẵn.
@@ -463,11 +513,11 @@ export default function Chatbot({ token }: { token: string }) {
               </div>
               {entry && (
                 <form
-                  className="cb-card"
+                  className="cb-card cb-situation-editor"
                   onSubmit={(e) => {
                     e.preventDefault();
                     void act(async () => {
-                      await api("/kien-thuc", "POST", {
+                      const saved = await api("/kien-thuc", "POST", {
                         ...entry,
                         dieu_kien: {
                           ...(entry.dieu_kien || condition()),
@@ -490,8 +540,16 @@ export default function Chatbot({ token }: { token: string }) {
                             .filter(Boolean),
                         },
                       });
-                      setEntry(null);
-                      await load();
+                      const fresh = await load(true);
+                      setEntry(
+                        fresh.kien_thuc.find(
+                          (k) => k.id === (saved.id || entry.id),
+                        ) ||
+                          fresh.kien_thuc.find(
+                            (k) => k.tieu_de === entry.tieu_de,
+                          ) ||
+                          null,
+                      );
                       setNotice("Đã lưu tình huống.");
                     });
                   }}
@@ -657,6 +715,238 @@ export default function Chatbot({ token }: { token: string }) {
                       }
                     />
                   </label>
+                  <section className="cb-deep">
+                    <label className="cb-toggle">
+                      <input
+                        type="checkbox"
+                        checked={!!entry.dieu_kien?.suy_nghi_sau}
+                        onChange={(e) =>
+                          setEntry({
+                            ...entry,
+                            dieu_kien: {
+                              ...(entry.dieu_kien || condition()),
+                              suy_nghi_sau: e.target.checked,
+                            },
+                          })
+                        }
+                      />
+                      Suy nghĩ sâu hơn từ nguồn cho phép
+                    </label>
+                    <p className="cb-note">
+                      Có thể chậm hơn và dùng thêm token. Giữ nguyên quyền và
+                      riêng tư; đề xuất mới chỉ được lưu sau khi bạn kiểm tra và
+                      chấp thuận.
+                    </p>
+                    {entry.dieu_kien?.suy_nghi_sau && (
+                      <>
+                        <strong className="cb-source-title">
+                          Nguồn được phép tham khảo (tối đa 10)
+                        </strong>
+                        {!!entry.dieu_kien?.nguon_ids?.length && (
+                          <button
+                            type="button"
+                            className="cb-clear-sources"
+                            onClick={() =>
+                              setEntry({
+                                ...entry,
+                                dieu_kien: {
+                                  ...(entry.dieu_kien || condition()),
+                                  nguon_ids: [],
+                                },
+                              })
+                            }
+                          >
+                            Bỏ chọn tất cả nguồn
+                          </button>
+                        )}
+                        <div className="cb-source-list">
+                          {data.kien_thuc
+                            .filter(
+                              (k) =>
+                                k.id &&
+                                !k.tieu_de.startsWith("Tình huống: ") &&
+                                k.xuat_ban,
+                            )
+                            .map((k) => (
+                              <label className="cb-toggle" key={k.id}>
+                                <input
+                                  type="checkbox"
+                                  checked={
+                                    entry.dieu_kien?.nguon_ids?.includes(
+                                      k.id!,
+                                    ) || false
+                                  }
+                                  disabled={
+                                    !entry.dieu_kien?.nguon_ids?.includes(
+                                      k.id!,
+                                    ) &&
+                                    (entry.dieu_kien?.nguon_ids?.length || 0) >=
+                                      10
+                                  }
+                                  onChange={(e) =>
+                                    setEntry({
+                                      ...entry,
+                                      dieu_kien: {
+                                        ...(entry.dieu_kien || condition()),
+                                        nguon_ids: e.target.checked
+                                          ? [
+                                              ...(entry.dieu_kien?.nguon_ids ||
+                                                []),
+                                              k.id!,
+                                            ]
+                                          : (
+                                              entry.dieu_kien?.nguon_ids || []
+                                            ).filter((id) => id !== k.id),
+                                      },
+                                    })
+                                  }
+                                />
+                                {k.tieu_de}
+                              </label>
+                            ))}
+                        </div>
+                        {!data.kien_thuc.some(
+                          (k) =>
+                            !k.tieu_de.startsWith("Tình huống: ") && k.xuat_ban,
+                        ) && (
+                          <p>
+                            Thêm và cho phép nguồn tại Thiết lập → Thông tin cần
+                            biết.
+                          </p>
+                        )}
+                        <label>
+                          Câu hỏi cần đề xuất
+                          <textarea
+                            aria-label="Câu hỏi cần đề xuất"
+                            rows={2}
+                            maxLength={1500}
+                            value={draftQuestion}
+                            onChange={(e) => setDraftQuestion(e.target.value)}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          disabled={
+                            busy ||
+                            !entry.id ||
+                            (entry.dieu_kien?.cac_tra_loi?.length || 0) >= 10 ||
+                            !draftQuestion.trim() ||
+                            !entry.dieu_kien?.nguon_ids?.length ||
+                            JSON.stringify(entry) !==
+                              JSON.stringify(
+                                data.kien_thuc.find((k) => k.id === entry.id),
+                              )
+                          }
+                          onClick={() =>
+                            void act(async () => {
+                              const key = entry.id + ":" + entry.phien_ban;
+                              const result = await api("/de-xuat", "POST", {
+                                id: entry.id,
+                                phien_ban: entry.phien_ban,
+                                cau_hoi: draftQuestion,
+                              });
+                              if (activeDraftCase.current === key)
+                                setProposal(result);
+                            })
+                          }
+                        >
+                          Tạo bản nháp để kiểm tra
+                        </button>
+                        <small className="cb-draft-hint">
+                          Lưu tình huống và nguồn đã chọn trước khi tạo. Bản
+                          nháp chưa chấp thuận không được dùng cho khách và sẽ
+                          mất khi tải lại trang.
+                        </small>
+                        {proposal && (
+                          <div className="cb-proposal">
+                            <strong>Bản nháp — cần bạn kiểm tra</strong>
+                            <p>
+                              Nguồn:{" "}
+                              {proposal.nguon
+                                .map(
+                                  (x) => x.tieu_de + " (v" + x.phien_ban + ")",
+                                )
+                                .join(", ")}
+                            </p>
+                            <label>
+                              Cách hỏi cho bản nháp
+                              <textarea
+                                aria-label="Cách hỏi cho bản nháp"
+                                rows={2}
+                                value={proposal.cau_hoi_mau.join("\n")}
+                                onChange={(e) =>
+                                  setProposal({
+                                    ...proposal,
+                                    cau_hoi_mau: e.target.value.split("\n"),
+                                  })
+                                }
+                              />
+                            </label>
+                            <label>
+                              Kiểm tra và sửa câu trả lời
+                              <textarea
+                                aria-label="Kiểm tra và sửa câu trả lời"
+                                rows={4}
+                                maxLength={1000}
+                                value={proposal.tra_loi}
+                                onChange={(e) =>
+                                  setProposal({
+                                    ...proposal,
+                                    tra_loi: e.target.value,
+                                  })
+                                }
+                              />
+                            </label>
+                            <div className="cb-proposal-actions">
+                              <button
+                                type="button"
+                                onClick={() => setProposal(null)}
+                              >
+                                Bỏ bản nháp
+                              </button>
+                              <button
+                                type="button"
+                                className="cb-primary"
+                                disabled={
+                                  busy ||
+                                  proposal.id !== entry.id ||
+                                  proposal.phien_ban !== entry.phien_ban ||
+                                  JSON.stringify(entry) !==
+                                    JSON.stringify(
+                                      data.kien_thuc.find(
+                                        (k) => k.id === entry.id,
+                                      ),
+                                    )
+                                }
+                                onClick={() =>
+                                  void act(async () => {
+                                    await api("/chap-thuan", "POST", {
+                                      ...proposal,
+                                      cau_hoi_mau: proposal.cau_hoi_mau
+                                        .map((x) => x.trim())
+                                        .filter(Boolean),
+                                    });
+                                    const fresh = await load(true);
+                                    setEntry(
+                                      fresh.kien_thuc.find(
+                                        (k) => k.id === entry.id,
+                                      ) || null,
+                                    );
+                                    setProposal(null);
+                                    setNotice(
+                                      "Đã chấp thuận và thêm cách trả lời mới.",
+                                    );
+                                  })
+                                }
+                              >
+                                Chấp thuận và lưu cách trả lời
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </section>
                   <div className="cb-answer-group">
                     <div className="cb-card-title">
                       <h3>Các cách hỏi và trả lời trong nhóm</h3>

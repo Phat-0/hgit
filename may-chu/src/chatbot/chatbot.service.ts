@@ -175,6 +175,7 @@ export class ChatbotService {
       b.dieu_kien === undefined
         ? null
         : JSON.stringify(parseCondition(b.dieu_kien));
+    let savedId = b.id ? this.conn.id(String(b.id)) : null;
     const c = await this.conn.db();
     try {
       await c.query('BEGIN');
@@ -210,13 +211,14 @@ export class ChatbotService {
           throw new BadRequestException(
             'Tối đa 300 bài, hãy cập nhật bài hiện có',
           );
-        await c.query(
-          "INSERT INTO public.chatbot_kien_thuc(tieu_de,noi_dung,nhom,xuat_ban,nguoi_sua_id,dieu_kien) VALUES($1,$2,$3,$4,$5,coalesce($6::jsonb,'{}'::jsonb))",
+        const inserted = await c.query(
+          "INSERT INTO public.chatbot_kien_thuc(tieu_de,noi_dung,nhom,xuat_ban,nguoi_sua_id,dieu_kien) VALUES($1,$2,$3,$4,$5,coalesce($6::jsonb,'{}'::jsonb)) RETURNING id",
           [title, body, b.nhom, b.xuat_ban, uid, condition],
         );
+        savedId = inserted.rows[0].id;
       }
       await c.query('COMMIT');
-      return { ok: true };
+      return { ok: true, id: savedId };
     } catch (e) {
       await c.query('ROLLBACK');
       throw e;
@@ -292,7 +294,28 @@ export class ChatbotService {
           .at(-1)
           ?.parts.map((p) => p.text || '')
           .join(' ') || '';
-      matched = matchSituations(rows, question);
+      const published = new Set(
+        (
+          await c.query(
+            "SELECT id FROM public.chatbot_kien_thuc WHERE xuat_ban AND tieu_de NOT LIKE 'Tình huống: %'",
+          )
+        ).rows.map((x) => x.id),
+      );
+      const safeRows = rows.map((row) => {
+        const rule = parseCondition(row.dieu_kien || {});
+        return {
+          ...row,
+          dieu_kien: {
+            ...rule,
+            cac_tra_loi: rule.cac_tra_loi?.filter(
+              (item) =>
+                !item.nguon_ids?.length ||
+                item.nguon_ids.every((id) => published.has(id)),
+            ),
+          },
+        };
+      });
+      matched = matchSituations(safeRows, question);
       situations = matched
         .map((x) => x.row)
         .map((r) => r.tieu_de + '\n' + r.noi_dung.slice(0, 2200))
@@ -301,8 +324,22 @@ export class ChatbotService {
     } finally {
       await c.end();
     }
+    const deep = matched.some(
+      (x) => (x.row.dieu_kien as { suy_nghi_sau?: boolean })?.suy_nghi_sau,
+    );
+    const sourceIds = deep
+      ? [
+          ...new Set(
+            matched.flatMap(
+              (x) =>
+                (x.row.dieu_kien as { nguon_ids?: string[] })?.nguon_ids || [],
+            ),
+          ),
+        ]
+      : undefined;
     const result = await answerGemini({
       key: getBotKey(),
+      deep,
       system:
         botSystem(cf) +
         (situations
@@ -311,7 +348,7 @@ export class ChatbotService {
           : ''),
       history,
       tools: BOT_TOOLS,
-      run: (name, args) => this.tools.run(name, args, branch),
+      run: (name, args) => this.tools.run(name, args, branch, sourceIds),
     });
     return {
       ...result,
