@@ -3,8 +3,9 @@
   background-color: var(--kh-bg, #191817) !important;
   background-image: linear-gradient(
     180deg,
-    #ffffff04,
-    transparent 480px
+    #62d8cb12,
+    #9bc4d604 55%,
+    transparent
   ) !important;
   background-repeat: no-repeat !important;
   background-size: 100% 100% !important;
@@ -18,8 +19,8 @@
 }
 @keyframes kh-scroll-enter {
   from {
-    opacity: 0.12;
-    transform: translate3d(0, 28px, 0);
+    opacity: 0;
+    transform: translate3d(0, 64px, 0);
   }
   to {
     opacity: 1;
@@ -50,7 +51,7 @@
   .kh-site:not(.kh-no-home-motion) [data-scroll-reveal] {
     animation: kh-scroll-enter linear both !important;
     animation-timeline: view() !important;
-    animation-range: entry 0% entry 85% !important;
+    animation-range: entry 0% cover 48% !important;
     transition: none !important;
   }
   .kh-site:not(.kh-no-home-motion) .kh-booking-side {
@@ -250,4 +251,12 @@
   animation: none !important;
   opacity: 1;
   transform: none;
+}
+
+.kh-site .kh-feature-card [data-scroll-reveal] {
+  animation-range: entry 0% cover 42% !important;
+}
+
+.kh-site .kh-footer [data-scroll-reveal] {
+  animation-range: entry 0% entry 100% !important;
 }

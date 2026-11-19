@@ -63,7 +63,7 @@ export async function kiemTraCuonTrangChu(page) {
   await page.locator(".kh-booking-toggle").scrollIntoViewIfNeeded();
   await page.locator(".kh-booking-toggle").click();
   await page.locator(".kh-booking-content select").first().waitFor();
-  await page.waitForTimeout(1100);
+  await page.waitForTimeout(1800);
   const split = await page
     .locator(".kh-booking-panel")
     .evaluate((e) => ({
@@ -94,7 +94,7 @@ export async function kiemTraCuonTrangChu(page) {
     () => document.querySelector("#kh-booking-panel")?.hidden === true,
   );
   await page.locator(".kh-booking-toggle").click();
-  await page.waitForTimeout(1100);
+  await page.waitForTimeout(1800);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.reload();
   await page.locator(".kh-feature-card").first().waitFor({ state: "attached" });
@@ -130,9 +130,7 @@ export async function kiemTraThietLapTrangChu(page) {
   )
     throw Error("Còn thiết lập thừa");
   await page.getByText("Màu nền tối bên dưới", { exact: true }).waitFor();
-  await page
-    .getByText("Hiệu ứng theo cuộn (Scroll-Driven)", { exact: true })
-    .waitFor();
+
   await page.getByText("Tốc độ mở đặt đơn (ms)", { exact: true }).waitFor();
   const review = page.locator(".tc-review-settings");
   await review.getByRole("textbox").fill("Khách kể về kỳ nghỉ");

@@ -75,7 +75,16 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
     return d;
   }
   function apply(row: Row) {
-    setData(row.ban_nhap);
+    setData({
+      ...row.ban_nhap,
+      giao_dien: {
+        ...layGiaoDien(row.ban_nhap.giao_dien),
+        hien_hoat_anh: true,
+        hien_thong_ke: true,
+        hien_danh_gia: true,
+        hien_ban_do: true,
+      },
+    });
     setRevision(row.phien_ban);
     setPublished(row.xuat_ban_luc);
     setDirty(false);
@@ -159,14 +168,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
     return (
       <fieldset className="tc-block" disabled={busy}>
         <legend>{title}</legend>
-        <label className="tc-toggle">
-          <input
-            type="checkbox"
-            checked={x.hien}
-            onChange={(e) => onChange({ ...x, hien: e.target.checked })}
-          />{" "}
-          Cho phép hiển thị
-        </label>
+
         <label>
           Tiêu đề
           <input
@@ -191,7 +193,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
             onChange={onChange}
             onUpload={image}
           />
-        ) : (
+        ) : role !== "footer" ? (
           <div className="tc-image">
             <label>
               {role === "footer" ? "Logo footer" : "Ảnh nền giới thiệu"}
@@ -226,7 +228,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
               </div>
             )}
           </div>
-        )}
+        ) : null}
         {title.includes("Giới thiệu") && (
           <button
             type="button"
@@ -242,20 +244,34 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
             Dùng nội dung giới thiệu gợi ý
           </button>
         )}
-        {role === "footer" && <div className="tc-image"><label>Ảnh nền footer<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>{void image(e.target.files?.[0],url=>onChange({...x,anh_nen:url}));e.target.value="";}}/></label>{x.anh_nen && <div className="tc-image-thumb"><button type="button" onClick={()=>setPreview(x.anh_nen!)}><img src={x.anh_nen} alt="Nền footer"/></button><button type="button" className="tc-image-remove" aria-label="Bỏ nền footer" onClick={()=>onChange({...x,anh_nen:""})}>×</button></div>}</div>}
         {role === "footer" && (
           <div className="tc-contact-fields">
             {(
               [
                 ["dia_chi", "Địa chỉ liên hệ"],
                 ["dien_thoai", "Số điện thoại liên hệ"],
-                ["email", "Email liên hệ"],['tieu_de_lien_ket','Tiêu đề khám phá'],['tieu_de_ket_noi','Tiêu đề kết nối'],['noi_dung_ket_noi','Nội dung kết nối'],['nhan_nut','Nhãn nút nhắn tin'],['zalo','Liên kết Zalo (HTTPS)'],['website','Website (HTTPS)'],['facebook','Facebook (HTTPS)'],['instagram','Instagram (HTTPS)'],['tiktok','TikTok (HTTPS)'],['chinh_sach','Chính sách (HTTPS)'],['bao_mat','Bảo mật (HTTPS)'],['faq','FAQ (HTTPS)'],['ban_quyen','Dòng bản quyền'],['loi_ich_1','Lợi ích 1'],['loi_ich_2','Lợi ích 2'],['loi_ich_3','Lợi ích 3']
+                ["tieu_de_lien_ket", "Tiêu đề khám phá"],
+                ["tieu_de_ket_noi", "Tiêu đề kết nối"],
+                ["noi_dung_ket_noi", "Nội dung kết nối"],
+                ["nhan_nut", "Nhãn nút nhắn tin"],
+                ["zalo", "Liên kết Zalo (HTTPS)"],
+                ["website", "Website (HTTPS)"],
+                ["facebook", "Facebook (HTTPS)"],
+                ["instagram", "Instagram (HTTPS)"],
+                ["tiktok", "TikTok (HTTPS)"],
+                ["chinh_sach", "Chính sách (HTTPS)"],
+                ["bao_mat", "Bảo mật (HTTPS)"],
+                ["faq", "FAQ (HTTPS)"],
+                ["ban_quyen", "Dòng bản quyền"],
+                ["loi_ich_1", "Lợi ích 1"],
+                ["loi_ich_2", "Lợi ích 2"],
+                ["loi_ich_3", "Lợi ích 3"],
               ] as const
             ).map(([key, label]) => (
               <label key={key}>
                 {label}
                 <input
-                  type={key === "email" ? "email" : "text"}
+                  type="text"
                   maxLength={key === "dien_thoai" ? 30 : 500}
                   value={x[key] || ""}
                   onChange={(e) => onChange({ ...x, [key]: e.target.value })}
@@ -367,7 +383,19 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
               onChange={(e) => setUi("mau_nhan", e.target.value)}
             />
           </label>
-          {data.the.some(b=>b.hien)&&<label>Số thẻ mỗi hàng<select value={ui.so_cot} onChange={e=>setUi('so_cot',Number(e.target.value))}>{[2,3,4].map(n=><option key={n}>{n}</option>)}</select></label>}
+          {data.the.some((b) => b.hien) && (
+            <label>
+              Số thẻ mỗi hàng
+              <select
+                value={ui.so_cot}
+                onChange={(e) => setUi("so_cot", Number(e.target.value))}
+              >
+                {[2, 3, 4].map((n) => (
+                  <option key={n}>{n}</option>
+                ))}
+              </select>
+            </label>
+          )}
           <label>
             Vị trí ảnh nổi
             <select
@@ -398,7 +426,39 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
           <span style={{ background: ui.mau_nhan }}>Xem trước màu nút</span>
         </div>
       </fieldset>
-      <fieldset className="tc-block tc-home-motion" disabled={busy}><legend>Thống kê và khung đặt đơn</legend><div className="tc-design-grid">{([['nhan_dat_don','Tên nút mở đặt đơn','Đặt đơn'],['tieu_de_thong_ke','Tiêu đề các con số',ui.ten_web]] as const).map(([key,label,fallback])=><label key={key}>{label}<input maxLength={150} value={String(ui[key]??fallback)} onChange={e=>setUi(key,e.target.value)}/></label>)}<label>Tốc độ mở đặt đơn (ms)<input type="number" min={300} max={1600} step={50} value={ui.toc_do_mo_dat_don||900} onChange={e=>setUi('toc_do_mo_dat_don',Number(e.target.value))}/></label></div>{([['hien_thong_ke','Hiện số Homestay, phòng và lượt khách'],['hien_hoat_anh','Hiệu ứng theo cuộn (Scroll-Driven)']] as const).map(([key,label])=><label className="tc-toggle" key={key}><input type="checkbox" checked={ui[key]!==false} onChange={e=>setUi(key,e.target.checked)}/>{label}</label>)}<p>Số liệu lấy từ DB. Chỉ khung đặt đơn dùng hai phần chuyển động; các nội dung khác hiện theo cuộn.</p></fieldset>
+      <fieldset className="tc-block tc-home-motion" disabled={busy}>
+        <legend>Thống kê và khung đặt đơn</legend>
+        <div className="tc-design-grid">
+          {(
+            [
+              ["nhan_dat_don", "Tên nút mở đặt đơn", "Đặt đơn"],
+              ["tieu_de_thong_ke", "Tiêu đề các con số", ui.ten_web],
+            ] as const
+          ).map(([key, label, fallback]) => (
+            <label key={key}>
+              {label}
+              <input
+                maxLength={150}
+                value={String(ui[key] ?? fallback)}
+                onChange={(e) => setUi(key, e.target.value)}
+              />
+            </label>
+          ))}
+          <label>
+            Tốc độ mở đặt đơn (ms)
+            <input
+              type="number"
+              min={1400}
+              max={1600}
+              step={50}
+              value={Math.max(1400, ui.toc_do_mo_dat_don || 1600)}
+              onChange={(e) =>
+                setUi("toc_do_mo_dat_don", Number(e.target.value))
+              }
+            />
+          </label>
+        </div>
+      </fieldset>
       <div className="tc-grid">
         {block(
           "01 · Đầu trang: nội dung và dải ảnh",
@@ -475,11 +535,6 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
           />
           Hiện bộ tìm phòng và danh mục lưu trú
         </label>
-        <p>
-          Giờ nhận/trả theo cấu hình Lịch phòng trong quản trị. Kết quả phòng
-          trống xuất hiện ngay dưới bộ tìm kiếm, không trộn với phòng giới
-          thiệu.
-        </p>
       </fieldset>
       <h2 className="tc-stage-title">05 · Tab Giá phòng và Combo</h2>
       {optionError && <p role="alert">{optionError}</p>}
@@ -487,10 +542,6 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
         <fieldset className="tc-block" disabled={busy}>
           <legend>Tab Giá phòng</legend>
 
-          <p>
-            Chọn tối đa 20 phòng nổi bật. Trang chủ ưu tiên các phòng đã chọn;
-            nút Xem thêm mở danh mục đầy đủ.
-          </p>
           <div className="tc-feature-options">
             {options.phong.map((p) => (
               <label key={p.id}>
@@ -527,7 +578,6 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
             Hiện Combo
           </label>
 
-          <p>Chọn tối đa 20 combo nổi bật từ các combo đang bán.</p>
           <div className="tc-feature-options">
             {options.combo.map((c) => (
               <label key={c.id}>
@@ -551,19 +601,14 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
       </div>
       <fieldset className="tc-block tc-review-settings" disabled={busy}>
         <legend>06 · Đánh giá khách hàng</legend>
-        <label>Tiêu đề<input maxLength={150} value={ui.tieu_de_danh_gia||'Khách hàng nói về HomeStay'} onChange={e=>setUi('tieu_de_danh_gia',e.target.value)}/></label>
-        <label className="tc-toggle">
+        <label>
+          Tiêu đề
           <input
-            type="checkbox"
-            checked={ui.hien_danh_gia !== false}
-            onChange={(e) => setUi("hien_danh_gia", e.target.checked)}
+            maxLength={150}
+            value={ui.tieu_de_danh_gia || "Khách hàng nói về HomeStay"}
+            onChange={(e) => setUi("tieu_de_danh_gia", e.target.value)}
           />
-          Hiện hàng đánh giá bên dưới Phòng và Combo
         </label>
-        <p>
-          Chỉ lấy đánh giá có trạng thái Hiển thị từ mục Đánh giá. Tên khách
-          được rút gọn khi công khai.
-        </p>
       </fieldset>
       <section className="tc-footer-settings">
         {block(
@@ -572,21 +617,6 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
           (b) => change({ ...data, chan_trang: b }),
           "footer",
         )}
-        <fieldset className="tc-block" disabled={busy}>
-          <legend>Bản đồ trong footer</legend>
-          <label className="tc-toggle">
-            <input
-              type="checkbox"
-              checked={ui.hien_ban_do !== false}
-              onChange={(e) => setUi("hien_ban_do", e.target.checked)}
-            />
-            Hiện bản đồ chi nhánh
-          </label>
-          <p>
-            Vị trí và địa chỉ lấy từ mục Chi nhánh. Cập nhật tọa độ tại Chi
-            nhánh để đổi ghim trên bản đồ.
-          </p>
-        </fieldset>
       </section>
       {preview && (
         <AnhPhongNoi
@@ -595,11 +625,6 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
           onClose={() => setPreview("")}
         />
       )}
-      <small>
-        Ảnh marketing được lưu công khai trên Storage; không tải giấy tờ hoặc
-        ảnh riêng tư. Bỏ ảnh khỏi phần này không xóa tệp để giữ bản đã xuất bản
-        đang sử dụng.
-      </small>
     </section>
   );
 }

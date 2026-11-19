@@ -4,7 +4,7 @@ export default function KhungDatDonChim({
   children,
   title = "Đặt đơn",
   description = "",
-  duration = 900,
+  duration = 1600,
   animate = true,
 }: {
   open: boolean;
@@ -29,23 +29,44 @@ export default function KhungDatDonChim({
       el.hidden = !open;
       return;
     }
-    // Only composited properties: do not animate the form's height on every frame.
+    const bounds = el.getBoundingClientRect();
+    if (open && bounds.bottom > innerHeight - 24)
+      window.scrollTo({
+        top: Math.max(0, scrollY + bounds.top - 96),
+        behavior: "instant",
+      });
     const panel = el.firstElementChild as HTMLElement;
     const motion = panel.animate(
       open
         ? [
-            { opacity: 0, transform: "translate3d(0,-16px,0)" },
-            { opacity: 1, transform: "translate3d(0,0,0)" },
+            {
+              opacity: 0.2,
+              clipPath: "inset(0 0 100% 0)",
+              transform: "translate3d(0,-32px,0)",
+            },
+            {
+              opacity: 1,
+              clipPath: "inset(0 0 0% 0)",
+              transform: "translate3d(0,0,0)",
+            },
           ]
         : [
-            { opacity: 1, transform: "translate3d(0,0,0)" },
-            { opacity: 0, transform: "translate3d(0,-12px,0)" },
+            {
+              opacity: 1,
+              clipPath: "inset(0 0 0% 0)",
+              transform: "translate3d(0,0,0)",
+            },
+            {
+              opacity: 0.2,
+              clipPath: "inset(0 0 100% 0)",
+              transform: "translate3d(0,-32px,0)",
+            },
           ],
       {
         duration: open
-          ? Math.max(500, Math.min(1400, duration))
-          : Math.min(350, duration),
-        easing: "cubic-bezier(.22,.61,.36,1)",
+          ? Math.max(1400, Math.min(1600, duration))
+          : Math.max(900, Math.min(1200, duration)),
+        easing: "cubic-bezier(.35,.35,.65,.65)",
       },
     );
     motion.onfinish = () => {

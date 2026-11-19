@@ -58,7 +58,7 @@ export type DanhGiaKhach = {
   ngay_tao: string;
 };
 export type DuLieuGioiThieu = {
-  thong_ke?:{so_homestay:number;so_phong:number;luot_khach:number};
+  thong_ke?: { so_homestay: number; so_phong: number; luot_khach: number };
   phong: PhongKhach[];
   combo: ComboGioiThieu[];
   chi_nhanh: ChiNhanhBanDo[];
@@ -165,10 +165,19 @@ export default function GioiThieuLuuTru({
   const combos = xepDanhSach(
     data.combo.filter(
       (c) =>
-        !comboType ||
-        (comboType === "gio"
-          ? Number(c.so_gio_bao_gom) > 0
-          : !Number(c.so_gio_bao_gom)),
+        (!catalogBranch ||
+          c.pham_vi === "toan_he_thong" ||
+          c.pham_vi === "Tất cả" ||
+          (c.chi_nhanh_ids || []).includes(catalogBranch) ||
+          (c.phong_ids || []).some((id) =>
+            data.phong.some(
+              (p) => p.id === id && p.homestay_id === catalogBranch,
+            ),
+          )) &&
+        (!comboType ||
+          (comboType === "gio"
+            ? Number(c.so_gio_bao_gom) > 0
+            : !Number(c.so_gio_bao_gom))),
     ),
     comboSort,
     comboNoiBat,
@@ -176,12 +185,8 @@ export default function GioiThieuLuuTru({
     (c) => Number(c.gia_combo),
     (c) => c.luot_dat || 0,
   );
-  const shownRooms =
-      page === "home" ? rooms.slice(0, Math.max(3, phongNoiBat.length)) : rooms,
-    shownCombos =
-      page === "home"
-        ? combos.slice(0, Math.max(3, comboNoiBat.length))
-        : combos;
+  const shownRooms = page === "home" ? rooms.slice(0, 3) : rooms,
+    shownCombos = page === "home" ? combos.slice(0, 3) : combos;
   return (
     <div
       className={"kh-showcases " + (page === "home" ? "kh-showcases-home" : "")}
@@ -319,6 +324,21 @@ export default function GioiThieuLuuTru({
         >
           <div className="kh-showcase-tools">
             <label className="kh-catalog-branch">
+              Chi nhánh
+              <select
+                aria-label="Chi nhánh của combo"
+                value={catalogBranch}
+                onChange={(e) => setCatalogBranch(e.target.value)}
+              >
+                <option value="">Tất cả chi nhánh</option>
+                {data.chi_nhanh.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.ten_homestay}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="kh-catalog-branch">
               Loại combo
               <select
                 aria-label="Phân loại combo"
@@ -390,7 +410,13 @@ export default function GioiThieuLuuTru({
     </div>
   );
 }
-export function DanhGiaTrangChu({ items,title="Khách hàng nói về HomeStay" }: { items: DanhGiaKhach[];title?:string }) {
+export function DanhGiaTrangChu({
+  items,
+  title = "Khách hàng nói về HomeStay",
+}: {
+  items: DanhGiaKhach[];
+  title?: string;
+}) {
   return (
     <section className="kh-reviews" aria-label="Đánh giá khách hàng">
       <header>

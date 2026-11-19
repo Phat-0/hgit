@@ -143,12 +143,6 @@ export default function ChanTrangKhach({
               {new URL(data.website).hostname}
             </a>
           )}
-          {data.email && (
-            <a href={"mailto:" + data.email}>
-              <BieuTuong ten="mail" />
-              {data.email}
-            </a>
-          )}
         </div>
         <div className="kh-footer-socials">
           {socials.map(([label, url, icon]) =>
