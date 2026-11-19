@@ -19,10 +19,6 @@ export default function useParallaxTrangChu(active: boolean) {
     const draw = () => {
       frame = 0;
       if (giamChuyenDong()||document.documentElement.dataset.motionFold) return;
-      const h = hero.getBoundingClientRect(),
-        p = Math.max(0, Math.min(1, -h.top / Math.max(1, h.height)));
-      hero.style.setProperty("--hero-shift", p * 58 + "px");
-      hero.style.setProperty("--hero-zoom", String(1.04 + p * 0.055));
       hero.style.setProperty("--pointer-x", x + "px");
       hero.style.setProperty("--pointer-y", y + "px");
       for (const img of images) {

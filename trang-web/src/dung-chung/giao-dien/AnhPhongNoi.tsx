@@ -101,6 +101,12 @@ export default function AnhPhongNoi({
       <button type="button" ref={close} onClick={dismiss} aria-label="Đóng ảnh">
         ×
       </button>
+      <figure
+        key={url}
+        style={{ "--photo-direction": direction } as React.CSSProperties}
+      >
+        <div className="anh-stage">
+        <img src={url} alt={title} />
       {photos.length > 1 && onNavigate && (
         <>
           <button
@@ -119,11 +125,7 @@ export default function AnhPhongNoi({
           </button>
         </>
       )}
-      <figure
-        key={url}
-        style={{ "--photo-direction": direction } as React.CSSProperties}
-      >
-        <img src={url} alt={title} />
+        </div>
         <figcaption>
           {title}
           {photos.length > 1 && onNavigate && (

@@ -40,7 +40,7 @@ export default function KhungDatDonChim({
         { height: (open ? height : 0) + "px", opacity: open ? 1 : 0.65 },
       ],
       {
-        duration: Math.max(1000, Math.min(1800, duration)),
+        duration: Math.max(900, Math.min(1450, duration * .8)),
         easing: "cubic-bezier(.35,.35,.65,.65)",
         fill: "forwards",
       },

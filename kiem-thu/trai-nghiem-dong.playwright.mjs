@@ -59,7 +59,7 @@ export async function kiemTraTraiNghiemDong(page) {
   const h1 = await hero.evaluate(
     (e) => getComputedStyle(e, "::before").transform,
   );
-  if (h0 === h1) throw Error("Hero không parallax");
+  if (h0 !== h1) throw Error("Nền hero đổi khi cuộn");
   await page.evaluate(() => scrollTo(0, 0));
   await page.mouse.move(1000, 400);
   await page.waitForTimeout(220);
@@ -83,7 +83,7 @@ export async function kiemTraTraiNghiemDong(page) {
   const next = await lightbox.locator("figure img").getAttribute("src");
   if (next === old) throw Error("Lightbox không đổi ảnh");
   const nextAnim = await lightbox
-    .locator("figure")
+    .locator("figure img")
     .evaluate((e) => getComputedStyle(e).animationName);
   await page.keyboard.press("ArrowLeft");
   await lightbox.getByRole("button", { name: "Đóng ảnh", exact: true }).click();
