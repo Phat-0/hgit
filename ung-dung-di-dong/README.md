@@ -4,7 +4,7 @@ Flutter native, dùng API NestJS và Supabase Auth của web. Không tạo datab
 
 ## Chạy trên Android Studio
 
-Cài Flutter stable 3.29 trở lên, Android Studio, plugin Flutter/Dart và Android SDK. Mở Device Manager tạo và chạy một emulator.
+Cài Flutter stable 3.35 trở lên, Android Studio, plugin Flutter/Dart và Android SDK. Mở Device Manager tạo và chạy một emulator.
 
 Trong PowerShell:
 
@@ -55,3 +55,19 @@ Trên thiết bị kiểm tra thêm: xoay ngang, bàn phím, màn hình nhỏ, c
 ## Kết nối MCP
 
 Xem [hướng dẫn Android Studio + SimUtil](../tai-lieu/ket-noi-mcp-android.md).
+
+## Sửa cache Kotlin trên Windows khác ổ đĩa
+
+Cấu hình Android tắt Kotlin incremental và dùng compiler in-process để tránh lỗi different roots giữa Pub Cache ổ C và dự án ổ D. Sau lỗi cache cũ, dừng flutter run rồi chạy một lần:
+
+```powershell
+cd D:\DoAnTotNghiep\ung-dung-di-dong
+.\android\gradlew.bat -p .\android --stop
+flutter clean
+flutter pub get
+flutter analyze
+flutter test
+flutter run -d emulator-5554
+```
+
+Các lần sau chỉ cần `flutter run`. Cấu hình này có thể khiến biên dịch Kotlin lâu hơn nhưng không đổi dữ liệu ứng dụng. Chưa xác minh build lại trên máy Windows qua MCP terminal.

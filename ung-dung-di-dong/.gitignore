@@ -5,3 +5,6 @@ android/local.properties
 android/key.properties
 *.jks
 *.keystore
+android/.gradle/
+android/.kotlin/
+*.iml
