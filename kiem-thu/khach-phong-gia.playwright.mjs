@@ -1,5 +1,5 @@
 /** Private browser fixtures. All API requests are intercepted; this never writes production data. */
-export async function duLieuPhongGia(page) {
+export async function duLieuPhongGia(page, {reviewCount=1}={}) {
   const photos = [
     "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=1200",
     "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=1200",
@@ -90,17 +90,7 @@ export async function duLieuPhongGia(page) {
             pham_vi: "toan_he_thong",
             anh: [photos[i]],
           })),
-          danh_gia: [
-            {
-              id: "review",
-              so_sao: 5,
-              noi_dung: "Phòng sạch, ảnh đúng thực tế và hỗ trợ nhanh.",
-              ten_khach: "An · Khách lưu trú",
-              ten_phong: "Deluxe Garden",
-              ten_homestay: "HomeStay trung tâm",
-              ngay_tao: new Date().toISOString(),
-            },
-          ],
+          danh_gia: Array.from({length:reviewCount},(_,i)=>({id:'review-'+i,so_sao:5,noi_dung:'Phòng sạch, ảnh đúng thực tế và hỗ trợ nhanh.',ten_khach:'Khách lưu trú '+(i+1),ten_phong:'Deluxe Garden',ten_homestay:'HomeStay trung tâm',ngay_tao:new Date().toISOString()})),
           chi_nhanh: [
             {
               id: "branch",

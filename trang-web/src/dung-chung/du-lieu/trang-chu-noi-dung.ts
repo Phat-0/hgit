@@ -1,8 +1,8 @@
 export type GiaoDienTrangChu={nhan_dat_don?:string;toc_do_mo_dat_don?:number;tieu_de_thong_ke?:string;tieu_de_danh_gia?:string;hien_thong_ke?:boolean;hien_hoat_anh?:boolean;ten_web:string;khau_hieu:string;tieu_de_phong:string;tieu_de_combo?:string;mau_nen:string;anh_nen_chung?:string;font_chu?:string;phong_noi_bat?:string[];combo_noi_bat?:string[];hien_danh_gia?:boolean;hien_ban_do?:boolean;mau_nhan:string;so_cot:number;anh_ben_trai:boolean};
-export const giaoDienMacDinh:GiaoDienTrangChu={ten_web:'HomeStay',khau_hieu:'Một khoảng riêng dành cho bạn',tieu_de_phong:'Phòng & không gian lưu trú',tieu_de_combo:'Combo & trải nghiệm',mau_nen:'#172c30',mau_nhan:'#e9bd80',so_cot:3,anh_ben_trai:false};
+export const giaoDienMacDinh:GiaoDienTrangChu={ten_web:'HomeStay',khau_hieu:'Một khoảng riêng dành cho bạn',tieu_de_phong:'Phòng & không gian lưu trú',tieu_de_combo:'Combo & trải nghiệm',mau_nen:'#2b1e17',mau_nhan:'#e9bd80',so_cot:3,anh_ben_trai:false};
 export function layGiaoDien(value?:GiaoDienTrangChu) {
   const ui={...giaoDienMacDinh,...value};
-  if(['#4d2078','#39205f','#6b329b','#1e1813','#292018','#191817'].includes(ui.mau_nen))ui.mau_nen=giaoDienMacDinh.mau_nen;
+  if(['#4d2078','#39205f','#6b329b','#1e1813','#292018','#191817','#172c30'].includes(ui.mau_nen))ui.mau_nen=giaoDienMacDinh.mau_nen;
   if(ui.mau_nhan==='#7135a3')ui.mau_nhan=giaoDienMacDinh.mau_nhan;
   return ui;
 }

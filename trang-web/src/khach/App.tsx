@@ -1,3 +1,4 @@
+import useParallaxTrangChu from './useParallaxTrangChu';
 import useDieuHuongKhach,{denTrangKhach} from './useDieuHuongKhach';
 import useHieuUngCuon from './useHieuUngCuon';
 import ThongBaoKhach from "./thanh-phan/ThongBaoKhach";
@@ -36,6 +37,7 @@ import './giao-dien/can-chinh-khach.css';
 import './giao-dien/trang-chu-hoan-thien.css';
 import './giao-dien/tham-khao-charmy.css';
 import './giao-dien/cuon-va-chuyen-trang.css';
+import './giao-dien/chuyen-dong-trai-nghiem.css';
 type Receipt = {
   ma_dat_phong: string;
   tong_tien: number | string;
@@ -376,6 +378,7 @@ export default function App() {
     return () => { document.removeEventListener('mousedown', outside); document.removeEventListener('keydown', escape); };
   }, [navOpen]);
   useHieuUngCuon(true,page==='home',!!home);
+  useParallaxTrangChu(page==='home'&&!!home);
   useEffect(()=>{setNavOpen(false);setLightbox(null);setSelected(null);setComboDetail('');setBookingTarget(null);setFullError('');setComboChon(new URLSearchParams(location.search).get('combo')||'');setRoomIntent(new URLSearchParams(location.search).get('phong')||'');if(location.hash==='#dat-phong')setBookingOpen(true);},[route]);
   const modal = selected || login || history !== null;
   const ui=layGiaoDien(home?.giao_dien);
@@ -420,7 +423,7 @@ export default function App() {
         <section id="trang-dau" className="kh-hero kh-cms-hero" style={{"--kh-top-image":ui.anh_nen_chung||home.hero.anh_nen?`url(${JSON.stringify(ui.anh_nen_chung||home.hero.anh_nen)})`:"none"} as CSSProperties}>
           <div>
             <span className="kh-pill">{ui.khau_hieu}</span>
-            <h1>{home.hero.tieu_de}</h1>
+            <h1 className="kh-headline-lines">{home.hero.tieu_de.split(/\n|(?<=[.!?])\s+/).map((line,i)=><span key={i} className="kh-headline-mask"><span style={{animationDelay:(i*160)+'ms'}}>{line}</span></span>)}</h1>
             <p>{home.hero.noi_dung}</p>
             <a className="kh-hero-action" href="#dat-phong" onClick={()=>setBookingOpen(true)}>Khám phá kỳ nghỉ <span aria-hidden="true">↗</span></a>
           </div>
@@ -462,7 +465,7 @@ export default function App() {
             {roomIntent&&<p className="kh-combo-intent">Đang chọn {catalog.phong.find(p=>p.id===roomIntent)?.ten_phong||'phòng'} · Chọn lịch để kiểm tra phòng trống. <button type="button" onClick={()=>setRoomIntent('')}>Bỏ chọn</button></p>}
             {comboChon&&<p className="kh-combo-intent">Đang chọn {catalog.combo.find(c=>c.id===comboChon)?.ten_combo||'combo'} · Kiểm tra lịch để xem phòng áp dụng. <button type="button" onClick={()=>setComboChon('')}>Bỏ chọn</button></p>}
             <form onSubmit={search}>
-              <div className="kh-search-field"><span>Hình thức đặt phòng</span><div className="kh-kinds">
+              <div className="kh-search-field"><span>Hình thức đặt phòng</span><div className="kh-kinds" style={{"--kind-index":["gio","ngay","dem"].indexOf(kind)} as CSSProperties}><span className="kh-kind-indicator" aria-hidden="true"/>
               {(["gio", "ngay", "dem"] as const).map((v, i) => (
                 <button
                   key={v}
@@ -773,6 +776,8 @@ export default function App() {
       {lightbox && (
         <AnhPhongNoi
           url={lightbox}
+          images={lightboxRoom?.anh.filter((u):u is string=>!!u)||heroPhotos.map(p=>p.url)}
+          onNavigate={setLightbox}
           title={lightboxRoom?.ten_phong||"Ảnh không gian lưu trú"}
           action={lightboxRoom&&page!=='chi-tiet'?{label:"Xem thông tin phòng",onClick:()=>{setLightbox(null);openRoom({...lightboxRoom,gia_tham_khao:lightboxRoom.gia_tham_khao??true});}}:undefined}
           label="Xem ảnh phòng hoặc combo"

@@ -19,17 +19,31 @@ export default function useHieuUngCuon(
       return;
     const native = CSS.supports("animation-timeline: view()");
     const seen = new WeakSet<Element>();
-    const observer = new IntersectionObserver(entries=>entries.forEach(e=>{
-      if(e.isIntersecting){e.target.setAttribute('data-motion-play','');}
-      else e.target.removeAttribute('data-motion-play');
-    }),{threshold:.06,rootMargin:'0px 0px -8px 0px'});
+    const observer = new IntersectionObserver(
+      (entries) =>
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.setAttribute("data-motion-play", "");
+          } else e.target.removeAttribute("data-motion-play");
+        }),
+      { threshold: 0.06, rootMargin: "0px 0px -8px 0px" },
+    );
     const register = (el: Element) => {
       if (seen.has(el) || el.closest(".kh-booking-split")) return;
       seen.add(el);
-      if(native)el.setAttribute('data-scroll-reveal','');
-      else el.setAttribute('data-motion-wait','');
-      const bounds=el.getBoundingClientRect();
-      if(bounds.top<innerHeight&&bounds.bottom>0){el.setAttribute('data-motion-play','');}
+      const siblings = el.parentElement?.children;
+      const index = siblings ? Array.from(siblings).indexOf(el) : 0;
+      (el as HTMLElement).style.setProperty(
+        "--motion-delay",
+        Math.min(5, Math.max(0, index)) * 90 + "ms",
+      );
+      if (native && !(el instanceof HTMLImageElement && el.style.transform))
+        el.setAttribute("data-scroll-reveal", "");
+      else el.setAttribute("data-motion-wait", "");
+      const bounds = el.getBoundingClientRect();
+      if (bounds.top < innerHeight && bounds.bottom > 0) {
+        el.setAttribute("data-motion-play", "");
+      }
       observer.observe(el);
     };
     const scan = (node: Element) => {
@@ -37,6 +51,14 @@ export default function useHieuUngCuon(
       node.querySelectorAll(selectors).forEach(register);
     };
     scan(root);
+    root
+      .querySelectorAll(
+        ".kh-cms-intro,.kh-cms-cards,.kh-stay-numbers,.kh-showcases-home,.kh-reviews",
+      )
+      .forEach((el) => {
+        if (native) el.setAttribute("data-section-progress", "");
+        else register(el);
+      });
     const changes = new MutationObserver((records) =>
       records.forEach((r) =>
         r.addedNodes.forEach((n) => {
@@ -49,9 +71,12 @@ export default function useHieuUngCuon(
       observer?.disconnect();
       changes.disconnect();
       root
-        .querySelectorAll("[data-scroll-reveal],[data-motion-wait]")
+        .querySelectorAll(
+          "[data-scroll-reveal],[data-motion-wait],[data-section-progress]",
+        )
         .forEach((el) => {
           el.removeAttribute("data-scroll-reveal");
+          el.removeAttribute("data-section-progress");
           el.removeAttribute("data-motion-wait");
           el.removeAttribute("data-motion-play");
         });

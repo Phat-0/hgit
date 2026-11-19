@@ -2,8 +2,6 @@ import { useLayoutEffect, useRef, type ReactNode } from "react";
 export default function KhungDatDonChim({
   open,
   children,
-  title = "Đặt đơn",
-  description = "",
   duration = 1600,
   animate = true,
 }: {
@@ -87,10 +85,7 @@ export default function KhungDatDonChim({
       className="kh-booking-fold"
     >
       <div className="kh-booking-panel">
-        <aside className="kh-booking-side">
-          <h2>{title}</h2>
-          {description && <p>{description}</p>}
-        </aside>
+
         <div className="kh-booking-content">{children}</div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 export type PhongKhach = {
   id: string;
   homestay_id?: string;
@@ -266,7 +266,7 @@ export default function GioiThieuLuuTru({
               />
             )}
           </div>
-          <div className="kh-showcase-cards">
+          <div className={"kh-showcase-cards kh-tab-content tab-" + activeTab}>
             {shownRooms.map((p) => (
               <article key={p.id} className="kh-feature-card">
                 <button
@@ -363,7 +363,7 @@ export default function GioiThieuLuuTru({
               />
             )}
           </div>
-          <div className="kh-showcase-cards">
+          <div className={"kh-showcase-cards kh-tab-content tab-" + activeTab}>
             {shownCombos.map((c) => (
               <article key={c.id} className="kh-feature-card">
                 <button
@@ -417,14 +417,113 @@ export function DanhGiaTrangChu({
   items: DanhGiaKhach[];
   title?: string;
 }) {
+  const track = useRef<HTMLDivElement>(null),
+    drag = useRef<{ x: number; left: number } | null>(null),
+    paused = useRef(false),
+    [center, setCenter] = useState(0);
+  useEffect(() => {
+    const node = track.current;
+    if (!node) return;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const b = node.getBoundingClientRect();
+      let best = 0,
+        distance = Infinity;
+      Array.from(node.children).forEach((child, i) => {
+        const r = child.getBoundingClientRect(),
+          d = Math.abs(r.left + r.width / 2 - b.left - b.width / 2);
+        if (d < distance) {
+          distance = d;
+          best = i;
+        }
+      });
+      setCenter(best);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    node.addEventListener("scroll", onScroll, { passive: true });
+    update();
+    const timer = setInterval(() => {
+      if (
+        paused.current ||
+        drag.current ||
+        node.contains(document.activeElement) ||
+        document.hidden ||
+        matchMedia("(prefers-reduced-motion: reduce)").matches
+      )
+        return;
+      const b = node.getBoundingClientRect();
+      if (b.top > innerHeight || b.bottom < 0) return;
+      const max = node.scrollWidth - node.clientWidth;
+      if (max > 1)
+        node.scrollTo({
+          left:
+            node.scrollLeft >= max - 4
+              ? 0
+              : Math.min(
+                  max,
+                  node.scrollLeft +
+                    (node.firstElementChild?.getBoundingClientRect().width ||
+                      300) +
+                    16,
+                ),
+          behavior: "smooth",
+        });
+    }, 4500);
+    return () => {
+      clearInterval(timer);
+      cancelAnimationFrame(frame);
+      node.removeEventListener("scroll", onScroll);
+    };
+  }, [items]);
   return (
     <section className="kh-reviews" aria-label="Đánh giá khách hàng">
       <header>
         <h2>{title}</h2>
       </header>
-      <div className="kh-review-track">
-        {items.map((d) => (
-          <article key={d.id}>
+      <div
+        className="kh-review-track"
+        ref={track}
+        tabIndex={0}
+        aria-label="Kéo để xem đánh giá"
+        onMouseEnter={() => {
+          paused.current = true;
+        }}
+        onMouseLeave={() => {
+          paused.current = false;
+        }}
+        onFocusCapture={() => {
+          paused.current = true;
+        }}
+        onBlurCapture={() => {
+          paused.current = false;
+        }}
+        onPointerDown={(e) => {
+          if (e.pointerType === "mouse" && e.button !== 0) return;
+          drag.current = { x: e.clientX, left: e.currentTarget.scrollLeft };
+          e.currentTarget.setPointerCapture(e.pointerId);
+          e.currentTarget.classList.add("is-dragging");
+        }}
+        onPointerMove={(e) => {
+          if (drag.current)
+            e.currentTarget.scrollLeft =
+              drag.current.left - (e.clientX - drag.current.x);
+        }}
+        onPointerUp={(e) => {
+          drag.current = null;
+          e.currentTarget.classList.remove("is-dragging");
+          if (e.currentTarget.hasPointerCapture(e.pointerId))
+            e.currentTarget.releasePointerCapture(e.pointerId);
+        }}
+        onPointerCancel={(e) => {
+          drag.current = null;
+          e.currentTarget.classList.remove("is-dragging");
+        }}
+      >
+        {items.map((d, i) => (
+          <article key={d.id} className={i === center ? "is-center" : ""}>
             <header>
               <span className="kh-review-avatar" aria-hidden="true">
                 {d.ten_khach[0]}
