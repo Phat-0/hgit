@@ -1,3 +1,4 @@
+import {nhanKhoa,xongKhoa} from './khoa-yeu-cau.sql.js';
 import {traVoucher,luuVoucher} from './voucher.sql.js';
 import {soTienDaGhiNhan} from './thanh-toan-don.js';
 import {TRANG_THAI_PHONG} from './trang-thai-phong.sql.js';
@@ -76,11 +77,13 @@ export class LichPhongService{
   if(!Number.isInteger(guests)||guests<1||guests>100)throw new BadRequestException('Số khách phải là số nguyên từ 1 đến 100');
   if(!Number.isSafeInteger(amount)||amount<0||amount>1e12)throw new BadRequestException('Tiền phòng phải là số nguyên VND từ 0 đến 1.000.000.000.000');
   // Đơn được tạo tại API quản trị luôn xác nhận, không tin trạng thái từ client.
+  const requestId=String(x.khoa_yeu_cau||randomUUID());this.validId(requestId);
   const state='Đã xác nhận',payment=String(x.trang_thai_thanh_toan||'Chưa thanh toán');
   if(!['Chưa thanh toán','Cọc','Đủ'].includes(payment))throw new BadRequestException('Trạng thái thanh toán không hợp lệ');
   let paidAmount=soTienDaGhiNhan(payment,x.tien_da_thanh_toan,amount);
   const c=await this.db();try{
    await c.query('BEGIN');
+   const idem=await nhanKhoa(c,uid,'',requestId,x,'quan_tri_tao_dat_phong');if(idem.ket_qua){await c.query('COMMIT');return idem.ket_qua;}
    const selected=await c.query('SELECT p.*,'+TRANG_THAI_PHONG+' AS trang_thai_hien_thi,l.suc_chua,h.trang_thai AS trang_thai_chi_nhanh FROM public.phong p JOIN public.loai_phong l ON l.id=p.loai_phong_id JOIN public.homestay h ON h.id=p.homestay_id WHERE p.id=$1 FOR UPDATE OF p',[room]);
    if(!selected.rowCount)throw new BadRequestException('Không tìm thấy phòng');
    const o=selected.rows[0],flag=kind==='Theo giờ'?'cho_dat_theo_gio':kind==='Theo ngày'?'cho_dat_theo_ngay':'cho_dat_theo_dem';
@@ -101,6 +104,7 @@ export class LichPhongService{
     [code,name,customer.rows[0]?.id??null,o.homestay_id,room,kind,start.toISOString(),end.toISOString(),guests,state,amount,String(x.ghi_chu||'').slice(0,2000),phone,payment,comboId||null,JSON.stringify(snapshot)]);
    if(voucher)await luuVoucher(c,r.rows[0].id,voucher);
    await c.query('UPDATE public.dat_phong SET xac_nhan_luc=now(),nguoi_xac_nhan_id=$1,tien_da_thanh_toan=$3 WHERE id=$2',[uid,r.rows[0].id,paidAmount]);
+   await xongKhoa(c,idem.id,r.rows[0]);
    await c.query('COMMIT');return r.rows[0];
   }catch(e){await c.query('ROLLBACK');this.failure(e);}finally{await c.end();}
  }

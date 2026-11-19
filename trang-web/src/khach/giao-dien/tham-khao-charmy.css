@@ -615,3 +615,11 @@
 .kh-site [data-reveal]:focus-within{opacity:1!important;transform:none!important;transition:none}
 @media(prefers-reduced-motion:reduce){.kh-site [data-reveal]{opacity:1!important;transform:none!important;transition:none!important;pointer-events:auto}}
 .kh-site.kh-no-home-motion [data-reveal]{opacity:1!important;transform:none!important;transition:none!important;pointer-events:auto}
+
+/* Entrance timing: short stagger, no layout movement, no hidden content without JS. */
+.kh-site [data-reveal]{transition-property:opacity,transform;transition-duration:var(--kh-reveal-duration,1100ms);transition-timing-function:cubic-bezier(.22,.61,.36,1);transition-delay:var(--kh-reveal-delay,0ms)}
+.kh-site [data-reveal="pending"]{transform:translate3d(0,24px,0)!important}
+.kh-site [data-reveal="shown"]{pointer-events:auto}
+@media(prefers-reduced-motion:reduce){.kh-site [data-reveal]{transition:none!important;transform:none!important;opacity:1!important;pointer-events:auto!important}}
+
+.kh-site [data-reveal]:focus-within{opacity:1;transform:none;pointer-events:auto}

@@ -259,11 +259,10 @@ export async function kiemTraVanHanh({
   clean.db = async () => adapter;
   const job = (await clean.list(cleaner)).find((x) => x.dat_phong_id === d.id);
   assert.ok(job);
-  await assert.rejects(
-    () => clean.update(outsider, job.id, { hanh_dong: "nhan" }),
-    /chi nhánh/,
-  );
-  await assert.rejects(()=>clean.update(outsider,job.id,{hanh_dong:'hoan-thanh'}),/chi nhánh/);
+
+  await assert.rejects(()=>clean.update(outsider,job.id,{hanh_dong:'hoan-thanh'}),/nhân viên/);
+  await db.query("INSERT INTO public.nguoi_dung_vai_tro(nguoi_dung_id,vai_tro_id) VALUES($1,$2)",[outsider,role]);
+  await assert.rejects(()=>clean.update(outsider,job.id,{hanh_dong:'hoan-thanh'}),/trả phòng/);
   assert.equal(job.nhan_vien,undefined);
   await assert.rejects(
     () => clean.update(cleaner, job.id, { hanh_dong: "hoan-thanh" }),
@@ -273,7 +272,7 @@ export async function kiemTraVanHanh({
     "UPDATE public.dat_phong SET trang_thai='Đã trả phòng' WHERE id=$1",
     [d.id],
   );
-  await clean.update(cleaner, job.id, {
+  await clean.update(outsider, job.id, {
     hanh_dong: "hoan-thanh",
     noi_dung: "Đã vệ sinh sạch",
   });

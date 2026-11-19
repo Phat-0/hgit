@@ -95,11 +95,11 @@ export class VeSinhService {
   }
   private async access(c: Pick<Client, 'query'>, uid: string, branch: string) {
     const r = await c.query(
-      "SELECT EXISTS(SELECT 1 FROM public.nguoi_dung_vai_tro nv JOIN public.vai_tro v ON v.id=nv.vai_tro_id JOIN public.nguoi_dung n ON n.id=nv.nguoi_dung_id WHERE n.id=$1 AND n.trang_thai='Đang hoạt động' AND nv.ngay_thu_hoi IS NULL AND (v.ma_vai_tro='Quản trị hệ thống' AND nv.homestay_id IS NULL OR nv.homestay_id=$2 AND ('ve-sinh'=ANY(v.quyen_trang) OR v.ma_vai_tro='Nhân viên vệ sinh'))) AS ok",
-      [uid, branch],
+      "SELECT EXISTS(SELECT 1 FROM public.nguoi_dung n JOIN public.nguoi_dung_vai_tro nv ON nv.nguoi_dung_id=n.id JOIN public.vai_tro v ON v.id=nv.vai_tro_id WHERE n.id=$1 AND n.trang_thai='Đang hoạt động' AND nv.ngay_thu_hoi IS NULL AND v.ma_vai_tro<>'Khách hàng') AS ok",
+      [uid],
     );
     if (!r.rows[0]?.ok)
-      throw new ForbiddenException('Không phụ trách vệ sinh chi nhánh này');
+      throw new ForbiddenException('Chỉ tài khoản nhân viên đang hoạt động được hoàn thành vệ sinh');
   }
   async list(uid: string) {
     await this.admin.kiemTraTrang(uid, 've-sinh');
@@ -107,7 +107,7 @@ export class VeSinhService {
     try {
       return (
         await c.query(
-          "SELECT v.id,v.trang_thai,v.hoan_thanh_luc,p.ma_phong,coalesce(d.da_tra_phong_luc,d.tra_phong_luc,v.han_hoan_thanh) AS tra_phong_luc,d.trang_thai AS trang_thai_don,v.dat_phong_id,(d.trang_thai='Đã trả phòng' AND v.trang_thai NOT IN ('Hoàn thành','Đã hủy')) AS co_the_hoan_thanh FROM public.cong_viec_ve_sinh v JOIN public.phong p ON p.id=v.phong_id LEFT JOIN public.dat_phong d ON d.id=v.dat_phong_id WHERE v.trang_thai<>'Đã hủy' AND EXISTS(SELECT 1 FROM public.nguoi_dung_vai_tro nv JOIN public.vai_tro r ON r.id=nv.vai_tro_id JOIN public.nguoi_dung n ON n.id=nv.nguoi_dung_id WHERE n.id=$1 AND n.trang_thai='Đang hoạt động' AND nv.ngay_thu_hoi IS NULL AND (r.ma_vai_tro='Quản trị hệ thống' AND nv.homestay_id IS NULL OR nv.homestay_id=p.homestay_id AND ('ve-sinh'=ANY(r.quyen_trang) OR r.ma_vai_tro='Nhân viên vệ sinh'))) ORDER BY (v.trang_thai<>'Hoàn thành' AND coalesce(d.da_tra_phong_luc,d.tra_phong_luc,v.han_hoan_thanh)<now()-interval '30 minutes') DESC,(v.trang_thai='Hoàn thành') ASC,coalesce(d.da_tra_phong_luc,d.tra_phong_luc,v.han_hoan_thanh) ASC LIMIT 500",
+          "SELECT v.id,v.trang_thai,v.hoan_thanh_luc,p.ma_phong,coalesce(d.da_tra_phong_luc,d.tra_phong_luc,v.han_hoan_thanh) AS tra_phong_luc,d.trang_thai AS trang_thai_don,v.dat_phong_id,(d.trang_thai='Đã trả phòng' AND v.trang_thai NOT IN ('Hoàn thành','Đã hủy')) AS co_the_hoan_thanh FROM public.cong_viec_ve_sinh v JOIN public.phong p ON p.id=v.phong_id LEFT JOIN public.dat_phong d ON d.id=v.dat_phong_id WHERE v.trang_thai<>'Đã hủy' AND EXISTS(SELECT 1 FROM public.nguoi_dung_vai_tro nv JOIN public.vai_tro r ON r.id=nv.vai_tro_id JOIN public.nguoi_dung n ON n.id=nv.nguoi_dung_id WHERE n.id=$1 AND n.trang_thai='Đang hoạt động' AND nv.ngay_thu_hoi IS NULL AND r.ma_vai_tro<>'Khách hàng') ORDER BY (v.trang_thai<>'Hoàn thành' AND coalesce(d.da_tra_phong_luc,d.tra_phong_luc,v.han_hoan_thanh)<now()-interval '30 minutes') DESC,(v.trang_thai='Hoàn thành') ASC,coalesce(d.da_tra_phong_luc,d.tra_phong_luc,v.han_hoan_thanh) ASC LIMIT 500",
           [uid],
         )
       ).rows;

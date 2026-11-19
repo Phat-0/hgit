@@ -180,6 +180,18 @@ await db.query('UPDATE public.phong SET mo_ta=$1 WHERE id=$2',['Mô tả riêng 
 await db.exec(descriptionMigration);
 assert.equal((await db.query('SELECT mo_ta FROM public.phong WHERE id=$1',[room2])).rows[0].mo_ta,'Mô tả riêng của phòng');
 assert.equal((await db.query("SELECT count(*)::int AS n FROM information_schema.columns WHERE table_schema='public' AND table_name='loai_phong' AND column_name='mo_ta'")).rows[0].n,0);
+const historicalId=randomUUID();
+await db.query("INSERT INTO public.dat_phong(id,ten_don,ma_dat_phong,homestay_id,phong_id,hinh_thuc_dat,nhan_phong_luc,tra_phong_luc,so_khach,trang_thai,tien_phong,tien_dich_vu,cau_hinh_gia_chot) VALUES($1,'Đơn trước migration','MIGRATION-TEST',$2,$3,'Theo giờ',now()-interval '20 days',now()-interval '20 days'+interval '2 hours',1,'Đã hủy',250000,40000,'{\"tien_phu_thu\":50000}')",[historicalId,branch,room]);
+const historicalBefore=(await db.query('SELECT tong_tien FROM public.dat_phong WHERE id=$1',[historicalId])).rows[0].tong_tien;
+await db.exec(fs.readFileSync(root+'/co-so-du-lieu/migrations/20261119134739_don_chi_tiet_va_don_db.sql','utf8'));
+assert.equal((await db.query('SELECT tong_tien FROM public.dat_phong WHERE id=$1',[historicalId])).rows[0].tong_tien,historicalBefore);
+const historicalLines=(await db.query('SELECT loai_muc,thanh_tien FROM public.chi_tiet_dat_phong WHERE dat_phong_id=$1 ORDER BY thu_tu',[historicalId])).rows;
+assert.deepEqual(historicalLines.map(x=>[x.loai_muc,Number(x.thanh_tien)]),[['phong',200000],['phu_thu',50000],['dich_vu',40000]]);
+await db.query('DELETE FROM public.chi_tiet_dat_phong WHERE dat_phong_id=$1',[historicalId]);
+await db.query('DELETE FROM public.lich_su_dat_phong WHERE dat_phong_id=$1',[historicalId]);
+await db.query('DELETE FROM public.dat_phong WHERE id=$1',[historicalId]);
+console.log('PASS migration chi tiết: giữ tổng đơn cũ, tách giá phòng/phụ thu/dịch vụ, bỏ bảng cũ.');
+
 const service = new TrangKhachService(conn),
   chat = new ChatService(conn);
 const day = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10),
@@ -215,6 +227,7 @@ const booking = await service.create(body);
 assert.equal(Number(booking.tong_tien), 250000);
 assert.equal(booking.trang_thai, "Chờ xác nhận");
 assert.equal((await service.create(body)).ma_dat_phong, booking.ma_dat_phong);
+await assert.rejects(()=>service.create({...body,ten_khach:'Đổi nội dung cùng khóa'}),/khóa|nội dung|yêu cầu/i);
 await assert.rejects(
   () => service.create({ ...body, khoa_yeu_cau: randomUUID() }),
   /vừa được đặt/,
@@ -984,7 +997,7 @@ console.log(
 const { QuanTriService }=await import(root+'/may-chu/dist/quan-tri/quan-tri.service.js');
 const authorization=new QuanTriService();authorization.ketNoi=connection;
 assert.equal((await authorization.truyCap(admin)).quan_tri_he_thong,true);
-await assert.rejects(()=>authorization.truyCap(uid),/chưa được cấp quyền/);
+await assert.rejects(()=>authorization.truyCap(uid),/quyền/);
 const {VaiTroService}=await import(root+'/may-chu/dist/quan-tri/vai-tro.service.js');
 const rolesService=new VaiTroService(authorization);rolesService.db=connection;
 await assert.rejects(()=>rolesService.save(uid,undefined,{ten:'Vai trò lạ',trang:['bao-cao']}),/quyền quản trị/);
@@ -992,7 +1005,7 @@ await assert.rejects(()=>rolesService.save(admin,undefined,{ten:'Vai trò lạ',
 await rolesService.save(admin,undefined,{ten:'Kiểm thử báo cáo',trang:['bao-cao']});
 const reportRole=(await db.query("SELECT id FROM public.vai_tro WHERE ma_vai_tro='Kiểm thử báo cáo'")).rows[0].id;
 await db.query('INSERT INTO public.nguoi_dung_vai_tro(nguoi_dung_id,vai_tro_id,homestay_id) VALUES($1,$2,$3)',[other,reportRole,branch]);
-assert.deepEqual((await authorization.truyCap(other)).trang,['bao-cao']);
+assert.deepEqual((await authorization.truyCap(other)).trang,['bao-cao','ve-sinh']);
 await assert.rejects(()=>authorization.kiemTraTrang(other,'phong'),/không được cấp quyền/);
 const {BaoCaoService}=await import(root+'/may-chu/dist/quan-tri/bao-cao.service.js');
 const reports=new BaoCaoService(authorization);reports.db=connection;
@@ -1004,7 +1017,7 @@ assert.deepEqual(report.theo_ngay.map(x=>x.so_don),[1,3,0]);
 assert.deepEqual(report.theo_ngay.map(x=>Number(x.doanh_thu)),[100000,200000,0]);
 assert.equal(report.theo_ngay[1].so_huy,1);assert.equal(Number(report.da_thu),0);
 assert.equal(report.theo_kieu[0].so_don,4);
-await assert.rejects(()=>reports.report(uid,'2026-12-01','2026-12-03'),/chưa được cấp quyền/);
+await assert.rejects(()=>reports.report(uid,'2026-12-01','2026-12-03'),/quyền/);
 await assert.rejects(()=>reports.report(admin,'2026-12-03','2026-12-01'),/khoảng ngày/);
 await assert.rejects(()=>reports.report(admin,'2026-01-01','2028-01-01'),/khoảng ngày/);
 const {HienThiLichService}=await import(root+'/may-chu/dist/quan-tri/hien-thi-lich.service.js');
@@ -1017,7 +1030,7 @@ await assert.rejects(()=>appearance.save(admin,{...display}),/vừa được ng�
 await assert.rejects(()=>appearance.save(admin,{mau:{x:'url(evil)'},trang_thai:[],phien_ban:2}),/mã màu/);
 await assert.rejects(()=>appearance.read(other),/không được cấp quyền/);
 await rolesService.save(admin,reportRole,{ten:'Kiểm thử báo cáo',trang:[]});
-await assert.rejects(()=>reports.report(other,'2026-12-01','2026-12-03'),/chưa được cấp quyền/);
+await assert.rejects(()=>reports.report(other,'2026-12-01','2026-12-03'),/quyền/);
 const {DonLichService}=await import(root+'/may-chu/dist/quan-tri/don-lich.service.js');
 const editing=new DonLichService(authorization);editing.db=connection;
 const editId=(await db.query("SELECT id FROM public.dat_phong WHERE ma_dat_phong='BAOCAO0'")).rows[0].id;
@@ -1085,7 +1098,7 @@ orderFiles.storage=()=>({upload:async(key)=>{uploadedOrderFiles.push(key);return
 const photoBytes=Buffer.from([137,80,78,71,13,10,26,10]);
 const photo=await orderFiles.upload(admin,stateBooking,{buffer:photoBytes,size:photoBytes.length,mimetype:'image/png',originalname:'anh-phong.png'});
 assert.equal((await orderFiles.images(admin,stateBooking)).length,1);
-await assert.rejects(()=>orderFiles.images(uid,stateBooking),/chưa được cấp quyền/);
+await assert.rejects(()=>orderFiles.images(uid,stateBooking),/quyền/);
 await assert.rejects(()=>orderFiles.remove(admin,editId,photo.id),/không thuộc đơn/);
 await assert.rejects(()=>orderFiles.upload(admin,stateBooking,{buffer:Buffer.from('fake'),size:4,mimetype:'image/png',originalname:'fake.png'}),/tối đa|định dạng/);
 await orderFiles.remove(admin,stateBooking,photo.id);assert.equal((await orderFiles.images(admin,stateBooking)).length,0);assert.equal(removedOrderFiles.length,1);
@@ -1107,7 +1120,7 @@ console.log('PASS Trạng thái/phòng: sử dụng theo giờ, sau trả vệ s
 await db.exec(fs.readFileSync(root+'/co-so-du-lieu/migrations/20261113170000_so_thu_chi_thang.sql','utf8'));
 const {ThuChiService}=await import(root+'/may-chu/dist/quan-tri/thu-chi.service.js');
 const ledger=new ThuChiService(authorization);ledger.db=connection;
-await assert.rejects(()=>ledger.list(uid,'2026-11-01','2026-11-30'),/chưa được cấp quyền/);
+await assert.rejects(()=>ledger.list(uid,'2026-11-01','2026-11-30'),/quyền/);
 await assert.rejects(()=>ledger.list(admin,'2026-02-30','2026-03-01'),/Ngày không hợp lệ/);
 const cashIn=await ledger.save(admin,undefined,{ngay:'2026-11-02',ten:'Thu tiền phòng',so_tien:300000,loai:'Thu',homestay_id:branch,phong_id:room,mau:'#efffef'});
 const cashOut=await ledger.save(admin,undefined,{ngay:'2026-11-03',ten:'Vật tư vệ sinh',so_tien:50000,loai:'Chi',homestay_id:branch,phong_id:room});
@@ -1140,7 +1153,7 @@ await db.exec(sampleSql);assert.equal(Number((await db.query("SELECT count(*) AS
 console.log('PASS Dữ liệu mẫu: 14 khoản phòng và khoản chung có nhãn rõ ràng, chạy lại không nhân đôi.');
 
 await db.exec(fs.readFileSync(root+'/co-so-du-lieu/migrations/20261114123000_doi_tuong_bieu_do_thu_chi.sql','utf8'));
-await assert.rejects(()=>ledger.chartSettings(uid),/chưa được cấp quyền/);
+await assert.rejects(()=>ledger.chartSettings(uid),/quyền/);
 const chartObject={id:randomUUID(),ten:'Đối tượng chi nhánh',mau:'#abcdef',loai:'chi_nhanh',ids:[branch],tu_khoa:''};
 const chartConfig=await ledger.saveChartSettings(admin,{doi_tuong:[chartObject],phien_ban:0});assert.equal(chartConfig.phien_ban,1);assert.equal((await ledger.chartSettings(admin)).doi_tuong[0].ten,chartObject.ten);
 await assert.rejects(()=>ledger.saveChartSettings(admin,{doi_tuong:[],phien_ban:0}),/máy khác/);
@@ -1151,7 +1164,7 @@ assert.deepEqual((await ledger.saveChartSettings(admin,{doi_tuong:[],phien_ban:2
 await db.exec('SET ROLE authenticated');await assert.rejects(()=>db.query('SELECT * FROM public.cau_hinh_bieu_do_thu_chi'),/permission denied/);await db.exec('RESET ROLE');
 console.log('PASS Đối tượng biểu đồ: tạo/sửa/xóa, tài khoản riêng, quyền báo cáo, kiểm tra phạm vi, phiên bản chống ghi đè và RLS.');
 
-await assert.rejects(()=>ledger.statistics(uid,'2026-11-01','2026-11-30'),/chưa được cấp quyền/);
+await assert.rejects(()=>ledger.statistics(uid,'2026-11-01','2026-11-30'),/quyền/);
 await assert.rejects(()=>ledger.statistics(admin,'2026-02-30','2026-03-01'),/Ngày không hợp lệ/);
 await assert.rejects(()=>ledger.statistics(admin,'2026-01-01','2028-01-01'),/367 ngày/);
 const countBeforeStats=await db.query('SELECT (SELECT count(*) FROM public.so_thu_chi) AS ledger,(SELECT count(*) FROM public.nhat_ky_thu_chi) AS audit');
@@ -1189,7 +1202,7 @@ await assert.rejects(()=>service.quote({...extraQuery,combo_id:serviceCombos[1],
 await assert.rejects(()=>service.quote({...extraQuery,combo_ids:[combo]}),/không áp dụng/);
 const extraOrder=await service.create({...extraQuery,...bundle,ten_khach:'Khách phụ thu',so_dien_thoai:'0901234567',so_khach:1,khoa_yeu_cau:randomUUID(),tien_phong:1});
 const extraStored=(await db.query('SELECT id,nhan_phong_luc,tra_phong_luc,cau_hinh_gia_chot FROM public.dat_phong WHERE ma_dat_phong=$1',[extraOrder.ma_dat_phong])).rows[0];
-assert.equal(Number(extraOrder.tong_tien),950000);assert.deepEqual(extraStored.cau_hinh_gia_chot.combo_ids,serviceCombos);assert.equal(extraStored.cau_hinh_gia_chot.combo_da_chon.length,2);
+assert.equal(Number(extraOrder.tong_tien),950000);assert.equal(extraStored.cau_hinh_gia_chot.combo_ids,undefined);assert.equal((await db.query("SELECT count(*)::int n FROM public.chi_tiet_dat_phong WHERE dat_phong_id=$1 AND loai_muc='combo'",[extraStored.id])).rows[0].n,2);
 assert.equal(+new Date(extraStored.nhan_phong_luc),Date.parse(extraQuery.bat_dau));assert.equal(extraStored.cau_hinh_gia_chot.tien_phu_thu,100000);
 await assert.rejects(()=>service.quote({...extraQuery,hinh_thuc_dat:'Theo giờ',bat_dau:extraDay+'T12:00:00+07:00',ket_thuc:extraDay+'T14:00:00+07:00',gio_nhan_som:0,gio_tra_muon:0}),/vừa được đặt/);
 await db.query("UPDATE public.dat_phong SET trang_thai='Đã xác nhận' WHERE ma_dat_phong=$1",[extraOrder.ma_dat_phong]);

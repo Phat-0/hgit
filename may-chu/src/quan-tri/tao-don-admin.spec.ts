@@ -8,7 +8,7 @@ const valid={ten_don:'Đơn admin',phong_id:room,hinh_thuc_dat:'Theo ngày',so_d
 function setup(state="Trống"){
  const service=new LichPhongService({kiemTraTrang:async()=>({duoc_phep:true})} as unknown as QuanTriService);
  const calls:{sql:string;params:unknown[]}[]=[];
- Object.assign(service,{db:async()=>({end:async()=>{},query:async(sql:string,params:unknown[]=[])=>{calls.push({sql,params});if(sql.startsWith('SELECT p.*'))return {rowCount:1,rows:[{homestay_id:room,suc_chua:2,cho_dat_theo_ngay:true,trang_thai_chi_nhanh:'Đang hoạt động',trang_thai_van_hanh:state,so_gio_toi_thieu:1}]};if(sql.includes('SELECT khung_gio'))return {rows:[{khung_gio:GIO_MAC_DINH}]};if(sql.startsWith('INSERT INTO public.dat_phong'))return {rows:[{id:room}]};return {rowCount:0,rows:[]};}})});
+ Object.assign(service,{db:async()=>({end:async()=>{},query:async(sql:string,params:unknown[]=[])=>{calls.push({sql,params});if(sql.startsWith('INSERT INTO public.khoa_chong_lap_yeu_cau'))return {rows:[{id:room}]};if(sql.startsWith('SELECT p.*'))return {rowCount:1,rows:[{homestay_id:room,suc_chua:2,cho_dat_theo_ngay:true,trang_thai_chi_nhanh:'Đang hoạt động',trang_thai_van_hanh:state,so_gio_toi_thieu:1}]};if(sql.includes('SELECT khung_gio'))return {rows:[{khung_gio:GIO_MAC_DINH}]};if(sql.startsWith('INSERT INTO public.dat_phong'))return {rows:[{id:room}]};return {rowCount:0,rows:[]};}})});
  return {service,calls};
 }
 describe('Tạo đơn tại trang quản trị',()=>{

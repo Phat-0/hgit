@@ -1,0 +1,59 @@
+.ls-page .ql-table table {
+  table-layout: fixed;
+  min-width: 1095px;
+  width: 100%;
+}
+.ls-page .ql-table :is(th, td) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+  line-height: 1.5;
+}
+.ls-page td:nth-child(4) {
+  font-weight: 500;
+  color: #5b3d73;
+}
+.ls-page td:nth-child(5) {
+  font-size: 12px;
+}
+.ls-page details[open] {
+  position: relative;
+}
+.ls-page details dl {
+  position: relative;
+  right: 0;
+  width: auto;
+  min-width: 180px;
+  max-width: 65vw;
+  margin: 8px 0 0;
+  padding: 10px;
+  background: #faf7fc;
+  border: 1px solid #e4dbea;
+  border-radius: 8px;
+}
+.ls-page details dl > div + div {
+  margin-top: 8px;
+}
+.ls-page dt {
+  font-size: 11px;
+  color: #82738b;
+}
+.ls-page dd {
+  margin: 2px 0;
+  font-size: 12px;
+}
+.ls-page dd :is(del, span) {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.ls-page del {
+  color: #a07a80;
+}
+.ls-page dd span {
+  color: #405e49;
+}
+.ls-page .ql-tools input:first-child {
+  width: 260px;
+}
+
+.ls-summary{display:block;margin-top:4px;font-size:12px;font-weight:400;color:#6a6272;line-height:1.6}.ls-page td:nth-child(4)>strong{font-weight:600}

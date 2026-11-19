@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { RangePicker } from "../../dung-chung/lich/RangePicker";
 import ChonGio from "../../dung-chung/lich/ChonGio";
@@ -70,6 +70,7 @@ export default function FormDonDatPhong({
   onSaved: () => Promise<void>;
   embedded?:boolean;
 }) {
+  const requestKey=useRef({body:'',id:crypto.randomUUID()});
   const [rooms, setRooms] = useState<Room[]>([]),
     [combos, setCombos] = useState<Combo[]>([]),
     [hours, setHours] = useState<Record<string, string>>({}),
@@ -269,13 +270,14 @@ export default function FormDonDatPhong({
         ...(!don||paymentTouched?{trang_thai_thanh_toan:payment,tien_da_thanh_toan:Number(paid)}:{}),
         ...(don?{trang_thai_sua:newState,ly_do_sua_trang_thai:stateReason}:{}),
       };
+      const fingerprint=JSON.stringify(body);if(requestKey.current.body!==fingerprint)requestKey.current={body:fingerprint,id:crypto.randomUUID()};
       await quanTriApi(
         token,
         "lich-phong/don-dat-phong" + (don ? "/" + don.id : ""),
         don ? "PUT" : "POST",
         don
           ? body
-          : { ...body, so_dien_thoai: phone, trang_thai_thanh_toan: payment },
+          : { ...body, khoa_yeu_cau:requestKey.current.id, so_dien_thoai: phone, trang_thai_thanh_toan: payment },
       );
       await onSaved();
       onClose();

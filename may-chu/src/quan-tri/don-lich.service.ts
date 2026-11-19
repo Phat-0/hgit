@@ -1,3 +1,4 @@
+import {docChiTietDon} from './chi-tiet-don.sql.js';
 import {traVoucher,luuVoucher} from './voucher.sql.js';
 import {TRANG_THAI_PHONG} from './trang-thai-phong.sql.js';
 import {soTienDaGhiNhan} from './thanh-toan-don.js';
@@ -23,7 +24,7 @@ export class DonLichService{
     LEFT JOIN public.combo co ON co.id=d.combo_id WHERE d.id=$1`,[id]);
    if(!result.rowCount)throw new NotFoundException('Không tìm thấy đơn');
    const history=await c.query(`SELECT j.id,j.ngay_tao,j.du_lieu_cu||jsonb_build_object('ten_phong',COALESCE(j.du_lieu_cu->>'ten_phong',p.ten_phong)) AS du_lieu_cu,j.du_lieu_moi||jsonb_build_object('ten_phong',COALESCE(j.du_lieu_moi->>'ten_phong',q.ten_phong)) AS du_lieu_moi FROM public.nhat_ky_don_dat_phong j LEFT JOIN public.phong p ON p.id::text=j.du_lieu_cu->>'phong_id' LEFT JOIN public.phong q ON q.id::text=j.du_lieu_moi->>'phong_id' WHERE j.dat_phong_id=$1 AND j.hanh_dong='sua_tu_lich' AND (j.du_lieu_cu->>'phong_id' IS DISTINCT FROM j.du_lieu_moi->>'phong_id' OR (j.du_lieu_cu->>'nhan_phong_luc')::timestamptz IS DISTINCT FROM (j.du_lieu_moi->>'nhan_phong_luc')::timestamptz OR (j.du_lieu_cu->>'tra_phong_luc')::timestamptz IS DISTINCT FROM (j.du_lieu_moi->>'tra_phong_luc')::timestamptz) ORDER BY j.ngay_tao DESC,j.id DESC LIMIT 20`,[id]);
-   const d=result.rows[0];
+   const d=await docChiTietDon(c,result.rows[0]);
    const saved=Array.isArray(d.cau_hinh_gia_chot?.combo_da_chon)?d.cau_hinh_gia_chot.combo_da_chon:[];
    const ids=Array.isArray(d.cau_hinh_gia_chot?.combo_ids)?d.cau_hinh_gia_chot.combo_ids:d.combo_id?[d.combo_id]:[];
    const combos=saved.length?saved:(await c.query('SELECT id,ten_combo,gia_combo,so_gio_bao_gom FROM public.combo WHERE id=ANY($1::uuid[])',[ids])).rows;
@@ -48,7 +49,7 @@ export class DonLichService{
   const c=await this.db();try{
    await c.query('BEGIN');
    const old=await c.query('SELECT * FROM public.dat_phong WHERE id=$1 FOR UPDATE',[id]);
-   if(!old.rowCount)throw new NotFoundException('Không tìm thấy đơn');const d=old.rows[0];
+   if(!old.rowCount)throw new NotFoundException('Không tìm thấy đơn');const d=await docChiTietDon(c,old.rows[0]);
    if(!['Chờ thanh toán','Chờ xác nhận','Đã xác nhận','Đã nhận phòng','Đã trả phòng','Không nhận phòng'].includes(d.trang_thai))throw new ConflictException('Không sửa đơn đã hủy hoặc hết hạn');
    const target=x.trang_thai_sua===undefined?d.trang_thai:String(x.trang_thai_sua),correction=target!==d.trang_thai;
    const reason=String(x.ly_do_sua_trang_thai||'').trim();
@@ -91,7 +92,7 @@ export class DonLichService{
    await c.query(`UPDATE public.dat_phong SET ten_don=$2,phong_id=$3,homestay_id=$4,hinh_thuc_dat=$5,
     nhan_phong_luc=$6,tra_phong_luc=$7,so_khach=$8,tien_phong=$9,so_dien_thoai_dat=$10,
     nguoi_dung_id=CASE WHEN so_dien_thoai_dat IS DISTINCT FROM $10 THEN NULL ELSE nguoi_dung_id END,
-    ghi_chu=$11,cau_hinh_gia_chot=$12::jsonb,goi_gia_id=NULL,combo_id=$13,ngay_cap_nhat=now() WHERE id=$1`,
+    ghi_chu=$11,cau_hinh_gia_chot=$12::jsonb,combo_id=$13,ngay_cap_nhat=now() WHERE id=$1`,
     [id,name,room,p.homestay_id,kind,start.toISOString(),end.toISOString(),guests,amount,phone,note,JSON.stringify(snapshot),comboId||null]);
    await c.query(`UPDATE public.dat_phong SET trang_thai=$2,trang_thai_thanh_toan=$3,tien_da_thanh_toan=$4,da_nhan_phong_luc=CASE WHEN $5 THEN CASE WHEN $2 IN ('Đã nhận phòng','Đã trả phòng') THEN COALESCE(da_nhan_phong_luc,now()) ELSE NULL END ELSE da_nhan_phong_luc END,da_tra_phong_luc=CASE WHEN $5 THEN CASE WHEN $2='Đã trả phòng' THEN COALESCE(da_tra_phong_luc,now()) ELSE NULL END ELSE da_tra_phong_luc END WHERE id=$1`,[id,target,payment,received,correction]);
    if(voucherChanged)await luuVoucher(c,id,voucher||null);

@@ -19,7 +19,7 @@ type ImageFile = {
 @Injectable()
 export class ComboService {
   constructor(private readonly admin: QuanTriService) {}
-  private async db() {
+  private async db(uid?:string) {
     const c = new Client({
       connectionString: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: true },
@@ -27,6 +27,7 @@ export class ComboService {
       query_timeout: 10000,
     });
     await c.connect();
+    if(uid)await c.query("SELECT set_config('app.nguoi_thuc_hien_id',$1,false)",[uid]);
     return c;
   }
   private id(id: string) {
@@ -60,7 +61,7 @@ export class ComboService {
   }
   async list(uid: string) {
     await this.admin.kiemTraTrang(uid,'goi-combo');
-    const c = await this.db();
+    const c = await this.db(uid);
     try {
       const combos = await c.query(
         `SELECT co.*,ARRAY(SELECT homestay_id FROM public.combo_chi_nhanh WHERE combo_id=co.id ORDER BY homestay_id) AS chi_nhanh_ids,ARRAY(SELECT phong_id FROM public.combo_phong WHERE combo_id=co.id ORDER BY phong_id) AS phong_ids FROM public.combo co ORDER BY co.ten_combo,co.id`,
@@ -146,7 +147,7 @@ export class ComboService {
     if (!id && !incoming.length)
       throw new BadRequestException('Vui lòng chọn ảnh combo');
     const extensions = incoming.map((file) => this.image(file)),
-      c = await this.db();
+      c = await this.db(uid);
     const uploaded: string[] = [];
     let oldImages: string[] = [],
       removed: string[] = [],
@@ -287,7 +288,7 @@ export class ComboService {
   async remove(uid: string, id: string) {
     await this.admin.kiemTraTrang(uid,'goi-combo');
     this.id(id);
-    const c = await this.db();
+    const c = await this.db(uid);
     try {
       const r = await c.query(
         'DELETE FROM public.combo WHERE id=$1 RETURNING anh_dai_dien,anh_combo',

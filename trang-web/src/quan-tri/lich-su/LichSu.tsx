@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { qlApi, luc } from "../khach-hang/api";
 import "../khach-hang/quan-ly.css";
+import "./lich-su.css";
 export default function LichSu({ token }: { token: string }) {
   const [q, setQ] = useState({
       tu: "",
@@ -37,7 +38,7 @@ export default function LichSu({ token }: { token: string }) {
     setQ({ ...q, [k]: v, trang: "1" });
   }
   return (
-    <section className="ql-page">
+    <section className="ql-page ls-page">
       <div className="ql-head">
         <h2>Lịch sử</h2>
         <button onClick={() => setRev((v) => v + 1)}>Làm mới</button>
@@ -46,7 +47,7 @@ export default function LichSu({ token }: { token: string }) {
       <div className="ql-tools">
         <input
           aria-label="Tìm lịch sử"
-          placeholder="Thao tác, người thực hiện…"
+          placeholder="Thao tác, đối tượng, người thực hiện…"
           value={q.tim}
           onChange={(e) => filter("tim", e.target.value)}
         />
@@ -84,13 +85,22 @@ export default function LichSu({ token }: { token: string }) {
       </div>
       <div className="ql-table">
         <table>
+          <colgroup>
+            <col style={{ width: 150 }} />
+            <col style={{ width: 110 }} />
+            <col style={{ width: 150 }} />
+            <col style={{ width: 230 }} />
+            <col style={{ width: 250 }} />
+            <col style={{ width: 85 }} />
+          </colgroup>
           <thead>
             <tr>
               <th>Thời gian</th>
               <th>Nhóm</th>
               <th>Người thực hiện</th>
               <th>Thao tác</th>
-              <th>Nội dung</th>
+              <th>Đối tượng</th>
+              <th>Chi tiết</th>
             </tr>
           </thead>
           <tbody>
@@ -100,13 +110,32 @@ export default function LichSu({ token }: { token: string }) {
                 <td>{x.nhom}</td>
                 <td>{x.nguoi_thuc_hien || "Hệ thống / chưa xác định"}</td>
                 <td>
-                  {x.hanh_dong}
-                  <small>{x.ten_bang}</small>
+                  <strong>{x.thao_tac || x.hanh_dong}</strong>
+                  {x.tom_tat && (
+                    <small className="ls-summary">{x.tom_tat}</small>
+                  )}
                 </td>
+                <td>{x.doi_tuong || x.ten_bang}</td>
                 <td>
                   <details>
                     <summary>Xem</summary>
-                    <pre>{JSON.stringify(x.du_lieu, null, 2)}</pre>
+                    <dl>
+                      {(x.thay_doi || []).map((v: any, i: number) => (
+                        <div key={i}>
+                          <dt>{v.truong}</dt>
+                          <dd>
+                            {v.truoc !== null && (
+                              <del>{v.truoc_hien ?? String(v.truoc)}</del>
+                            )}
+                            <span>
+                              {v.sau === null
+                                ? "Đã bỏ"
+                                : (v.sau_hien ?? String(v.sau))}
+                            </span>
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
                   </details>
                 </td>
               </tr>

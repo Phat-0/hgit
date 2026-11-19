@@ -374,16 +374,17 @@ export default function App() {
   useLayoutEffect(() => {
     const root = document.querySelector<HTMLElement>('.kh-site');
     if (!root || !('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches || home?.giao_dien?.hien_hoat_anh === false) return;
-    const selectors = '.kh-room-card, .kh-cms-cards article, .kh-feature-card, .kh-reviews>header, .kh-review-track article, .kh-cms-intro>div, .kh-room-related>header, .kh-room-related article' + (page === 'home' ? ', .kh-cms-hero>div:first-child>*, .kh-cms-hero>.kh-gallery, .kh-cms-hero>.kh-stay-note, .kh-stay-numbers>h2, .kh-stay-numbers article, .kh-booking-toggle, .kh-booking-inner, .kh-showcase-tabs, .kh-showcase-tools, .kh-footer-location, .kh-footer-story, .kh-footer-explore, .kh-footer-connect, .kh-footer-bottom' : '');
+    const selectors = '.kh-room-card, .kh-cms-cards article, .kh-feature-card, .kh-reviews>header, .kh-review-track article, .kh-cms-intro>div>*, .kh-room-related>header, .kh-room-related article' + (page === 'home' ? ', .kh-cms-hero>div:first-child>*, .kh-cms-hero>.kh-gallery, .kh-cms-hero>.kh-stay-note, .kh-stay-numbers>h2, .kh-stay-numbers article, .kh-booking-toggle, .kh-booking-inner, .kh-showcase-tabs, .kh-showcase-tools, .kh-nav>.kh-brand, .kh-nav>nav>*, .kh-footer-location, .kh-footer-story>:not(.kh-footer-benefits), .kh-footer-benefits>*, .kh-footer-explore>*, .kh-footer-connect>*, .kh-footer-bottom>*' : '');
     const registered = new WeakSet<Element>();
     const observer = new IntersectionObserver(entries => entries.forEach(entry => {
       if (entry.isIntersecting) { entry.target.setAttribute('data-reveal', 'shown'); observer.unobserve(entry.target); }
-    }), { threshold: .06, rootMargin: '0px 0px -32px 0px' });
+    }), { threshold: .08, rootMargin: '0px 0px -20px 0px' });
     const register = () => root.querySelectorAll<HTMLElement>(selectors).forEach(element => {
       if (registered.has(element) || element.dataset.reveal === 'shown') return;
       registered.add(element);
       const index = Array.from(element.parentElement?.children || []).indexOf(element);
-      element.style.setProperty('--kh-reveal-delay', Math.min(Math.max(index, 0), 4) * 110 + 'ms');
+      element.style.setProperty('--kh-reveal-delay', Math.min(Math.max(index, 0), 4) * 100 + 'ms');
+      element.style.setProperty('--kh-reveal-duration', element.closest('.kh-nav')?'700ms':'1100ms');
       element.setAttribute('data-reveal', 'pending');
       observer.observe(element);
     });

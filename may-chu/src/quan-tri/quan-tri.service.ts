@@ -76,6 +76,7 @@ export class QuanTriService {
         : [
             ...new Set<string>(r.rows.flatMap((x) => x.quyen_trang || [])),
           ].filter((x) => TRANG_NHAN_VIEN.includes(x));
+      if(r.rows.some(x=>x.ma_vai_tro!=='Khách hàng')&&!pages.includes('ve-sinh'))pages.push('ve-sinh');
       if (!pages.length)
         throw new ForbiddenException(
           'Tài khoản chưa được cấp quyền vào trang quản trị',
