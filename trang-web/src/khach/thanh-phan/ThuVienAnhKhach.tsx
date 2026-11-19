@@ -1,3 +1,4 @@
+import {giamChuyenDong} from '../../dung-chung/giao-dien/chuyen-dong';
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 export default function ThuVienAnhKhach({
   anh,
@@ -118,7 +119,7 @@ export default function ThuVienAnhKhach({
             ) {
               const step = dx < 0 ? 1 : -1;
               if (
-                window.matchMedia("(prefers-reduced-motion: reduce)").matches
+                giamChuyenDong()
               ) {
                 move(step);
                 setOffset(0);

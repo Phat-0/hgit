@@ -595,12 +595,11 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .kh-stay-numbers article,
-  .kh-booking-panel {
+  :root:not([data-motion-mode="full"]) .kh-stay-numbers article, :root:not([data-motion-mode="full"]) .kh-booking-panel {
     animation: none !important;
     transform: none !important;
   }
-  .kh-stay-numbers.is-visible article {
+  :root:not([data-motion-mode="full"]) .kh-stay-numbers.is-visible article {
     opacity: 1;
   }
 }

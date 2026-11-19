@@ -1,3 +1,4 @@
+import {giamChuyenDong} from './chuyen-dong';
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import "./anh-phong-noi.css";
@@ -31,7 +32,7 @@ export default function AnhPhongNoi({
   const callbacks = useRef({ onClose, onNavigate, photos, index });
   callbacks.current = { onClose, onNavigate, photos, index };
   const dismiss = () => {
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (giamChuyenDong()) {
       callbacks.current.onClose();
       return;
     }

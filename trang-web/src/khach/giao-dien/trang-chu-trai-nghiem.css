@@ -522,8 +522,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .kh-gallery-track.kh-gallery-settling,
-  .kh-feature-card img {
+  :root:not([data-motion-mode="full"]) .kh-gallery-track.kh-gallery-settling, :root:not([data-motion-mode="full"]) .kh-feature-card img {
     transition: none;
   }
 }

@@ -222,23 +222,17 @@ main.kh-site .kh-footer-socials a:hover {
   translate: 0 -2px;
 }
 @media (prefers-reduced-motion: reduce) {
-  main.kh-site .kh-cms-hero::before {
+  :root:not([data-motion-mode="full"]) main.kh-site .kh-cms-hero::before {
     transform: none;
   }
-  main.kh-site .kh-cms-hero > .kh-gallery {
+  :root:not([data-motion-mode="full"]) main.kh-site .kh-cms-hero > .kh-gallery {
     translate: none;
     transition: none;
   }
-  main.kh-site .kh-headline-mask > span,
-  main.kh-site .kh-tab-content,
-  main.kh-site.kh-cms-custom .kh-gallery img[data-motion-play] {
+  :root:not([data-motion-mode="full"]) main.kh-site .kh-headline-mask > span, :root:not([data-motion-mode="full"]) main.kh-site .kh-tab-content, :root:not([data-motion-mode="full"]) main.kh-site.kh-cms-custom .kh-gallery img[data-motion-play] {
     animation: none !important;
   }
-  main.kh-site .kh-kind-indicator,
-  main.kh-site .kh-feature-card,
-  main.kh-site .kh-feature-card img,
-  main.kh-site .kh-review-track > article,
-  main.kh-site .kh-footer-location {
+  :root:not([data-motion-mode="full"]) main.kh-site .kh-kind-indicator, :root:not([data-motion-mode="full"]) main.kh-site .kh-feature-card, :root:not([data-motion-mode="full"]) main.kh-site .kh-feature-card img, :root:not([data-motion-mode="full"]) main.kh-site .kh-review-track > article, :root:not([data-motion-mode="full"]) main.kh-site .kh-footer-location {
     transition: none !important;
     translate: none;
     scale: 1;
@@ -266,7 +260,7 @@ main.kh-site.kh-page-home .kh-cms-hero::before {
     scale(var(--hero-zoom, 1.04)) !important;
 }
 @media (prefers-reduced-motion: reduce) {
-  main.kh-site.kh-page-home .kh-cms-hero::before {
+  :root:not([data-motion-mode="full"]) main.kh-site.kh-page-home .kh-cms-hero::before {
     transform: none !important;
   }
 }
@@ -289,7 +283,7 @@ main.kh-site.kh-page-home .kh-cms-hero::before {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  main.kh-site [data-section-progress] {
+  :root:not([data-motion-mode="full"]) main.kh-site [data-section-progress] {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;

@@ -25,7 +25,7 @@
 .chat-simple button:focus-visible, .chat-simple input:focus-visible { outline: 2px solid #f7d7a5; outline-offset: 3px; }
 @keyframes chat-arrive { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @media(max-width:600px) { .chat-simple .chat-messages { padding: 16px; } }
-@media(prefers-reduced-motion:reduce) { .chat-simple *, .chat-simple .chat-window { animation: none!important; transition: none!important; } }
+@media(prefers-reduced-motion:reduce) { :root:not([data-motion-mode="full"]) .chat-simple *, :root:not([data-motion-mode="full"]) .chat-simple .chat-window { animation: none!important; transition: none!important; } }
 .chat-shell.chat-simple .chat-window { width:min(760px,calc(100vw - 24px)); height:min(640px,calc(100dvh - 115px)); border-radius:20px; }
 .chat-shell.chat-simple .chat-window>header { gap:12px; padding:12px 16px; min-height:68px; }
 .chat-shell.chat-simple .chat-window>header .chat-tool-buttons { display:flex; gap:8px; margin-left:auto; }

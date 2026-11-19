@@ -501,7 +501,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .kh-site .kh-gallery--noi .kh-gallery-fan.kh-gallery-settling > img {
+  :root:not([data-motion-mode="full"]) .kh-site .kh-gallery--noi .kh-gallery-fan.kh-gallery-settling > img {
     transition: none !important;
   }
 }

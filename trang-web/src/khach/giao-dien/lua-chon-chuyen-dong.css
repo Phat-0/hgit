@@ -1,0 +1,5 @@
+.kh-site .kh-motion-choice{font:12px 'Home Sans',sans-serif;color:#e8cfaa;background:#3c2c20;border:1px solid #b6925b66;border-radius:8px;padding:7px 8px;max-width:210px;cursor:pointer}
+.kh-site .kh-motion-choice:focus-visible{outline:2px solid #e8bd7d;outline-offset:2px}
+:root[data-motion-mode=off] main.kh-site *,:root[data-motion-mode=off] main.kh-site *::before,:root[data-motion-mode=off] main.kh-site *::after,:root[data-motion-mode=off] .anh-phong-noi,:root[data-motion-mode=off] .anh-phong-noi *,:root[data-motion-mode=off] .chat-shell.chat-simple *{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+:root[data-motion-mode=off] main.kh-site [data-scroll-reveal],:root[data-motion-mode=off] main.kh-site [data-motion-wait]{opacity:1!important;transform:none!important}
+:root[data-motion-mode=off] main.kh-site .kh-cms-hero::before{transform:none!important}

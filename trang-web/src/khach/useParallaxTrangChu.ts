@@ -1,3 +1,4 @@
+import {giamChuyenDong} from '../dung-chung/giao-dien/chuyen-dong';
 import { useEffect } from "react";
 export default function useParallaxTrangChu(active: boolean) {
   useEffect(() => {
@@ -17,7 +18,7 @@ export default function useParallaxTrangChu(active: boolean) {
     scan();
     const draw = () => {
       frame = 0;
-      if (media.matches) return;
+      if (giamChuyenDong()) return;
       const h = hero.getBoundingClientRect(),
         p = Math.max(0, Math.min(1, -h.top / Math.max(1, h.height)));
       hero.style.setProperty("--hero-shift", p * 58 + "px");
@@ -56,7 +57,7 @@ export default function useParallaxTrangChu(active: boolean) {
     });
     changed.observe(root, { childList: true, subtree: true });
     const reduced = () => {
-      if (media.matches) {
+      if (giamChuyenDong()) {
         hero.style.setProperty("--hero-shift", "0px");
         hero.style.setProperty("--hero-zoom", "1");
         x = y = 0;

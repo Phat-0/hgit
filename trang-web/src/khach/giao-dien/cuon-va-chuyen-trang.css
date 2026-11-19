@@ -237,9 +237,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .kh-site [data-scroll-reveal],
-  .kh-site .kh-booking-side,
-  .kh-site .kh-booking-content {
+  :root:not([data-motion-mode="full"]) .kh-site [data-scroll-reveal], :root:not([data-motion-mode="full"]) .kh-site .kh-booking-side, :root:not([data-motion-mode="full"]) .kh-site .kh-booking-content {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
@@ -267,11 +265,11 @@
 .kh-site [data-motion-play]{animation:kh-visible-enter 1100ms cubic-bezier(.22,.61,.36,1) both!important;animation-timeline:auto!important;animation-range:normal!important;transition:none!important}
 .kh-site img[data-motion-play]{animation-name:kh-image-enter!important;animation-duration:1500ms!important}
 .kh-site [data-motion-play]:focus-within{opacity:1!important;transform:none!important}
-@media(prefers-reduced-motion:reduce){.kh-site [data-motion-play]{animation:none!important;opacity:1!important;transform:none!important}}
+@media(prefers-reduced-motion:reduce){:root:not([data-motion-mode="full"]) .kh-site [data-motion-play]{animation:none!important;opacity:1!important;transform:none!important}}
 
 .kh-site [data-motion-wait]:not([data-motion-play]){opacity:0;transform:translateY(40px)}
 /* Override the older native-timeline and gallery reset selectors explicitly. */
 main.kh-site.kh-cms-custom [data-scroll-reveal][data-motion-play]{animation:kh-visible-enter 1100ms cubic-bezier(.22,.61,.36,1) both!important;animation-timeline:auto!important;animation-range:normal!important;transition:none!important}
 main.kh-site.kh-cms-custom img[data-scroll-reveal][data-motion-play]{animation:kh-image-enter 1500ms cubic-bezier(.22,.61,.36,1) both!important;animation-timeline:auto!important;animation-range:normal!important}
-@media(prefers-reduced-motion:reduce){main.kh-site.kh-cms-custom [data-motion-play],main.kh-site.kh-cms-custom img[data-motion-play]{animation:none!important;opacity:1!important;transform:none!important}}
-@media(prefers-reduced-motion:reduce){main.kh-site.kh-cms-custom [data-scroll-reveal],main.kh-site.kh-cms-custom [data-motion-wait]{animation:none!important;opacity:1!important;transform:none!important}}
+@media(prefers-reduced-motion:reduce){:root:not([data-motion-mode="full"]) main.kh-site.kh-cms-custom [data-motion-play], :root:not([data-motion-mode="full"]) main.kh-site.kh-cms-custom img[data-motion-play]{animation:none!important;opacity:1!important;transform:none!important}}
+@media(prefers-reduced-motion:reduce){:root:not([data-motion-mode="full"]) main.kh-site.kh-cms-custom [data-scroll-reveal], :root:not([data-motion-mode="full"]) main.kh-site.kh-cms-custom [data-motion-wait]{animation:none!important;opacity:1!important;transform:none!important}}

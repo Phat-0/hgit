@@ -1,3 +1,4 @@
+import {giamChuyenDong} from '../../dung-chung/giao-dien/chuyen-dong';
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 export default function KhungDatDonChim({
   open,
@@ -23,7 +24,7 @@ export default function KhungDatDonChim({
     }
     previous.current = open;
     el.hidden = false;
-    if (!animate || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (!animate || giamChuyenDong()) {
       el.hidden = !open;
       return;
     }

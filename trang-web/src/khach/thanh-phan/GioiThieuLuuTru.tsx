@@ -1,3 +1,4 @@
+import {giamChuyenDong} from '../../dung-chung/giao-dien/chuyen-dong';
 import { useMemo, useState, useEffect, useRef } from "react";
 export type PhongKhach = {
   id: string;
@@ -451,7 +452,7 @@ export function DanhGiaTrangChu({
         drag.current ||
         node.contains(document.activeElement) ||
         document.hidden ||
-        matchMedia("(prefers-reduced-motion: reduce)").matches
+        giamChuyenDong()
       )
         return;
       const b = node.getBoundingClientRect();

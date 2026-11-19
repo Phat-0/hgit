@@ -826,11 +826,11 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .kh-site * {
+  :root:not([data-motion-mode="full"]) .kh-site * {
     animation: none !important;
     transition: none !important;
   }
-  .kh-room-card:hover {
+  :root:not([data-motion-mode="full"]) .kh-room-card:hover {
     transform: none;
   }
 }

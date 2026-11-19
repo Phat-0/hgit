@@ -707,7 +707,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .kh-wheel-number {
+  :root:not([data-motion-mode="full"]) .kh-wheel-number {
     transition: none;
   }
 }

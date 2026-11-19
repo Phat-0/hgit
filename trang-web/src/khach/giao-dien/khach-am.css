@@ -137,4 +137,4 @@ body:has(.kh-site) .lp-range-portal button:hover:not(:disabled) { background:#75
  .kh-site .kh-footer { gap:20px; margin-top:32px; }
  .kh-site .kh-footer nav { margin:0; flex:1 0 100%; gap:12px 20px; }
 }
-@media(prefers-reduced-motion:reduce) { .kh-site [data-reveal] { opacity:1; transform:none; } .kh-site *, .kh-dialog { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }
+@media(prefers-reduced-motion:reduce) { :root:not([data-motion-mode="full"]) .kh-site [data-reveal] { opacity:1; transform:none; } :root:not([data-motion-mode="full"]) .kh-site *, :root:not([data-motion-mode="full"]) .kh-dialog { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }

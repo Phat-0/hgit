@@ -1,3 +1,4 @@
+import {giamChuyenDong} from '../../dung-chung/giao-dien/chuyen-dong';
 import { useEffect, useRef, useState } from "react";
 import BieuTuong, {
   type TenBieuTuong,
@@ -32,7 +33,7 @@ export default function ConSoLuuTru({
   }, [!!stats,animate]);
   useEffect(() => {
     if (!visible) return;
-    if (!animate || matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (!animate || giamChuyenDong()) {
       setProgress(1);
       return;
     }

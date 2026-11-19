@@ -1,3 +1,5 @@
+import useTuyChonChuyenDong from './useTuyChonChuyenDong';
+import {giamChuyenDong} from '../dung-chung/giao-dien/chuyen-dong';
 import useParallaxTrangChu from './useParallaxTrangChu';
 import useDieuHuongKhach,{denTrangKhach} from './useDieuHuongKhach';
 import useHieuUngCuon from './useHieuUngCuon';
@@ -38,6 +40,7 @@ import './giao-dien/trang-chu-hoan-thien.css';
 import './giao-dien/tham-khao-charmy.css';
 import './giao-dien/cuon-va-chuyen-trang.css';
 import './giao-dien/chuyen-dong-trai-nghiem.css';
+import './giao-dien/lua-chon-chuyen-dong.css';
 type Receipt = {
   ma_dat_phong: string;
   tong_tien: number | string;
@@ -67,6 +70,7 @@ const defaults = {
 };
 export default function App() {
   const route=useDieuHuongKhach();
+  const motion=useTuyChonChuyenDong();
   const page=location.pathname.startsWith('/phong/')?'chi-tiet':location.pathname.startsWith('/ket-qua-phong')?'ket-qua':location.pathname.startsWith('/phong-gia')?'phong':location.pathname.startsWith('/uu-dai-combo')?'combo':'home';
   const [fullResults,setFullResults]=useState<Room[]>([]),[fullLoading,setFullLoading]=useState(false),[fullError,setFullError]=useState('');
   useEffect(()=>{if(page!=='ket-qua'&&page!=='chi-tiet')return;setFullResults([]);setFullError('');setFullLoading(false);let active=true;const q=new URLSearchParams(location.search);if(page==='chi-tiet'&&!['bat_dau','ket_thuc','hinh_thuc_dat'].every(k=>q.has(k)))return;const params=new URLSearchParams();for(const k of ['bat_dau','ket_thuc','hinh_thuc_dat','chi_nhanh_id'])if(q.get(k))params.set(k,q.get(k)!);setFullLoading(true);void khachApi<Room[]>('/phong?'+params).then(items=>{if(active){setFullResults(items);lastSearch.current=Object.fromEntries(params);setRooms(items);}}).catch(e=>{if(active)setFullError(e.message);}).finally(()=>{if(active)setFullLoading(false);});return()=>{active=false;};},[route]);
@@ -278,7 +282,7 @@ export default function App() {
     e.preventDefault();
     if (filterTimer.current !== null) window.clearTimeout(filterTimer.current);
     await loadRooms(++serial.current);
-    requestAnimationFrame(()=>document.getElementById("ket-qua-phong")?.scrollIntoView({block:"start",behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"}));
+    requestAnimationFrame(()=>document.getElementById("ket-qua-phong")?.scrollIntoView({block:"start",behavior:giamChuyenDong()?"auto":"smooth"}));
   }
   function openRoom(room:Room){
     const fromSearch=!room.gia_tham_khao&&lastSearch.current&&(rooms.some(p=>p.id===room.id)||fullResults.some(p=>p.id===room.id));
@@ -377,8 +381,8 @@ export default function App() {
     document.addEventListener('mousedown', outside); document.addEventListener('keydown', escape);
     return () => { document.removeEventListener('mousedown', outside); document.removeEventListener('keydown', escape); };
   }, [navOpen]);
-  useHieuUngCuon(true,page==='home',!!home);
-  useParallaxTrangChu(page==='home'&&!!home);
+  useHieuUngCuon(!motion.reduced,page==='home',!!home);
+  useParallaxTrangChu(page==='home'&&!!home&&!motion.reduced);
   useEffect(()=>{setNavOpen(false);setLightbox(null);setSelected(null);setComboDetail('');setBookingTarget(null);setFullError('');setComboChon(new URLSearchParams(location.search).get('combo')||'');setRoomIntent(new URLSearchParams(location.search).get('phong')||'');if(location.hash==='#dat-phong')setBookingOpen(true);},[route]);
   const modal = selected || login || history !== null;
   const ui=layGiaoDien(home?.giao_dien);
@@ -403,6 +407,9 @@ export default function App() {
         </a>
         <button className="kh-nav-toggle" aria-label="Menu điều hướng" aria-expanded={navOpen} aria-controls="kh-navigation" onClick={()=>setNavOpen(!navOpen)}><BieuTuong ten={navOpen ? "close" : "menu"}/></button>
         <nav id="kh-navigation" aria-label="Điều hướng chính" className={navOpen ? "kh-nav-open" : ""} onClick={()=>setNavOpen(false)}>
+          <select className="kh-motion-choice" aria-label="Hiệu ứng chuyển động" value={motion.mode} onChange={e=>motion.change(e.target.value as 'system'|'full'|'off')}>
+            <option value="system">Hiệu ứng: theo thiết bị{motion.mode==='system'?(motion.reduced?' (tắt)':' (bật)'):''}</option><option value="full">Hiệu ứng: bật</option><option value="off">Hiệu ứng: tắt</option>
+          </select>
           <a href="/" aria-current={page==='home'?'page':undefined}>Trang chủ</a>
           {home?.hien_phong&&<a href="/phong-gia" aria-current={page==='phong'||page==='chi-tiet'?'page':undefined}>Phòng & Giá</a>}
           {home?.hien_phong&&home.hien_combo!==false&&<a href="/uu-dai-combo" aria-current={page==='combo'?'page':undefined}>Ưu đãi Combo</a>}
@@ -460,8 +467,8 @@ export default function App() {
       )}
       {home?.hien_phong && page==='home' && (
         <>
-          <>{ui.hien_thong_ke!==false&&<ConSoLuuTru name={ui.tieu_de_thong_ke||ui.ten_web} stats={catalog.thong_ke} animate={true}/>}</>
-          <section id="dat-phong" className={"kh-booking-split "+(bookingOpen?"is-open":"")}><button type="button" className="kh-booking-toggle" aria-expanded={bookingOpen} aria-controls="kh-booking-panel" onClick={()=>setBookingOpen(!bookingOpen)}><BieuTuong ten="calendar"/>{ui.nhan_dat_don||"Đặt đơn"} <span aria-hidden="true">{bookingOpen?'−':'+'}</span></button><KhungDatDonChim title={ui.nhan_dat_don||"Đặt đơn"} description={ui.khau_hieu} open={bookingOpen} animate={true} duration={ui.toc_do_mo_dat_don||1600}><section className="kh-search" aria-label="Tìm phòng trống">
+          <>{ui.hien_thong_ke!==false&&<ConSoLuuTru name={ui.tieu_de_thong_ke||ui.ten_web} stats={catalog.thong_ke} animate={!motion.reduced}/>}</>
+          <section id="dat-phong" className={"kh-booking-split "+(bookingOpen?"is-open":"")}><button type="button" className="kh-booking-toggle" aria-expanded={bookingOpen} aria-controls="kh-booking-panel" onClick={()=>setBookingOpen(!bookingOpen)}><BieuTuong ten="calendar"/>{ui.nhan_dat_don||"Đặt đơn"} <span aria-hidden="true">{bookingOpen?'−':'+'}</span></button><KhungDatDonChim title={ui.nhan_dat_don||"Đặt đơn"} description={ui.khau_hieu} open={bookingOpen} animate={!motion.reduced} duration={ui.toc_do_mo_dat_don||1600}><section className="kh-search" aria-label="Tìm phòng trống">
             {roomIntent&&<p className="kh-combo-intent">Đang chọn {catalog.phong.find(p=>p.id===roomIntent)?.ten_phong||'phòng'} · Chọn lịch để kiểm tra phòng trống. <button type="button" onClick={()=>setRoomIntent('')}>Bỏ chọn</button></p>}
             {comboChon&&<p className="kh-combo-intent">Đang chọn {catalog.combo.find(c=>c.id===comboChon)?.ten_combo||'combo'} · Kiểm tra lịch để xem phòng áp dụng. <button type="button" onClick={()=>setComboChon('')}>Bỏ chọn</button></p>}
             <form onSubmit={search}>

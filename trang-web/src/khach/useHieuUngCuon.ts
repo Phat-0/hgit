@@ -1,3 +1,4 @@
+import {giamChuyenDong} from '../dung-chung/giao-dien/chuyen-dong';
 import { useLayoutEffect } from "react";
 const selectors =
   ".kh-cms-hero>div:first-child>*,.kh-cms-hero>.kh-gallery,.kh-cms-intro>div>*,.kh-cms-cards article,.kh-stay-numbers>h2,.kh-stay-numbers article,.kh-showcase-tabs,.kh-showcase-tools,.kh-room-card,.kh-feature-card,.kh-reviews>header,.kh-review-track article,.kh-footer-location,.kh-footer-story,.kh-footer-explore,.kh-footer-connect,.kh-cms-hero .kh-gallery img,.kh-cms-intro img,.kh-cms-cards img,.kh-feature-card img,.kh-feature-caption>*,.kh-cms-cards :is(h2,p),.kh-footer-story>*,.kh-footer-explore>*,.kh-footer-connect>*,.kh-footer-bottom>*";
@@ -14,7 +15,7 @@ export default function useHieuUngCuon(
       !enabled ||
       !home ||
       !ready ||
-      matchMedia("(prefers-reduced-motion: reduce)").matches
+      giamChuyenDong()
     )
       return;
     const native = CSS.supports("animation-timeline: view()");

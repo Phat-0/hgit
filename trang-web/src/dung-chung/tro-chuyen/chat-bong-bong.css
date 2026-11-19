@@ -177,11 +177,11 @@
   outline-offset: 3px;
 }
 @media (prefers-reduced-motion: reduce) {
-  .chat-shell .chat-launch {
+  :root:not([data-motion-mode="full"]) .chat-shell .chat-launch {
     transition: none;
   }
 }
 @keyframes chat-customer-pulse{0%,100%{box-shadow:0 0 0 0 #d8b37a22}60%{box-shadow:0 0 0 9px #d8b37a00}}
 @keyframes chat-customer-open{from{opacity:0;scale:.94;translate:0 12px}to{opacity:1;scale:1;translate:0 0}}
 .chat-shell.chat-simple:not(.chat-inline) .chat-launch{animation:chat-customer-pulse 3.5s ease-in-out infinite}.chat-shell.chat-simple .chat-window{animation:chat-customer-open .32s ease-out both;transform-origin:bottom right}
-@media(prefers-reduced-motion:reduce){.chat-shell.chat-simple .chat-launch,.chat-shell.chat-simple .chat-window{animation:none!important}}
+@media(prefers-reduced-motion:reduce){:root:not([data-motion-mode="full"]) .chat-shell.chat-simple .chat-launch, :root:not([data-motion-mode="full"]) .chat-shell.chat-simple .chat-window{animation:none!important}}

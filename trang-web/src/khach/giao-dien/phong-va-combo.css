@@ -587,13 +587,10 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .kh-site .kh-room-card,
-  .kh-site .kh-room-photo img,
-  .kh-site .kh-gallery-main,
-  .kh-detail .kh-gallery-main {
+  :root:not([data-motion-mode="full"]) .kh-site .kh-room-card, :root:not([data-motion-mode="full"]) .kh-site .kh-room-photo img, :root:not([data-motion-mode="full"]) .kh-site .kh-gallery-main, :root:not([data-motion-mode="full"]) .kh-detail .kh-gallery-main {
     transition: none;
   }
-  .kh-site .kh-room-card:hover {
+  :root:not([data-motion-mode="full"]) .kh-site .kh-room-card:hover {
     transform: none;
   }
 }
