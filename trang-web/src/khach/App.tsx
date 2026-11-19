@@ -1,9 +1,11 @@
+import useDieuHuongKhach,{denTrangKhach} from './useDieuHuongKhach';
+import useHieuUngCuon from './useHieuUngCuon';
 import ThongBaoKhach from "./thanh-phan/ThongBaoKhach";
 import KhungDatDonChim from "./thanh-phan/KhungDatDonChim";
 import ChanTrangKhach from "./thanh-phan/ChanTrangKhach";
 import ConSoLuuTru from "./thanh-phan/ConSoLuuTru";
 import {layGiaoDien, type NoiDungTrangChu } from "../dung-chung/du-lieu/trang-chu-noi-dung";
-import { useEffect, useLayoutEffect, useRef, useState,type CSSProperties } from "react";
+import { useEffect, useRef, useState,type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { RangePicker } from "../dung-chung/lich/RangePicker";
 import ChonKhoangGio from "./thanh-phan/ChonKhoangGio";
@@ -33,6 +35,7 @@ import './giao-dien/font-tieng-viet.css';
 import './giao-dien/can-chinh-khach.css';
 import './giao-dien/trang-chu-hoan-thien.css';
 import './giao-dien/tham-khao-charmy.css';
+import './giao-dien/cuon-va-chuyen-trang.css';
 type Receipt = {
   ma_dat_phong: string;
   tong_tien: number | string;
@@ -61,9 +64,10 @@ const defaults = {
   dem_den: "08:00",
 };
 export default function App() {
+  const route=useDieuHuongKhach();
   const page=location.pathname.startsWith('/phong/')?'chi-tiet':location.pathname.startsWith('/ket-qua-phong')?'ket-qua':location.pathname.startsWith('/phong-gia')?'phong':location.pathname.startsWith('/uu-dai-combo')?'combo':'home';
   const [fullResults,setFullResults]=useState<Room[]>([]),[fullLoading,setFullLoading]=useState(false),[fullError,setFullError]=useState('');
-  useEffect(()=>{if(page!=='ket-qua'&&page!=='chi-tiet')return;let active=true;const q=new URLSearchParams(location.search);if(page==='chi-tiet'&&!['bat_dau','ket_thuc','hinh_thuc_dat'].every(k=>q.has(k)))return;const params=new URLSearchParams();for(const k of ['bat_dau','ket_thuc','hinh_thuc_dat','chi_nhanh_id'])if(q.get(k))params.set(k,q.get(k)!);setFullLoading(true);void khachApi<Room[]>('/phong?'+params).then(items=>{if(active){setFullResults(items);lastSearch.current=Object.fromEntries(params);setRooms(items);}}).catch(e=>{if(active)setFullError(e.message);}).finally(()=>{if(active)setFullLoading(false);});return()=>{active=false;};},[page]);
+  useEffect(()=>{if(page!=='ket-qua'&&page!=='chi-tiet')return;setFullResults([]);setFullError('');setFullLoading(false);let active=true;const q=new URLSearchParams(location.search);if(page==='chi-tiet'&&!['bat_dau','ket_thuc','hinh_thuc_dat'].every(k=>q.has(k)))return;const params=new URLSearchParams();for(const k of ['bat_dau','ket_thuc','hinh_thuc_dat','chi_nhanh_id'])if(q.get(k))params.set(k,q.get(k)!);setFullLoading(true);void khachApi<Room[]>('/phong?'+params).then(items=>{if(active){setFullResults(items);lastSearch.current=Object.fromEntries(params);setRooms(items);}}).catch(e=>{if(active)setFullError(e.message);}).finally(()=>{if(active)setFullLoading(false);});return()=>{active=false;};},[route]);
   const [catalogLoaded,setCatalogLoaded]=useState(false);
   const [catalog,setCatalog]=useState<DuLieuGioiThieu>({phong:[],combo:[],danh_gia:[],chi_nhanh:[]}),[catalogError,setCatalogError]=useState(''),[comboChon,setComboChon]=useState(new URLSearchParams(location.search).get('combo')||'');
   const [comboDetail,setComboDetail]=useState(''),[roomIntent,setRoomIntent]=useState(new URLSearchParams(location.search).get('phong')||'');
@@ -277,7 +281,7 @@ export default function App() {
   function openRoom(room:Room){
     const fromSearch=!room.gia_tham_khao&&lastSearch.current&&(rooms.some(p=>p.id===room.id)||fullResults.some(p=>p.id===room.id));
     const q=new URLSearchParams();if(fromSearch)for(const k of ['bat_dau','ket_thuc','hinh_thuc_dat','chi_nhanh_id'])if(lastSearch.current?.[k])q.set(k,lastSearch.current[k]);
-    location.assign('/phong/'+encodeURIComponent(room.id)+(q.size?'?'+q.toString():''));
+    denTrangKhach('/phong/'+encodeURIComponent(room.id)+(q.size?'?'+q.toString():''));
   }
   function choose(room:Room,comboId?:string){
     const fromSearch=!room.gia_tham_khao&&!!lastSearch.current&&(rooms.some(p=>p.id===room.id)||fullResults.some(p=>p.id===room.id));
@@ -371,34 +375,8 @@ export default function App() {
     document.addEventListener('mousedown', outside); document.addEventListener('keydown', escape);
     return () => { document.removeEventListener('mousedown', outside); document.removeEventListener('keydown', escape); };
   }, [navOpen]);
-  useLayoutEffect(() => {
-    const root = document.querySelector<HTMLElement>('.kh-site');
-    if (!root || !('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches || home?.giao_dien?.hien_hoat_anh === false) return;
-    const selectors = '.kh-room-card, .kh-cms-cards article, .kh-feature-card, .kh-reviews>header, .kh-review-track article, .kh-cms-intro>div>*, .kh-room-related>header, .kh-room-related article' + (page === 'home' ? ', .kh-cms-hero>div:first-child>*, .kh-cms-hero>.kh-gallery, .kh-cms-hero>.kh-stay-note, .kh-stay-numbers>h2, .kh-stay-numbers article, .kh-booking-toggle, .kh-booking-inner, .kh-showcase-tabs, .kh-showcase-tools, .kh-nav>.kh-brand, .kh-nav>nav>*, .kh-footer-location, .kh-footer-story>:not(.kh-footer-benefits), .kh-footer-benefits>*, .kh-footer-explore>*, .kh-footer-connect>*, .kh-footer-bottom>*' : '');
-    const registered = new WeakSet<Element>();
-    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
-      if (entry.isIntersecting) { entry.target.setAttribute('data-reveal', 'shown'); observer.unobserve(entry.target); }
-    }), { threshold: .08, rootMargin: '0px 0px -20px 0px' });
-    const register = () => root.querySelectorAll<HTMLElement>(selectors).forEach(element => {
-      if (registered.has(element) || element.dataset.reveal === 'shown') return;
-      registered.add(element);
-      const index = Array.from(element.parentElement?.children || []).indexOf(element);
-      element.style.setProperty('--kh-reveal-delay', Math.min(Math.max(index, 0), 4) * 100 + 'ms');
-      element.style.setProperty('--kh-reveal-duration', element.closest('.kh-nav')?'700ms':'1100ms');
-      element.setAttribute('data-reveal', 'pending');
-      observer.observe(element);
-    });
-    register();
-    const changes = new MutationObserver(register);
-    changes.observe(root, { childList: true, subtree: true });
-    return () => { observer.disconnect(); changes.disconnect(); };
-  }, [home, rooms, catalog, page]);
-  useEffect(()=>{
-    if(page!=='home'||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-    const hero=document.querySelector<HTMLElement>('.kh-cms-hero');if(!hero)return;
-    let frame=0;const update=()=>{frame=0;const b=hero.getBoundingClientRect();if(b.bottom>0)hero.style.setProperty('--kh-photo-offset',Math.min(36,Math.max(0,-b.top)*.055)+'px');};
-    const scroll=()=>{if(!frame)frame=requestAnimationFrame(update);};window.addEventListener('scroll',scroll,{passive:true});update();return()=>{window.removeEventListener('scroll',scroll);cancelAnimationFrame(frame);};
-  },[page,home]);
+  useHieuUngCuon(home?.giao_dien?.hien_hoat_anh!==false,page==='home',!!home);
+  useEffect(()=>{setNavOpen(false);setLightbox(null);setSelected(null);setComboDetail('');setBookingTarget(null);setFullError('');setComboChon(new URLSearchParams(location.search).get('combo')||'');setRoomIntent(new URLSearchParams(location.search).get('phong')||'');if(location.hash==='#dat-phong')setBookingOpen(true);},[route]);
   const modal = selected || login || history !== null;
   const ui=layGiaoDien(home?.giao_dien);
   const heroPhotos:{url:string;ten:string;phongId?:string}[]=home?.hero?.bo_anh!==undefined?home.hero.bo_anh.flatMap(item=>{if('url' in item)return [{url:item.url,ten:ui.ten_web}];const room=catalog.phong.find(p=>p.id===item.phong_id),photo=room?.anh_chon?.find(p=>p.id===item.anh_id);return room&&photo?.url?[{url:photo.url,ten:room.ten_phong,phongId:room.id}]:[];}):[
@@ -409,7 +387,7 @@ export default function App() {
   const detailBase=page==='chi-tiet'?catalog.phong.find(p=>p.id===detailId):undefined;
   const detailResult=fullResults.find(p=>p.id===detailId);
   const detailRoom=detailBase?{...detailBase,...detailResult,gia_tham_khao:!detailResult}:undefined;
-  useEffect(()=>{if(detailRoom)document.title=detailRoom.ten_phong+' | '+ui.ten_web;},[detailRoom?.id,detailRoom?.ten_phong,ui.ten_web]);
+  useEffect(()=>{document.title=(detailRoom?.ten_phong||(page==='phong'?'Phòng & Giá':page==='combo'?'Ưu đãi Combo':page==='ket-qua'?'Phòng trống':'Không gian dành cho bạn'))+' | '+ui.ten_web;},[page,detailRoom?.id,detailRoom?.ten_phong,ui.ten_web]);
   const lightboxRoom=lightbox?(detailRoom?.anh.includes(lightbox)?detailRoom:catalog.phong.find(p=>p.id===heroPhotos.find(a=>a.url===lightbox)?.phongId)||catalog.phong.find(p=>p.anh.includes(lightbox))):undefined;
   const rgb=[1,3,5].map(i=>parseInt(ui.mau_nhan.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
   const buttonText=rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722>.179?'#20142b':'#fff';
@@ -480,7 +458,7 @@ export default function App() {
       {home?.hien_phong && page==='home' && (
         <>
           <>{ui.hien_thong_ke!==false&&<ConSoLuuTru name={ui.tieu_de_thong_ke||ui.ten_web} stats={catalog.thong_ke} animate={ui.hien_hoat_anh!==false}/>}</>
-          <section id="dat-phong" className="kh-booking-split"><button type="button" className="kh-booking-toggle" aria-expanded={bookingOpen} aria-controls="kh-booking-panel" onClick={()=>setBookingOpen(!bookingOpen)}><BieuTuong ten="calendar"/>{ui.nhan_dat_don||"Đặt đơn"} <span aria-hidden="true">{bookingOpen?'−':'+'}</span></button><KhungDatDonChim open={bookingOpen} animate={ui.hien_hoat_anh!==false} duration={ui.hien_hoat_anh===false?300:ui.toc_do_mo_dat_don||750}><section className="kh-search" aria-label="Tìm phòng trống">
+          <section id="dat-phong" className={"kh-booking-split "+(bookingOpen?"is-open":"")}><button type="button" className="kh-booking-toggle" aria-expanded={bookingOpen} aria-controls="kh-booking-panel" onClick={()=>setBookingOpen(!bookingOpen)}><BieuTuong ten="calendar"/>{ui.nhan_dat_don||"Đặt đơn"} <span aria-hidden="true">{bookingOpen?'−':'+'}</span></button><KhungDatDonChim title={ui.nhan_dat_don||"Đặt đơn"} description={ui.khau_hieu} open={bookingOpen} animate={ui.hien_hoat_anh!==false} duration={ui.hien_hoat_anh===false?300:ui.toc_do_mo_dat_don||900}><section className="kh-search" aria-label="Tìm phòng trống">
             {roomIntent&&<p className="kh-combo-intent">Đang chọn {catalog.phong.find(p=>p.id===roomIntent)?.ten_phong||'phòng'} · Chọn lịch để kiểm tra phòng trống. <button type="button" onClick={()=>setRoomIntent('')}>Bỏ chọn</button></p>}
             {comboChon&&<p className="kh-combo-intent">Đang chọn {catalog.combo.find(c=>c.id===comboChon)?.ten_combo||'combo'} · Kiểm tra lịch để xem phòng áp dụng. <button type="button" onClick={()=>setComboChon('')}>Bỏ chọn</button></p>}
             <form onSubmit={search}>
@@ -555,7 +533,7 @@ export default function App() {
             </p>
           )}
           </KhungDatDonChim></section>
-          {(searched||loading)&&<KetQuaTimPhong rooms={rooms.map(p=>({...catalog.phong.find(c=>c.id===p.id),...p}))} loading={loading} onXem={room=>openRoom(room)} onTatCa={()=>{const q=lastSearch.current;if(q)location.href='/ket-qua-phong?'+new URLSearchParams(q);}}/>}
+          {(searched||loading)&&<KetQuaTimPhong rooms={rooms.map(p=>({...catalog.phong.find(c=>c.id===p.id),...p}))} loading={loading} onXem={room=>openRoom(room)} onTatCa={()=>{const q=lastSearch.current;if(q)denTrangKhach('/ket-qua-phong?'+new URLSearchParams(q));}}/>}
         </>
       )}
       {page==='ket-qua'&&<section className="kh-full-results"><h1>Phòng trống theo chi nhánh</h1>{lastSearch.current&&<p className="kh-results-period">{lastSearch.current.hinh_thuc_dat} · {new Date(lastSearch.current.bat_dau).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})} → {new Date(lastSearch.current.ket_thuc).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'})}</p>}{fullError&&<p role="alert" className="kh-error">{fullError}</p>}<KetQuaTimPhong rooms={fullResults.map(p=>({...catalog.phong.find(c=>c.id===p.id),...p}))} loading={fullLoading} full onXem={openRoom}/></section>}

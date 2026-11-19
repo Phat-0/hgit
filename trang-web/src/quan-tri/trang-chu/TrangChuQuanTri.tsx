@@ -308,7 +308,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
       )}
       {notice && <p role="status">{notice}</p>}
       <fieldset className="tc-block tc-design" disabled={busy}>
-        <legend>00 · Nền đầu trang và thương hiệu</legend>
+        <legend>00 · Thương hiệu và nền</legend>
         <div className="tc-design-grid">
           {[
             ["ten_web", "Tên website"],
@@ -324,7 +324,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
             </label>
           ))}
           <label>
-            Màu nền
+            Màu nền tối bên dưới
             <input
               type="color"
               value={ui.mau_nen}
@@ -354,7 +354,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
                   type="button"
                   onClick={() => setUi("anh_nen_chung", "")}
                 >
-                  Bỏ ảnh nền chung
+                  Bỏ ảnh nền đầu trang
                 </button>
               </>
             )}
@@ -367,17 +367,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
               onChange={(e) => setUi("mau_nhan", e.target.value)}
             />
           </label>
-          <label>
-            Số thẻ mỗi hàng
-            <select
-              value={ui.so_cot}
-              onChange={(e) => setUi("so_cot", Number(e.target.value))}
-            >
-              {[2, 3, 4].map((n) => (
-                <option key={n}>{n}</option>
-              ))}
-            </select>
-          </label>
+          {data.the.some(b=>b.hien)&&<label>Số thẻ mỗi hàng<select value={ui.so_cot} onChange={e=>setUi('so_cot',Number(e.target.value))}>{[2,3,4].map(n=><option key={n}>{n}</option>)}</select></label>}
           <label>
             Vị trí ảnh nổi
             <select
@@ -392,12 +382,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
         <div
           className="tc-preview"
           style={{
-            fontFamily: {
-              georgia: "Georgia,serif",
-              palatino: "Palatino Linotype,serif",
-              system: "system-ui,sans-serif",
-              tahoma: "Tahoma,sans-serif",
-            }[ui.font_chu || "georgia"],
+            fontFamily: '"Home Serif",Georgia,serif',
             background: ui.mau_nen,
             backgroundImage: ui.anh_nen_chung
               ? `url(${JSON.stringify(ui.anh_nen_chung)})`
@@ -413,7 +398,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
           <span style={{ background: ui.mau_nhan }}>Xem trước màu nút</span>
         </div>
       </fieldset>
-      <fieldset className="tc-block tc-home-motion" disabled={busy}><legend>Thống kê và khung đặt đơn</legend><div className="tc-design-grid">{([['nhan_dat_don','Tên nút mở đặt đơn','Đặt đơn'],['tieu_de_thong_ke','Tiêu đề các con số',ui.ten_web],['tieu_de_danh_gia','Tiêu đề đánh giá','Khách hàng nói về HomeStay']] as const).map(([key,label,fallback])=><label key={key}>{label}<input maxLength={150} value={String(ui[key]??fallback)} onChange={e=>setUi(key,e.target.value)}/></label>)}<label>Thời gian mở/khép (ms)<input type="number" min={300} max={1600} step={50} value={ui.toc_do_mo_dat_don||750} onChange={e=>setUi('toc_do_mo_dat_don',Number(e.target.value))}/></label></div>{([['hien_thong_ke','Hiện số Homestay, phòng và lượt khách'],['hien_hoat_anh','Hiện dần các khối khi cuộn tới']] as const).map(([key,label])=><label className="tc-toggle" key={key}><input type="checkbox" checked={ui[key]!==false} onChange={e=>setUi(key,e.target.checked)}/>{label}</label>)}<p>Số liệu lấy từ DB. Nút đặt đơn nằm bên trái; thời gian lớn hơn sẽ mở chậm hơn.</p></fieldset>
+      <fieldset className="tc-block tc-home-motion" disabled={busy}><legend>Thống kê và khung đặt đơn</legend><div className="tc-design-grid">{([['nhan_dat_don','Tên nút mở đặt đơn','Đặt đơn'],['tieu_de_thong_ke','Tiêu đề các con số',ui.ten_web]] as const).map(([key,label,fallback])=><label key={key}>{label}<input maxLength={150} value={String(ui[key]??fallback)} onChange={e=>setUi(key,e.target.value)}/></label>)}<label>Tốc độ mở đặt đơn (ms)<input type="number" min={300} max={1600} step={50} value={ui.toc_do_mo_dat_don||900} onChange={e=>setUi('toc_do_mo_dat_don',Number(e.target.value))}/></label></div>{([['hien_thong_ke','Hiện số Homestay, phòng và lượt khách'],['hien_hoat_anh','Hiệu ứng theo cuộn (Scroll-Driven)']] as const).map(([key,label])=><label className="tc-toggle" key={key}><input type="checkbox" checked={ui[key]!==false} onChange={e=>setUi(key,e.target.checked)}/>{label}</label>)}<p>Số liệu lấy từ DB. Chỉ khung đặt đơn dùng hai phần chuyển động; các nội dung khác hiện theo cuộn.</p></fieldset>
       <div className="tc-grid">
         {block(
           "01 · Đầu trang: nội dung và dải ảnh",
@@ -501,14 +486,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
       <div className="tc-feature-grid">
         <fieldset className="tc-block" disabled={busy}>
           <legend>Tab Giá phòng</legend>
-          <label>
-            Tiêu đề
-            <input
-              maxLength={150}
-              value={ui.tieu_de_phong}
-              onChange={(e) => setUi("tieu_de_phong", e.target.value)}
-            />
-          </label>
+
           <p>
             Chọn tối đa 20 phòng nổi bật. Trang chủ ưu tiên các phòng đã chọn;
             nút Xem thêm mở danh mục đầy đủ.
@@ -548,14 +526,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
             />
             Hiện Combo
           </label>
-          <label>
-            Tiêu đề
-            <input
-              maxLength={150}
-              value={ui.tieu_de_combo || "Combo ưu đãi"}
-              onChange={(e) => setUi("tieu_de_combo", e.target.value)}
-            />
-          </label>
+
           <p>Chọn tối đa 20 combo nổi bật từ các combo đang bán.</p>
           <div className="tc-feature-options">
             {options.combo.map((c) => (
@@ -580,6 +551,7 @@ export default function TrangChuQuanTri({ token }: { token: string }) {
       </div>
       <fieldset className="tc-block tc-review-settings" disabled={busy}>
         <legend>06 · Đánh giá khách hàng</legend>
+        <label>Tiêu đề<input maxLength={150} value={ui.tieu_de_danh_gia||'Khách hàng nói về HomeStay'} onChange={e=>setUi('tieu_de_danh_gia',e.target.value)}/></label>
         <label className="tc-toggle">
           <input
             type="checkbox"
