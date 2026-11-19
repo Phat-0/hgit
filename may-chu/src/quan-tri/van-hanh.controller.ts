@@ -37,6 +37,7 @@ export class VanHanhController {
   @Post('khach-hang') save(@Req() r: R, @Body() b: Record<string, unknown>) {
     return this.khach.save(r.nguoiDung.id, b);
   }
+  @Post('khach-hang/tai-khoan') account(@Req() r:R,@Body() b:Record<string,unknown>){return this.khach.createAccount(r.nguoiDung.id,b);}
   @Get('lich-su') logs(@Req() r: R, @Query() q: Record<string, string>) {
     return this.history.list(r.nguoiDung.id, q);
   }

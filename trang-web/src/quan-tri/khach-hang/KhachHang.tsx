@@ -15,6 +15,7 @@ export default function KhachHang({ token }: { token: string }) {
       toi_thieu: "0",
       so_thich: "",
     }),
+    [account,setAccount]=useState(false),
     [selected, setSelected] = useState<any>(null),
     [detail, setDetail] = useState<any>(null),
     [edit, setEdit] = useState<any>(null),
@@ -135,6 +136,7 @@ export default function KhachHang({ token }: { token: string }) {
         <div className="ql-actions">
           <button
             onClick={() => {
+              setAccount(false);
               setSelected(null);
               setDetail({ don: [] });
               setEdit({
@@ -347,7 +349,13 @@ export default function KhachHang({ token }: { token: string }) {
                   ...edit,
                   khach_khoa: edit.khach_khoa || "p:" + edit.so_dien_thoai,
                 };
-                await qlApi(token, "khach-hang", "POST", body);
+                if(account&&!selected) {
+                  const result=await qlApi(token,'khach-hang/tai-khoan','POST',{ten_khach:edit.ten_khach,so_dien_thoai:edit.so_dien_thoai,email:edit.email,mat_khau:edit.mat_khau});
+                  body.khach_khoa=result.khach_khoa;
+                  setAccount(false);setSelected({khach_khoa:result.khach_khoa,ten_khach:edit.ten_khach,so_dien_thoai:edit.so_dien_thoai});setEdit({...edit,khach_khoa:result.khach_khoa});
+                }
+                const {email,mat_khau,...profile}=body;
+                await qlApi(token, "khach-hang", "POST", profile);
                 setRevision((v) => v + 1);
                 setEdit(null);
                 setSelected(null);
@@ -358,6 +366,7 @@ export default function KhachHang({ token }: { token: string }) {
               }
             }}
           >
+            {!selected&&<><label className="ql-check ql-wide"><input type="checkbox" checked={account} onChange={e=>setAccount(e.target.checked)}/>Tạo tài khoản đăng nhập</label>{account&&<><label>Email<input type="email" required value={edit.email||''} onChange={e=>field('email',e.target.value)} autoComplete="off"/></label><label>Mật khẩu ban đầu<input type="password" required minLength={12} maxLength={128} value={edit.mat_khau||''} onChange={e=>field('mat_khau',e.target.value)} autoComplete="new-password"/></label></>}</>}
             {[
               "ten_khach",
               "so_dien_thoai",

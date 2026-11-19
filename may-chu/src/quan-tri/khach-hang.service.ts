@@ -1,7 +1,11 @@
+import {createClient} from '@supabase/supabase-js';
+import {chuanHoaSoDienThoai} from '../xac-thuc/so-dien-thoai.js';
 import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  ConflictException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { QuanTriService } from './quan-tri.service.js';
 import { moDb, chu, ngay, ghiNhatKy } from './van-hanh.db.js';
@@ -20,6 +24,43 @@ export class KhachHangQuanTriService {
   private db() {
     return moDb();
   }
+  private auth() {
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)
+      throw new ServiceUnavailableException('Chưa cấu hình quản lý tài khoản ở máy chủ');
+    return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY,
+      {auth:{persistSession:false,autoRefreshToken:false}}).auth.admin;
+  }
+  async createAccount(uid:string,b:Record<string,unknown>) {
+    await this.admin.kiemTraQuanTri(uid);
+    const name=chu(b.ten_khach,2,150), phone=chuanHoaSoDienThoai(b.so_dien_thoai);
+    const email=chu(b.email,3,254).toLowerCase(),password=String(b.mat_khau||'');
+    if(!/^\S+@\S+\.\S+$/.test(email)||password.length<12||password.length>128)
+      throw new BadRequestException('Nhập email hợp lệ và mật khẩu từ 12 đến 128 ký tự');
+    const c=await this.db();let created:string|undefined,commitAttempted=false;
+    try {
+      await c.query('BEGIN');
+      await c.query('SELECT pg_advisory_xact_lock(hashtext($1))',['khach:'+phone]);
+      const duplicate=await c.query("SELECT 1 FROM public.nguoi_dung WHERE regexp_replace(so_dien_thoai,'[^0-9]','','g')=ANY($1::text[])",[ [phone.replace('+',''),phone.startsWith('+84')?'0'+phone.slice(3):phone] ]);
+      if(duplicate.rowCount)throw new ConflictException('Điện thoại đã có tài khoản. Chọn khách hiện có để xem hồ sơ');
+      const role=await c.query("SELECT id FROM public.vai_tro WHERE ma_vai_tro='Khách hàng'");
+      if(!role.rowCount)throw new ServiceUnavailableException('Chưa có vai trò Khách hàng');
+      const r=await this.auth().createUser({email,password,email_confirm:true,user_metadata:{ho_ten:name}});
+      if(r.error||!r.data.user)throw new ConflictException('Không tạo được tài khoản. Kiểm tra email đã tồn tại hoặc chính sách mật khẩu');
+      created=r.data.user.id;
+      await c.query("INSERT INTO public.nguoi_dung(id,ho_ten,so_dien_thoai,trang_thai) VALUES($1,$2,$3,'Đang hoạt động') ON CONFLICT(id) DO UPDATE SET ho_ten=$2,so_dien_thoai=$3",[created,name,phone]);
+      await c.query('INSERT INTO public.nguoi_dung_vai_tro(nguoi_dung_id,vai_tro_id) VALUES($1,$2)',[created,role.rows[0].id]);
+      await c.query("INSERT INTO public.ho_so_khach_hang(khach_khoa,nguoi_dung_id,thong_tin_bo_sung) VALUES($1,$2,$3::jsonb) ON CONFLICT(nguoi_dung_id) DO UPDATE SET khach_khoa=EXCLUDED.khach_khoa",['u:'+created,created,JSON.stringify({ten_khach:name,so_dien_thoai:phone})]);
+      await ghiNhatKy(c,uid,'Tạo tài khoản khách','nguoi_dung',created,{ho_ten:name});
+      commitAttempted=true;await c.query('COMMIT');
+      return {id:created,khach_khoa:'u:'+created,thong_bao:'Đã tạo tài khoản khách'};
+    }catch(e){
+      await c.query('ROLLBACK').catch(()=>{});
+      if(created&&commitAttempted)throw new ServiceUnavailableException('Chưa xác định kết quả lưu. Kiểm tra danh sách khách trước khi thử lại');
+      if(created){const cleanup=await this.auth().deleteUser(created);if(cleanup.error)throw new ServiceUnavailableException('Cần kiểm tra tài khoản vừa tạo trong Supabase Auth');}
+      if((e as {code?:string}).code==='23505')throw new ConflictException('Thông tin tài khoản đã được sử dụng');
+      throw e;
+    }finally{await c.end();}
+  }
   async list(uid: string, q: Record<string, string>) {
     await this.admin.kiemTraQuanTri(uid);
     const c = await this.db();
@@ -31,7 +72,7 @@ export class KhachHangQuanTriService {
       if (!Number.isInteger(min) || min < 0)
         throw new BadRequestException('Tần suất không hợp lệ');
       const r = await c.query(
-        `WITH don AS (${DON} WHERE d.ngay_tao>=$1::date AT TIME ZONE 'Asia/Ho_Chi_Minh' AND d.ngay_tao<($2::date+1) AT TIME ZONE 'Asia/Ho_Chi_Minh' AND ($3='' OR d.homestay_id::text=$3)),nhom AS(SELECT khach_khoa,max(nguoi_dung_id::text) as nguoi_dung_id,(array_agg(ten_don ORDER BY ngay_tao DESC))[1] as ten_khach,(array_agg(so_dien_thoai_dat ORDER BY ngay_tao DESC))[1] as so_dien_thoai,count(*)::int as so_don,count(*) FILTER(WHERE trang_thai='Đã trả phòng')::int as da_o,count(*) FILTER(WHERE trang_thai IN('Đã hủy','Không nhận phòng'))::int as huy,coalesce(sum(tong_tien) FILTER(WHERE trang_thai NOT IN('Đã hủy','Không nhận phòng')),0) as gia_tri_don,coalesce(sum(tien_da_thanh_toan) FILTER(WHERE trang_thai NOT IN('Đã hủy','Không nhận phòng')),0) as da_thu,min(ngay_tao) as lan_dau,max(ngay_tao) as gan_nhat,avg(so_gio) as gio_trung_binh,array_agg(DISTINCT ten_homestay) as chi_nhanh,array_agg(DISTINCT ten_loai) as loai_phong,array_agg(DISTINCT hinh_thuc_dat) as loai_dat FROM don GROUP BY khach_khoa),keys AS(SELECT khach_khoa FROM nhom UNION SELECT khach_khoa FROM public.ho_so_khach_hang WHERE khach_khoa IS NOT NULL) SELECT k.khach_khoa,coalesce(n.nguoi_dung_id,p.nguoi_dung_id::text) as nguoi_dung_id,coalesce(p.thong_tin_bo_sung->>'ten_khach',n.ten_khach,u.ho_ten) as ten_khach,coalesce(p.thong_tin_bo_sung->>'so_dien_thoai',n.so_dien_thoai,u.so_dien_thoai) as so_dien_thoai,coalesce(n.so_don,0) as so_don,coalesce(n.da_o,0) as da_o,coalesce(n.huy,0) as huy,coalesce(n.gia_tri_don,0) as gia_tri_don,coalesce(n.da_thu,0) as da_thu,n.lan_dau,n.gan_nhat,n.gio_trung_binh,n.chi_nhanh,n.loai_phong,n.loai_dat,p.ngan_sach_du_kien,p.so_khach_uu_tien,p.thong_tin_bo_sung,coalesce((SELECT json_agg(json_build_object('ten',s.ten_thuoc_tinh,'gia_tri',s.gia_tri,'nguon',s.nguon)) FROM public.so_thich_khach_hang s WHERE s.ho_so_id=p.id),'[]'::json) as so_thich FROM keys k LEFT JOIN nhom n USING(khach_khoa) LEFT JOIN public.ho_so_khach_hang p USING(khach_khoa) LEFT JOIN public.nguoi_dung u ON u.id=p.nguoi_dung_id WHERE coalesce(n.so_don,0)>=$4 AND ($3='' OR n.khach_khoa IS NOT NULL) AND ($5='' OR lower(coalesce(n.ten_khach,p.thong_tin_bo_sung->>'ten_khach',u.ho_ten,'')||' '||coalesce(n.so_dien_thoai,p.thong_tin_bo_sung->>'so_dien_thoai','')) LIKE '%'||lower($5)||'%') AND ($6='' OR EXISTS(SELECT 1 FROM public.so_thich_khach_hang s WHERE s.ho_so_id=p.id AND lower(s.ten_thuoc_tinh||' '||s.gia_tri) LIKE '%'||lower($6)||'%') OR EXISTS(SELECT 1 FROM don dd WHERE dd.khach_khoa=k.khach_khoa AND lower(dd.hinh_thuc_dat||' '||dd.ten_loai||' '||dd.ten_homestay) LIKE '%'||lower($6)||'%')) ORDER BY n.gan_nhat DESC NULLS LAST,k.khach_khoa LIMIT 1000`,
+        `WITH don AS (${DON} WHERE d.ngay_tao>=$1::date AT TIME ZONE 'Asia/Ho_Chi_Minh' AND d.ngay_tao<($2::date+1) AT TIME ZONE 'Asia/Ho_Chi_Minh' AND ($3='' OR d.homestay_id::text=$3)),nhom AS(SELECT khach_khoa,max(nguoi_dung_id::text) as nguoi_dung_id,(array_agg(ten_don ORDER BY ngay_tao DESC))[1] as ten_khach,(array_agg(so_dien_thoai_dat ORDER BY ngay_tao DESC))[1] as so_dien_thoai,count(*)::int as so_don,count(*) FILTER(WHERE trang_thai='Đã trả phòng')::int as da_o,count(*) FILTER(WHERE trang_thai IN('Đã hủy','Không nhận phòng'))::int as huy,coalesce(sum(tong_tien) FILTER(WHERE trang_thai NOT IN('Đã hủy','Không nhận phòng')),0) as gia_tri_don,coalesce(sum(tien_da_thanh_toan) FILTER(WHERE trang_thai NOT IN('Đã hủy','Không nhận phòng')),0) as da_thu,min(ngay_tao) as lan_dau,max(ngay_tao) as gan_nhat,avg(so_gio) as gio_trung_binh,array_agg(DISTINCT ten_homestay) as chi_nhanh,array_agg(DISTINCT ten_loai) as loai_phong,array_agg(DISTINCT hinh_thuc_dat) as loai_dat FROM don GROUP BY khach_khoa),keys AS(SELECT khach_khoa FROM nhom UNION SELECT khach_khoa FROM public.ho_so_khach_hang WHERE khach_khoa IS NOT NULL UNION SELECT 'u:'||u.id::text FROM public.nguoi_dung u WHERE NOT EXISTS(SELECT 1 FROM public.nguoi_dung_vai_tro nv JOIN public.vai_tro v ON v.id=nv.vai_tro_id WHERE nv.nguoi_dung_id=u.id AND nv.ngay_thu_hoi IS NULL AND v.ma_vai_tro<>'Khách hàng')) SELECT k.khach_khoa,coalesce(n.nguoi_dung_id,p.nguoi_dung_id::text) as nguoi_dung_id,coalesce(p.thong_tin_bo_sung->>'ten_khach',n.ten_khach,u.ho_ten) as ten_khach,coalesce(p.thong_tin_bo_sung->>'so_dien_thoai',n.so_dien_thoai,u.so_dien_thoai) as so_dien_thoai,coalesce(n.so_don,0) as so_don,coalesce(n.da_o,0) as da_o,coalesce(n.huy,0) as huy,coalesce(n.gia_tri_don,0) as gia_tri_don,coalesce(n.da_thu,0) as da_thu,n.lan_dau,n.gan_nhat,n.gio_trung_binh,n.chi_nhanh,n.loai_phong,n.loai_dat,p.ngan_sach_du_kien,p.so_khach_uu_tien,p.thong_tin_bo_sung,coalesce((SELECT json_agg(json_build_object('ten',s.ten_thuoc_tinh,'gia_tri',s.gia_tri,'nguon',s.nguon)) FROM public.so_thich_khach_hang s WHERE s.ho_so_id=p.id),'[]'::json) as so_thich FROM keys k LEFT JOIN nhom n USING(khach_khoa) LEFT JOIN public.ho_so_khach_hang p USING(khach_khoa) LEFT JOIN public.nguoi_dung u ON u.id=coalesce(p.nguoi_dung_id,CASE WHEN k.khach_khoa LIKE 'u:%' THEN substr(k.khach_khoa,3)::uuid END) WHERE coalesce(n.so_don,0)>=$4 AND ($3='' OR n.khach_khoa IS NOT NULL) AND ($5='' OR lower(coalesce(n.ten_khach,p.thong_tin_bo_sung->>'ten_khach',u.ho_ten,'')||' '||coalesce(n.so_dien_thoai,p.thong_tin_bo_sung->>'so_dien_thoai','')) LIKE '%'||lower($5)||'%') AND ($6='' OR EXISTS(SELECT 1 FROM public.so_thich_khach_hang s WHERE s.ho_so_id=p.id AND lower(s.ten_thuoc_tinh||' '||s.gia_tri) LIKE '%'||lower($6)||'%') OR EXISTS(SELECT 1 FROM don dd WHERE dd.khach_khoa=k.khach_khoa AND lower(dd.hinh_thuc_dat||' '||dd.ten_loai||' '||dd.ten_homestay) LIKE '%'||lower($6)||'%')) ORDER BY n.gan_nhat DESC NULLS LAST,k.khach_khoa LIMIT 1000`,
         [
           from,
           to,

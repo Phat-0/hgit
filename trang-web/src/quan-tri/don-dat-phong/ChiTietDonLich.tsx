@@ -31,6 +31,9 @@ type Don = DonSua & {
   tong_tien: string;
   tien_da_thanh_toan: string;
   ten_combo: string | null;
+  ma_voucher?:string;
+  combo_da_chon?:{id:string;ten_combo:string;gia_combo:number}[];
+  cau_hinh_gia_chot?:{tien_phu_thu?:number;gio_nhan_som?:number;gio_tra_muon?:number};
   thay_doi?: Change[];
 };
 export default function ChiTietDonLich({
@@ -134,7 +137,10 @@ export default function ChiTietDonLich({
                 ["Tiền giảm", vnd(don.tien_giam)],
                 ["Tổng tiền", vnd(don.tong_tien)],
                 ["Đã thanh toán", vnd(don.tien_da_thanh_toan)],
-                ["Combo", don.ten_combo || "—"],
+                ["Combo", don.combo_da_chon?.length?don.combo_da_chon.map(c=>c.ten_combo+' · '+vnd(c.gia_combo)).join(' / '):don.ten_combo || "—"],
+                ["Voucher",don.ma_voucher||'—'],
+                ["Nhận sớm / trả muộn",(don.cau_hinh_gia_chot?.gio_nhan_som||0)+' giờ / '+(don.cau_hinh_gia_chot?.gio_tra_muon||0)+' giờ'],
+                ["Phụ thu trong giá phòng",vnd(don.cau_hinh_gia_chot?.tien_phu_thu||0)],
                 ["Ghi chú", don.ghi_chu || "—"],
               ].map(([label, value]) => (
                 <div key={label}>

@@ -12,18 +12,22 @@ export class DonLichService{
  constructor(private readonly admin:QuanTriService){}
  private async db(){const c=new Client({connectionString:process.env.DATABASE_URL,ssl:{rejectUnauthorized:true},connectionTimeoutMillis:5000,query_timeout:8000});await c.connect();return c;}
  private id(value:string){if(!UUID.test(value))throw new BadRequestException('Mã đơn hoặc phòng không hợp lệ');}
- private failure(e:unknown):never{const code=(e as {code?:string}).code;if(code==='23514')throw new BadRequestException('Giá hoặc thông tin đơn không thỏa điều kiện dữ liệu');if(['23P01','P0001','40P01'].includes(code||''))throw new ConflictException('Phòng đã có lịch trùng hoặc đang được cập nhật. Hãy tải lại và chọn thời gian khác');throw e;}
+ private failure(e:unknown):never{const code=(e as {code?:string}).code;if(code==='23514')throw new BadRequestException('Giá hoặc thông tin đơn không thỏa điều kiện dữ liệu');if(['23P01','P0001','40P01'].includes(code||''))throw new ConflictException('Phòng có lịch trùng, chưa cách đơn khác đủ 30 phút hoặc đang được cập nhật. Hãy chọn thời gian khác');throw e;}
  async detail(uid:string,id:string){
   await this.admin.kiemTraTrang(uid,'lich|dat-phong|danh-gia|bao-cao');this.id(id);const c=await this.db();try{
    const result=await c.query(`SELECT d.*,p.ten_phong,p.ma_phong,h.ten_homestay,
     COALESCE(NULLIF(NULLIF(btrim(d.ten_don),d.ma_dat_phong),''),NULLIF(btrim(n.ho_ten),''),'Chưa có tên khách') AS ten_khach,
     COALESCE(d.so_dien_thoai_dat,n.so_dien_thoai) AS so_dien_thoai,
-    co.ten_combo FROM public.dat_phong d JOIN public.phong p ON p.id=d.phong_id
+    co.ten_combo,(SELECT k.ma_khuyen_mai FROM public.su_dung_khuyen_mai v JOIN public.khuyen_mai k ON k.id=v.khuyen_mai_id WHERE v.dat_phong_id=d.id LIMIT 1) AS ma_voucher FROM public.dat_phong d JOIN public.phong p ON p.id=d.phong_id
     JOIN public.homestay h ON h.id=d.homestay_id LEFT JOIN public.nguoi_dung n ON n.id=d.nguoi_dung_id
     LEFT JOIN public.combo co ON co.id=d.combo_id WHERE d.id=$1`,[id]);
    if(!result.rowCount)throw new NotFoundException('Không tìm thấy đơn');
    const history=await c.query(`SELECT j.id,j.ngay_tao,j.du_lieu_cu||jsonb_build_object('ten_phong',COALESCE(j.du_lieu_cu->>'ten_phong',p.ten_phong)) AS du_lieu_cu,j.du_lieu_moi||jsonb_build_object('ten_phong',COALESCE(j.du_lieu_moi->>'ten_phong',q.ten_phong)) AS du_lieu_moi FROM public.nhat_ky_don_dat_phong j LEFT JOIN public.phong p ON p.id::text=j.du_lieu_cu->>'phong_id' LEFT JOIN public.phong q ON q.id::text=j.du_lieu_moi->>'phong_id' WHERE j.dat_phong_id=$1 AND j.hanh_dong='sua_tu_lich' AND (j.du_lieu_cu->>'phong_id' IS DISTINCT FROM j.du_lieu_moi->>'phong_id' OR (j.du_lieu_cu->>'nhan_phong_luc')::timestamptz IS DISTINCT FROM (j.du_lieu_moi->>'nhan_phong_luc')::timestamptz OR (j.du_lieu_cu->>'tra_phong_luc')::timestamptz IS DISTINCT FROM (j.du_lieu_moi->>'tra_phong_luc')::timestamptz) ORDER BY j.ngay_tao DESC,j.id DESC LIMIT 20`,[id]);
-   return {...result.rows[0],thay_doi:history.rows};
+   const d=result.rows[0];
+   const saved=Array.isArray(d.cau_hinh_gia_chot?.combo_da_chon)?d.cau_hinh_gia_chot.combo_da_chon:[];
+   const ids=Array.isArray(d.cau_hinh_gia_chot?.combo_ids)?d.cau_hinh_gia_chot.combo_ids:d.combo_id?[d.combo_id]:[];
+   const combos=saved.length?saved:(await c.query('SELECT id,ten_combo,gia_combo,so_gio_bao_gom FROM public.combo WHERE id=ANY($1::uuid[])',[ids])).rows;
+   return {...d,combo_da_chon:combos,thay_doi:history.rows};
   }finally{await c.end();}
  }
  async edit(uid:string,id:string,body:unknown){

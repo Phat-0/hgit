@@ -19,7 +19,7 @@ import {
 } from '../quan-tri/khung-gio.js';
 import { docGioPhuThu, tinhTienPhuThu } from './phu-thu-khach.js';
 import { COMBO_THEO_PHONG } from '../quan-tri/combo.input.js';
-const ROOM = `SELECT p.*,h.ten_homestay,h.dia_chi,h.tinh_thanh,l.ten_loai,coalesce(to_jsonb(p)->>'mo_ta',to_jsonb(l)->>'mo_ta') AS mo_ta,l.suc_chua,l.dien_tich_m2 FROM public.phong p JOIN public.homestay h ON h.id=p.homestay_id JOIN public.loai_phong l ON l.id=p.loai_phong_id WHERE h.trang_thai='Đang hoạt động' AND ${TRANG_THAI_PHONG}='Trống'`;
+const ROOM = `SELECT p.*,h.ten_homestay,h.dia_chi,h.tinh_thanh,l.ten_loai,coalesce(to_jsonb(p)->>'mo_ta',to_jsonb(l)->>'mo_ta') AS mo_ta,l.suc_chua,l.dien_tich_m2 FROM public.phong p JOIN public.homestay h ON h.id=p.homestay_id JOIN public.loai_phong l ON l.id=p.loai_phong_id WHERE h.trang_thai='Đang hoạt động' AND p.trang_thai_van_hanh NOT IN ('Bảo trì','Bị khóa') AND ($2::timestamptz>now()+interval '30 minutes' OR ${TRANG_THAI_PHONG}='Trống')`;
 @Injectable()
 export class TrangKhachService {
   constructor(private readonly conn: KetNoiKhachService) {}
@@ -130,7 +130,7 @@ export class TrangKhachService {
   }
   private async free(c: KhachDb, id: string, start: Date, end: Date) {
     const r = await c.query(
-      `SELECT EXISTS(SELECT 1 FROM public.dat_phong WHERE phong_id=$1 AND trang_thai IN ('Chờ thanh toán','Chờ xác nhận','Đã xác nhận','Đã nhận phòng') AND nhan_phong_luc<$3 AND tra_phong_luc>$2 UNION ALL SELECT 1 FROM public.chan_lich_phong WHERE phong_id=$1 AND bat_dau<$3 AND ket_thuc>$2) AS busy`,
+      `SELECT EXISTS(SELECT 1 FROM public.dat_phong WHERE phong_id=$1 AND trang_thai IN ('Chờ thanh toán','Chờ xác nhận','Đã xác nhận','Đã nhận phòng','Đã trả phòng') AND nhan_phong_luc<$3::timestamptz+interval '30 minutes' AND (CASE WHEN trang_thai='Đã trả phòng' THEN coalesce(da_tra_phong_luc,tra_phong_luc) ELSE tra_phong_luc END)>$2::timestamptz-interval '30 minutes' UNION ALL SELECT 1 FROM public.chan_lich_phong WHERE phong_id=$1 AND bat_dau<$3 AND ket_thuc>$2) AS busy`,
       [id, start.toISOString(), end.toISOString()],
     );
     return !r.rows[0].busy;
@@ -145,7 +145,7 @@ export class TrangKhachService {
       const config = await this.config(c);
       const rows = await c.query(
         ROOM +
-          ` AND ($1::uuid IS NULL OR p.homestay_id=$1) AND NOT EXISTS(SELECT 1 FROM public.dat_phong d WHERE d.phong_id=p.id AND d.trang_thai IN ('Chờ thanh toán','Chờ xác nhận','Đã xác nhận','Đã nhận phòng') AND d.nhan_phong_luc<$3 AND d.tra_phong_luc>$2) AND NOT EXISTS(SELECT 1 FROM public.chan_lich_phong cl WHERE cl.phong_id=p.id AND cl.bat_dau<$3 AND cl.ket_thuc>$2) ORDER BY h.ten_homestay,p.ma_phong LIMIT 200`,
+          ` AND ($1::uuid IS NULL OR p.homestay_id=$1) AND NOT EXISTS(SELECT 1 FROM public.dat_phong d WHERE d.phong_id=p.id AND d.trang_thai IN ('Chờ thanh toán','Chờ xác nhận','Đã xác nhận','Đã nhận phòng','Đã trả phòng') AND d.nhan_phong_luc<$3::timestamptz+interval '30 minutes' AND (CASE WHEN d.trang_thai='Đã trả phòng' THEN coalesce(d.da_tra_phong_luc,d.tra_phong_luc) ELSE d.tra_phong_luc END)>$2::timestamptz-interval '30 minutes') AND NOT EXISTS(SELECT 1 FROM public.chan_lich_phong cl WHERE cl.phong_id=p.id AND cl.bat_dau<$3 AND cl.ket_thuc>$2) ORDER BY h.ten_homestay,p.ma_phong LIMIT 200`,
         [branch || null, start.toISOString(), end.toISOString()],
       );
       const valid = rows.rows.filter((p) => {
@@ -231,7 +231,7 @@ export class TrangKhachService {
       id = this.conn.id(String(x.phong_id || ''));
     const r = await c.query(
       ROOM + ' AND p.id=$1' + (lock ? ' FOR UPDATE OF p' : ''),
-      [id],
+      [id,start.toISOString()],
     );
     if (!r.rowCount) throw new NotFoundException('Phòng không còn mở bán');
     const p = r.rows[0],
@@ -250,7 +250,7 @@ export class TrangKhachService {
       throw new BadRequestException('Phòng không nhận kiểu đặt này');
     if (!(await this.free(c, id, start, end)))
       throw new ConflictException(
-        'Phòng vừa được đặt. Hãy chọn phòng hoặc thời gian khác',
+        'Phòng vừa được đặt hoặc chưa đủ khoảng cách 30 phút. Hãy chọn thời gian khác',
       );
     const rawIds = x.combo_ids === undefined ? (x.combo_id ? [x.combo_id] : []) : x.combo_ids;
     if (!Array.isArray(rawIds) || rawIds.length > 10 || rawIds.some(v=>typeof v!=='string') || new Set(rawIds).size!==rawIds.length)

@@ -1052,7 +1052,8 @@ await operations.updateBooking(admin,stateBooking,{hanh_dong:'nhan_phong'});
 await assert.rejects(()=>operations.updateBooking(admin,stateBooking,{hanh_dong:'nhan_phong'}),/Trạng thái đã thay đổi/);
 await operations.updateBooking(admin,stateBooking,{hanh_dong:'tra_phong'});
 assert.equal((await roomService.list(admin,'TT-01')).du_lieu[0].trang_thai_hien_thi,'Đang dọn');
-assert.equal((await service.rooms(q)).some(p=>p.id===stateRoom),false);
+// A room being cleaned now can be booked for a non-overlapping future date.
+assert.equal((await service.rooms(q)).some(p=>p.id===stateRoom),true);
 await assert.rejects(()=>operations.createBooking(admin,{ten_khach:'Không đặt khi vệ sinh',phong_id:stateRoom,hinh_thuc_dat:'Theo giờ',nhan_phong_luc:q.bat_dau,tra_phong_luc:q.ket_thuc,so_khach:1,tien_phong:200000,so_dien_thoai:'0901234567'}),/Chỉ đặt được đơn khi phòng trống/);
 
 await roomService.setState(admin,stateRoom,{trang_thai:'Trống'});
@@ -1187,11 +1188,12 @@ await assert.rejects(()=>service.quote({...extraQuery,combo_ids:[serviceCombos[0
 await assert.rejects(()=>service.quote({...extraQuery,combo_id:serviceCombos[1],combo_ids:[serviceCombos[0]]}),/không khớp/);
 await assert.rejects(()=>service.quote({...extraQuery,combo_ids:[combo]}),/không áp dụng/);
 const extraOrder=await service.create({...extraQuery,...bundle,ten_khach:'Khách phụ thu',so_dien_thoai:'0901234567',so_khach:1,khoa_yeu_cau:randomUUID(),tien_phong:1});
-const extraStored=(await db.query('SELECT nhan_phong_luc,tra_phong_luc,cau_hinh_gia_chot FROM public.dat_phong WHERE ma_dat_phong=$1',[extraOrder.ma_dat_phong])).rows[0];
+const extraStored=(await db.query('SELECT id,nhan_phong_luc,tra_phong_luc,cau_hinh_gia_chot FROM public.dat_phong WHERE ma_dat_phong=$1',[extraOrder.ma_dat_phong])).rows[0];
 assert.equal(Number(extraOrder.tong_tien),950000);assert.deepEqual(extraStored.cau_hinh_gia_chot.combo_ids,serviceCombos);assert.equal(extraStored.cau_hinh_gia_chot.combo_da_chon.length,2);
 assert.equal(+new Date(extraStored.nhan_phong_luc),Date.parse(extraQuery.bat_dau));assert.equal(extraStored.cau_hinh_gia_chot.tien_phu_thu,100000);
 await assert.rejects(()=>service.quote({...extraQuery,hinh_thuc_dat:'Theo giờ',bat_dau:extraDay+'T12:00:00+07:00',ket_thuc:extraDay+'T14:00:00+07:00',gio_nhan_som:0,gio_tra_muon:0}),/vừa được đặt/);
 await db.query("UPDATE public.dat_phong SET trang_thai='Đã xác nhận' WHERE ma_dat_phong=$1",[extraOrder.ma_dat_phong]);
+const detailBundle=await editing.detail(admin,extraStored.id);assert.deepEqual(detailBundle.combo_da_chon.map(c=>c.id),serviceCombos);assert.equal(detailBundle.cau_hinh_gia_chot.tien_phu_thu,100000);
 const comboUsage=(await service.catalog()).combo;
 assert.ok(serviceCombos.every(id=>comboUsage.find(c=>c.id===id)?.luot_dat===1));
 console.log('PASS phụ thu và nhiều combo: tổng tiền server, snapshot, phạm vi, lượt dùng và chống trùng lịch.');
@@ -1200,4 +1202,5 @@ await kiemTraChatbot({db,conn,chat,root,admin,direct});
 await db.exec(fs.readFileSync(root+'/co-so-du-lieu/migrations/20261118205919_khach_hang_voucher_ve_sinh.sql','utf8'));
 const {kiemTraVanHanh}=await import('./van-hanh.integration.mjs');
 await kiemTraVanHanh({db,conn,service,root,admin,uid,branch,type,room,room2});
+const {kiemTraDemVaTaiKhoan}=await import('./dem-30-tai-khoan.integration.mjs');await kiemTraDemVaTaiKhoan({db,root,service,connection,admin,branch,type});
 await db.close();

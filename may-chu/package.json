@@ -33,6 +33,7 @@
     "db:so-thu-chi": "node --use-system-ca scripts/so-thu-chi.mjs",
     "db:bieu-do-thu-chi": "node --use-system-ca scripts/bieu-do-thu-chi.mjs",
     "db:chatbot": "node --use-system-ca scripts/chatbot.mjs",
+    "db:dem-30": "node --use-system-ca scripts/dem-30.mjs",
     "db:van-hanh": "node --use-system-ca scripts/van-hanh.mjs"
   },
   "dependencies": {
