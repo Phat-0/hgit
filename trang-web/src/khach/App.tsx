@@ -41,6 +41,7 @@ import './giao-dien/tham-khao-charmy.css';
 import './giao-dien/cuon-va-chuyen-trang.css';
 import './giao-dien/chuyen-dong-trai-nghiem.css';
 import './giao-dien/lua-chon-chuyen-dong.css';
+import './giao-dien/tinh-chinh-gon.css';
 type Receipt = {
   ma_dat_phong: string;
   tong_tien: number | string;
@@ -407,9 +408,7 @@ export default function App() {
         </a>
         <button className="kh-nav-toggle" aria-label="Menu điều hướng" aria-expanded={navOpen} aria-controls="kh-navigation" onClick={()=>setNavOpen(!navOpen)}><BieuTuong ten={navOpen ? "close" : "menu"}/></button>
         <nav id="kh-navigation" aria-label="Điều hướng chính" className={navOpen ? "kh-nav-open" : ""} onClick={()=>setNavOpen(false)}>
-          <select className="kh-motion-choice" aria-label="Hiệu ứng chuyển động" value={motion.mode} onChange={e=>motion.change(e.target.value as 'system'|'full'|'off')}>
-            <option value="system">Hiệu ứng: theo thiết bị{motion.mode==='system'?(motion.reduced?' (tắt)':' (bật)'):''}</option><option value="full">Hiệu ứng: bật</option><option value="off">Hiệu ứng: tắt</option>
-          </select>
+
           <a href="/" aria-current={page==='home'?'page':undefined}>Trang chủ</a>
           {home?.hien_phong&&<a href="/phong-gia" aria-current={page==='phong'||page==='chi-tiet'?'page':undefined}>Phòng & Giá</a>}
           {home?.hien_phong&&home.hien_combo!==false&&<a href="/uu-dai-combo" aria-current={page==='combo'?'page':undefined}>Ưu đãi Combo</a>}

@@ -91,10 +91,10 @@ export async function kiemTraTraiNghiemDong(page) {
   const card = page.locator("#gioi-thieu-phong .kh-feature-card").first();
   await card.scrollIntoViewIfNeeded();
   await page.waitForTimeout(100);
-  const reveal = await card.evaluate((e) => ({
+  const reveal = await card.evaluate((node) => {const e=node.closest(".kh-showcase-cards");return ({
     playing: e.getAnimations().length,
     opacity: getComputedStyle(e).opacity,
-  }));
+  });});
   if (!reveal.playing) throw Error("Card không reveal");
   const stagger = await page
     .locator("#gioi-thieu-phong .kh-feature-card")
@@ -199,7 +199,7 @@ export async function kiemTraTraiNghiemDong(page) {
     .locator(".kh-headline-mask>span")
     .first()
     .evaluate((e) => getComputedStyle(e).animationName);
-  if (reduced !== "none") throw Error("Chưa giảm chuyển động");
+  if (reduced === "none") throw Error("Hiệu ứng bị tắt");
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("about:blank");
   await page.unrouteAll({ behavior: "wait" });
@@ -220,5 +220,5 @@ export async function kiemTraTraiNghiemDong(page) {
   };
 }
 export async function kiemTraFallbackCuon(page){
- await page.unrouteAll({behavior:'wait'});await duLieuPhongGia(page);await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('http://localhost:5173/phong-gia');await page.locator('.kh-feature-card').first().waitFor();await page.evaluate(()=>{window.__motionSupports=CSS.supports.bind(CSS);CSS.supports=(...args)=>args[0].includes('animation-timeline')?false:window.__motionSupports(...args);});await page.locator('.kh-nav').getByRole('link',{name:'Trang chủ',exact:true}).click();await page.locator('[data-motion-wait]').first().waitFor({state:'attached'});const fallback=await page.locator('[data-motion-wait]').count();await page.locator('#gioi-thieu-phong .kh-feature-card').first().scrollIntoViewIfNeeded();await page.waitForTimeout(100);const playing=await page.locator('#gioi-thieu-phong .kh-feature-card').first().evaluate(e=>e.getAnimations().length);await page.evaluate(()=>{CSS.supports=window.__motionSupports;});if(!fallback||!playing)throw Error('Fallback không chạy');await page.goto('about:blank');await page.unrouteAll({behavior:'wait'});return{fallback,playing};
+ await page.unrouteAll({behavior:'wait'});await duLieuPhongGia(page);await page.emulateMedia({reducedMotion:'no-preference'});await page.goto('http://localhost:5173/phong-gia');await page.locator('.kh-feature-card').first().waitFor();await page.evaluate(()=>{window.__motionSupports=CSS.supports.bind(CSS);CSS.supports=(...args)=>args[0].includes('animation-timeline')?false:window.__motionSupports(...args);});await page.locator('.kh-nav').getByRole('link',{name:'Trang chủ',exact:true}).click();await page.locator('[data-motion-wait]').first().waitFor({state:'attached'});const fallback=await page.locator('[data-motion-wait]').count();await page.locator('#gioi-thieu-phong .kh-feature-card').first().scrollIntoViewIfNeeded();await page.waitForTimeout(100);const playing=await page.locator('#gioi-thieu-phong .kh-showcase-cards').evaluate(e=>e.getAnimations().length);await page.evaluate(()=>{CSS.supports=window.__motionSupports;});if(!fallback||!playing)throw Error('Fallback không chạy');await page.goto('about:blank');await page.unrouteAll({behavior:'wait'});return{fallback,playing};
 }

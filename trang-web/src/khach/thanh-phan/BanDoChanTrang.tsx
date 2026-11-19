@@ -48,7 +48,9 @@ function BanDoMoRong({
     ),
     [summary, setSummary] = useState(""),
     [road, setRoad] = useState<Record<string, number>>({}),
-    [routeRequest, setRouteRequest] = useState(0);
+    [routeRequest, setRouteRequest] = useState(0),
+    [showDirections, setShowDirections] = useState(false),
+    [routeBranch, setRouteBranch] = useState("");
   const node = useRef<HTMLDivElement>(null),
     mapRef = useRef<L.Map | null>(null),
     routeRef = useRef<L.Polyline | null>(null),
@@ -160,12 +162,15 @@ function BanDoMoRong({
     })
       .addTo(map)
       .bindTooltip("Điểm xuất phát");
-    if (!routeRequest) return;
+    if (!routeRequest || !routeBranch) return;
     const controller = new AbortController(),
       timeout = setTimeout(() => controller.abort(), 12000);
     let active = true;
     setStatus("Đang tìm tuyến đường…");
-    const coordinates = [origin, ...selectedBranches.map(coord)]
+    const coordinates = [
+      origin,
+      ...branches.filter((b) => b.id === routeBranch).map(coord),
+    ]
       .map(([lat, lng]) => lng + "," + lat)
       .join(";");
     void fetch(
@@ -213,7 +218,7 @@ function BanDoMoRong({
       controller.abort();
       clearTimeout(timeout);
     };
-  }, [origin?.join(","), selected.join("|"), key, routeRequest]);
+  }, [origin?.join(","), selected.join("|"), key, routeRequest, routeBranch]);
   useEffect(() => {
     setRoad({});
     if (!origin || !branches.length) return;
@@ -293,31 +298,32 @@ function BanDoMoRong({
         aria-modal="true"
         aria-label="Bản đồ và đường đi"
       >
-        <header>
-          <h2>Chi nhánh & đường đi</h2>
-          <button type="button" onClick={onClose} aria-label="Đóng bản đồ">
-            ×
-          </button>
-        </header>
+        <button
+          className="kh-map-close"
+          type="button"
+          onClick={onClose}
+          aria-label="Đóng bản đồ"
+        >
+          ×
+        </button>
         <div className="kh-map-layout">
           <aside>
             <section className="kh-map-group">
               <h3>Chi nhánh hiển thị</h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setRouteRequest(0);
-                  setSelected(
-                    selected.length === branches.length
-                      ? []
-                      : branches.map((b) => b.id),
-                  );
-                }}
-              >
-                {selected.length === branches.length
-                  ? "Bỏ chọn tất cả"
-                  : "Chọn tất cả"}
-              </button>
+              <label>
+                <input
+                  type="checkbox"
+                  aria-label="Tất cả chi nhánh"
+                  checked={selected.length === branches.length}
+                  onChange={(e) => {
+                    setRouteRequest(0);
+                    setSelected(
+                      e.target.checked ? branches.map((b) => b.id) : [],
+                    );
+                  }}
+                />
+                Tất cả chi nhánh
+              </label>
               {branches.map((b) => (
                 <label key={b.id}>
                   <input
@@ -344,27 +350,35 @@ function BanDoMoRong({
               <button type="button" onClick={locate}>
                 {origin ? "Cập nhật vị trí" : "Cho phép tìm vị trí hiện tại"}
               </button>
-              <ul className="kh-map-distances">
-                {branches.map((b) => (
-                  <li key={b.id}>
-                    <span>{b.ten_homestay}</span>
-                    <strong>
-                      {!origin
-                        ? "Chưa có vị trí"
-                        : road[b.id] != null
-                          ? road[b.id].toLocaleString("vi-VN", {
-                              maximumFractionDigits: 1,
-                            }) + " km"
-                          : "≈ " +
-                            khoangCachKm(origin, coord(b)).toLocaleString(
-                              "vi-VN",
-                              { maximumFractionDigits: 1 },
-                            ) +
-                            " km"}
-                    </strong>
-                  </li>
-                ))}
-              </ul>
+              {!origin && (
+                <p role="status">
+                  Cho phép truy cập vị trí để xem khoảng cách đến từng chi
+                  nhánh.
+                </p>
+              )}
+              {origin && (
+                <ul className="kh-map-distances">
+                  {branches.map((b) => (
+                    <li key={b.id}>
+                      <span>{b.ten_homestay}</span>
+                      <strong>
+                        {!origin
+                          ? "Chưa có vị trí"
+                          : road[b.id] != null
+                            ? road[b.id].toLocaleString("vi-VN", {
+                                maximumFractionDigits: 1,
+                              }) + " km"
+                            : "≈ " +
+                              khoangCachKm(origin, coord(b)).toLocaleString(
+                                "vi-VN",
+                                { maximumFractionDigits: 1 },
+                              ) +
+                              " km"}
+                      </strong>
+                    </li>
+                  ))}
+                </ul>
+              )}
               {origin && branches.some((b) => road[b.id] == null) && (
                 <small>
                   ≈ Khoảng cách đường thẳng khi chưa tải được đường bộ.
@@ -376,29 +390,45 @@ function BanDoMoRong({
               <button
                 type="button"
                 className="kh-map-directions"
-                onClick={() => {
-                  if (!selected.length) {
-                    setStatus("Chọn ít nhất một chi nhánh để dẫn đường.");
-                    return;
-                  }
-                  if (!origin) {
-                    setStatus(
-                      "Hãy cho phép tìm vị trí hiện tại hoặc chọn điểm xuất phát trên bản đồ.",
-                    );
-                    return;
-                  }
-                  setRouteRequest((n) => n + 1);
-                }}
+                aria-expanded={showDirections}
+                onClick={() => setShowDirections((v) => !v)}
               >
                 Dẫn đường →
               </button>
+              {showDirections && (
+                <select
+                  aria-label="Chi nhánh dẫn đường"
+                  value={routeBranch}
+                  onChange={(e) => {
+                    setRouteBranch(e.target.value);
+                    if (e.target.value) {
+                      setSelected((ids) =>
+                        ids.includes(e.target.value)
+                          ? ids
+                          : [...ids, e.target.value],
+                      );
+                      setRouteRequest((n) => n + 1);
+                    }
+                  }}
+                >
+                  <option value="">Chọn chi nhánh</option>
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.ten_homestay}
+                    </option>
+                  ))}
+                </select>
+              )}
               <p role="status">{status}</p>
               {summary && (
                 <strong className="kh-route-summary">{summary}</strong>
               )}
-              {origin && selectedBranches.length === 1 && (
+              {routeBranch && branches.some((b) => b.id === routeBranch) && (
                 <a
-                  href={duongDi(selectedBranches[0], origin)}
+                  href={duongDi(
+                    branches.find((b) => b.id === routeBranch)!,
+                    origin,
+                  )}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -477,9 +507,7 @@ export default function BanDoChanTrang({
             className="kh-map-open"
             onClick={() => setExpanded(true)}
             aria-label="Mở bản đồ chi nhánh"
-          >
-
-          </button>
+          ></button>
         </div>
       ) : (
         <p>Chi nhánh chưa có tọa độ.</p>

@@ -8,3 +8,13 @@
 .anh-phong-noi{animation:anh-open .3s ease-out both;background:#100c09ed;transition:opacity .22s,scale .22s}.anh-phong-noi figure{animation:anh-switch .38s ease-out both}.anh-phong-noi.is-closing{opacity:0;scale:.98}.anh-phong-noi>.anh-nav{top:50%;right:auto;transform:translateY(-50%);background:#403023d9;color:#fff;border:1px solid #d9b77e66;z-index:2}.anh-phong-noi>.anh-prev{left:16px}.anh-phong-noi>.anh-next{right:16px;left:auto}.anh-phong-noi figcaption small{font:12px system-ui;color:#d5b990}
 @media(prefers-reduced-motion:reduce){:root:not([data-motion-mode="full"]) .anh-phong-noi, :root:not([data-motion-mode="full"]) .anh-phong-noi figure{animation:none!important;transition:none!important}}
 .anh-phong-noi.is-closing{animation:none;opacity:0;scale:.98}
+
+/* Navigation buttons are positioned against the viewport overlay, not the animated photo. */
+body>.anh-phong-noi{display:grid;grid-template-columns:52px minmax(0,1fr) 52px;gap:12px;padding:64px 16px 20px;overflow:auto;align-items:center}
+body>.anh-phong-noi>figure{grid-column:2;grid-row:1;justify-self:center;min-width:0;max-width:100%;width:auto}
+body>.anh-phong-noi img{max-width:100%;max-height:calc(100dvh - 150px)}
+body>.anh-phong-noi>.anh-nav{position:relative!important;inset:auto!important;transform:none!important;grid-row:1;align-self:center;justify-self:center;width:44px;height:44px;z-index:3}
+body>.anh-phong-noi>.anh-prev{grid-column:1}body>.anh-phong-noi>.anh-next{grid-column:3}
+body>.anh-phong-noi>button:not(.anh-nav){position:fixed;top:14px;right:16px;z-index:4}
+
+@media(max-width:760px){body>.anh-phong-noi{grid-template-columns:36px minmax(0,1fr) 36px;gap:4px;padding-inline:4px}body>.anh-phong-noi>.anh-nav{width:32px;height:40px}}

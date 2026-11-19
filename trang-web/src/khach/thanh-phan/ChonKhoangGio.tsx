@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { mocNhanPhong, mocTraPhong, type MocGio } from "./moc-gio-khach";
-function DaiGio({
+export function DaiGio({
   label,
   items,
   value,
@@ -61,7 +61,8 @@ function DaiGio({
         aria-valuenow={index}
         aria-valuetext={
           items[index]
-            ? items[index].gio + " · " + items[index].ngay
+            ? items[index].gio +
+              (items[index].ngay === "extra" ? "" : " · " + items[index].ngay)
             : "Chưa có giờ phù hợp"
         }
         tabIndex={items.length ? 0 : -1}
@@ -127,11 +128,17 @@ function DaiGio({
       >
         {items.length ? (
           [-1, 0, 1].map((step) => {
-            const slot = items[index + step] || {
-              gio: new Date(items[index].time + step * 1800000 + 7 * 3600000)
-                .toISOString()
-                .slice(11, 16),
-            };
+            const slot =
+              items[index + step] ||
+              (items[index].ngay === "extra"
+                ? null
+                : {
+                    gio: new Date(
+                      items[index].time + step * 1800000 + 7 * 3600000,
+                    )
+                      .toISOString()
+                      .slice(11, 16),
+                  });
             const x = step * STEP + offset;
             return slot ? (
               <span

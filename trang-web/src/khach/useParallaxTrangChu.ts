@@ -18,7 +18,7 @@ export default function useParallaxTrangChu(active: boolean) {
     scan();
     const draw = () => {
       frame = 0;
-      if (giamChuyenDong()) return;
+      if (giamChuyenDong()||document.documentElement.dataset.motionFold) return;
       const h = hero.getBoundingClientRect(),
         p = Math.max(0, Math.min(1, -h.top / Math.max(1, h.height)));
       hero.style.setProperty("--hero-shift", p * 58 + "px");

@@ -7,7 +7,7 @@ import {
   ngayVietNam,
 } from "../../dung-chung/lich/mac-dinh-thoi-gian";
 import { khoangThoiGianLich } from "../../dung-chung/lich/khung-gio-dat-phong";
-import ChonKhoangGio from "./ChonKhoangGio";
+import ChonKhoangGio,{DaiGio} from "./ChonKhoangGio";
 import { mocTraPhong } from "./moc-gio-khach";
 import type { PhongKhach } from "./GioiThieuLuuTru";
 export type KetQuaDatPhong = {
@@ -182,7 +182,7 @@ export default function DatPhongKhach({
   hiddenRef.current = hidden;
 
   useEffect(() => {
-    setPrice(null);
+    if(!request.q)setPrice(null);
     setQuoteKey("");
     setError("");
     if (!request.q) {
@@ -234,7 +234,7 @@ export default function DatPhongKhach({
         .finally(() => {
           if (active) setQuoting(false);
         });
-    }, 250);
+    }, 80);
     return () => {
       active = false;
       clearTimeout(timer);
@@ -540,6 +540,8 @@ export default function DatPhongKhach({
                     end={et}
                     config={config}
                     onChange={(a, b, x, y) => {
+                      const oldHours=(Date.parse(end+'T'+et+':00+07:00')-Date.parse(start+'T'+st+':00+07:00'))/3600000,newHours=(Date.parse(b+'T'+y+':00+07:00')-Date.parse(a+'T'+x+':00+07:00'))/3600000,included=comboIds.map(id=>comboCache.current.get(id)?.so_gio_bao_gom).find(n=>n&&n>0)||Number(room?.so_gio_toi_thieu||1);
+                      if(Number.isFinite(oldHours)&&Number.isFinite(newHours)&&newHours>0){const delta=(Math.max(0,Math.ceil(newHours)-included)-Math.max(0,Math.ceil(oldHours)-included))*Number(room?.gia_phu_thu_gio||0);setPrice(p=>p===null?p:Math.max(0,p+delta));}
                       setStart(a);
                       setEnd(b);
                       setSt(x);
@@ -559,27 +561,13 @@ export default function DatPhongKhach({
                   <div>
                     {(
                       [
-                        ["Nhận sớm", early, setEarly],
-                        ["Trả muộn", late, setLate],
+                        ["Check-in sớm", early, setEarly],
+                        ["Check-out muộn", late, setLate],
                       ] as const
                     ).map(([title, value, setter]) => (
                       <label key={title}>
                         {title}
-                        <select
-                          aria-label={title + " (giờ phụ thu)"}
-                          value={value}
-                          onChange={(e) => setter(Number(e.target.value))}
-                        >
-                          {Array.from({ length: 25 }, (_, i) => i / 2).map(
-                            (n) => (
-                              <option key={n} value={n}>
-                                {n
-                                  ? n.toLocaleString("vi-VN") + " giờ"
-                                  : "Không"}
-                              </option>
-                            ),
-                          )}
-                        </select>
+                        <DaiGio label={title} items={Array.from({length:25},(_,i)=>({ngay:'extra',gio:(i/2).toLocaleString('vi-VN')+' giờ',time:i/2}))} value={'extraT'+value.toLocaleString('vi-VN')+' giờ'} onChange={slot=>{const next=slot.time,oldTotal=Math.ceil(early+late),newTotal=Math.ceil((title==='Check-in sớm'?next:early)+(title==='Check-out muộn'?next:late)),delta=(newTotal-oldTotal)*Number(room?.gia_phu_thu_gio||0);setter(next);setPrice(p=>p===null?p:Math.max(0,p+delta));setSurcharge(p=>Math.max(0,p+delta));}}/>
                       </label>
                     ))}
                   </div>
@@ -702,11 +690,7 @@ export default function DatPhongKhach({
             <div className="kh-reserve-total">
               <span>Tổng dự kiến</span>
               <strong>
-                {quoting
-                  ? "Đang tính giá…"
-                  : price !== null
-                    ? money(price)
-                    : "Chọn phòng, loại đặt và lịch"}
+                {price !== null ? money(price) : "Chọn phòng, loại đặt và lịch"}
               </strong>
             </div>
             {price !== null && surcharge > 0 && (

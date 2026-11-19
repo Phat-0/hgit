@@ -1,4 +1,3 @@
-import {giamChuyenDong} from '../../dung-chung/giao-dien/chuyen-dong';
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 export default function KhungDatDonChim({
   open,
@@ -8,13 +7,14 @@ export default function KhungDatDonChim({
 }: {
   open: boolean;
   children: ReactNode;
-  title?: string;
-  description?: string;
   duration?: number;
   animate?: boolean;
+  title?: string;
+  description?: string;
 }) {
   const node = useRef<HTMLDivElement>(null),
-    previous = useRef(open);
+    previous = useRef(open),
+    interrupted = useRef<number | null>(null);
   useLayoutEffect(() => {
     const el = node.current;
     if (!el) return;
@@ -24,56 +24,44 @@ export default function KhungDatDonChim({
     }
     previous.current = open;
     el.hidden = false;
-    if (!animate || giamChuyenDong()) {
+    if (!animate) {
       el.hidden = !open;
       return;
     }
-    const bounds = el.getBoundingClientRect();
-    if (open && bounds.bottom > innerHeight - 24)
-      window.scrollTo({
-        top: Math.max(0, scrollY + bounds.top - 96),
-        behavior: "instant",
-      });
-    const panel = el.firstElementChild as HTMLElement;
-    const motion = panel.animate(
-      open
-        ? [
-            {
-              opacity: 0.2,
-              clipPath: "inset(0 0 100% 0)",
-              transform: "translate3d(0,-32px,0)",
-            },
-            {
-              opacity: 1,
-              clipPath: "inset(0 0 0% 0)",
-              transform: "translate3d(0,0,0)",
-            },
-          ]
-        : [
-            {
-              opacity: 1,
-              clipPath: "inset(0 0 0% 0)",
-              transform: "translate3d(0,0,0)",
-            },
-            {
-              opacity: 0.2,
-              clipPath: "inset(0 0 100% 0)",
-              transform: "translate3d(0,-32px,0)",
-            },
-          ],
+    const height = el.scrollHeight,
+      from = interrupted.current ?? (open ? 0 : height);
+    interrupted.current = null;
+    el.style.overflow = "hidden";
+    el.style.height = from + "px";
+    document.documentElement.dataset.motionFold = "1";
+    const animation = el.animate(
+      [
+        { height: from + "px", opacity: open ? 0.65 : 1 },
+        { height: (open ? height : 0) + "px", opacity: open ? 1 : 0.65 },
+      ],
       {
-        duration: open
-          ? Math.max(1400, Math.min(1600, duration))
-          : Math.max(900, Math.min(1200, duration)),
+        duration: Math.max(1000, Math.min(1800, duration)),
         easing: "cubic-bezier(.35,.35,.65,.65)",
+        fill: "forwards",
       },
     );
-    motion.onfinish = () => {
+    let finished = false;
+    animation.onfinish = () => {
+      finished = true;
       el.hidden = !open;
+      el.style.height = "";
+      el.style.overflow = "";
+      animation.cancel();
+      delete document.documentElement.dataset.motionFold;
+      dispatchEvent(new Event("resize"));
     };
     return () => {
-      motion.onfinish = null;
-      motion.cancel();
+      if (!finished) interrupted.current = el.getBoundingClientRect().height;
+      animation.onfinish = null;
+      animation.cancel();
+      el.style.height = "";
+      el.style.overflow = "";
+      delete document.documentElement.dataset.motionFold;
     };
   }, [open, duration, animate]);
   return (
@@ -86,7 +74,6 @@ export default function KhungDatDonChim({
       className="kh-booking-fold"
     >
       <div className="kh-booking-panel">
-
         <div className="kh-booking-content">{children}</div>
       </div>
     </div>
