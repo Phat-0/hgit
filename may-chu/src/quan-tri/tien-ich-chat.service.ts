@@ -216,7 +216,9 @@ export class TienIchChatService {
           base,
         [uid, filter],
       );
-      return { thong_bao: list.rows, ...count.rows[0] };
+      const ids=list.rows.filter(n=>n.loai==='Sắp trả phòng').map(n=>String(n.du_lieu?.cong_viec_id||''));
+      const jobs=ids.length?(await c.query("SELECT v.id,v.trang_thai,p.ma_phong,coalesce(d.da_tra_phong_luc,d.tra_phong_luc,v.han_hoan_thanh) AS tra_phong_luc,d.trang_thai AS trang_thai_don,(d.trang_thai='Đã trả phòng' AND v.trang_thai NOT IN ('Hoàn thành','Đã hủy')) AS co_the_hoan_thanh FROM public.cong_viec_ve_sinh v JOIN public.phong p ON p.id=v.phong_id LEFT JOIN public.dat_phong d ON d.id=v.dat_phong_id WHERE v.id::text=ANY($1::text[]) AND EXISTS(SELECT 1 FROM public.nguoi_dung_vai_tro nv JOIN public.vai_tro r ON r.id=nv.vai_tro_id WHERE nv.nguoi_dung_id=$2 AND nv.ngay_thu_hoi IS NULL AND (r.ma_vai_tro='Quản trị hệ thống' AND nv.homestay_id IS NULL OR nv.homestay_id=p.homestay_id AND ('ve-sinh'=ANY(r.quyen_trang) OR r.ma_vai_tro='Nhân viên vệ sinh')))",[ids,uid])).rows:[];
+      return { thong_bao: list.rows.map(n=>n.loai==='Sắp trả phòng'?{...n,ve_sinh:jobs.find(v=>v.id===n.du_lieu?.cong_viec_id)||null}:n), ...count.rows[0] };
     } finally {
       await c.end();
     }

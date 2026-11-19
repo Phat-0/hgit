@@ -42,6 +42,7 @@ export class VanHanhController {
   @Post('khach-hang/tai-khoan') account(@Req() r:R,@Body() b:Record<string,unknown>){return this.khach.createAccount(r.nguoiDung.id,b);}
   @Get('khach-hang/tom-tat') summary(@Req() r:R,@Query('khoa') key:string){return this.summaries.read(r.nguoiDung.id,key);}
   @Post('khach-hang/tom-tat') generateSummary(@Req() r:R,@Body() b:Record<string,unknown>){return this.summaries.summarize(r.nguoiDung.id,String(b.khach_khoa||''));}
+  @Post('khach-hang/dong-y-ai') consent(@Req() r:R,@Body() b:Record<string,unknown>){return this.summaries.consent(r.nguoiDung.id,String(b.khach_khoa||''),b);}
   @Get('lich-su') logs(@Req() r: R, @Query() q: Record<string, string>) {
     return this.history.list(r.nguoiDung.id, q);
   }

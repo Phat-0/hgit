@@ -15,7 +15,10 @@ export async function kiemTraTomTatKhach({db,root,connection,admin,uid,other}){
   await db.query("UPDATE public.ho_so_khach_hang SET dong_y_phan_tich_ai=true,thong_tin_bo_sung=thong_tin_bo_sung||'{\"bang_chung_dong_y\":\"Khách đã xác nhận\"}' WHERE nguoi_dung_id=$1",[uid]);
   const preferencesBefore=(await db.query('SELECT count(*)::int n FROM public.so_thich_khach_hang')).rows[0].n;
   api.generate=async messages=>{calls++;const text=JSON.stringify(messages);for(const secret of['STAFF_SECRET','OTHER_SECRET','DIRECT_SECRET','0901234567','guest@example.invalid'])assert.ok(!text.includes(secret),secret);assert.ok(messages.some(m=>m.id===message));return {cau_hoi:[],yeu_cau:[{noi_dung:'Muốn phòng có máy chiếu',nguon:[{id:message,trich_dan:'Tôi muốn phòng có máy chiếu.'}]}]};};
-  const result=await api.summarize(admin,'u:'+uid);assert.equal(calls,1);assert.equal(result.tom_tat.yeu_cau[0].nguon[0].id,message);assert.ok(result.tom_tat.so_tin>0);
+  await api.consent(admin,'u:'+uid,{dong_y:true,nguon:'Khách xác nhận trực tiếp'});
+  await assert.rejects(()=>api.consent(other,'u:'+uid,{dong_y:true,nguon:'Giả'}),/Không có quyền/);
+  await db.query('UPDATE public.ho_so_khach_hang SET ngan_sach_du_kien=550000 WHERE nguoi_dung_id=$1',[uid]);
+  const result=await api.summarize(admin,'u:'+uid);assert.equal(calls,1);assert.equal(Number(result.ngan_sach),550000);assert.ok(Array.isArray(result.loai_dat)&&Array.isArray(result.thoi_gian)&&Array.isArray(result.ghi_chu));assert.equal(result.tom_tat.yeu_cau[0].nguon[0].id,message);assert.ok(result.tom_tat.so_tin>0);
   const cached=await api.read(admin,'u:'+uid);assert.deepEqual(cached.tom_tat,result.tom_tat);assert.equal(calls,1);
   assert.equal((await db.query('SELECT count(*)::int n FROM public.so_thich_khach_hang')).rows[0].n,preferencesBefore);
   await assert.rejects(()=>api.summarize(admin,'u:'+uid),/một phút/);assert.equal(calls,1);

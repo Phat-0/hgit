@@ -1,3 +1,4 @@
+import TheVeSinh,{quaHan,type ViecVeSinh} from '../ve-sinh/TheVeSinh';
 import { useCallback, useEffect, useRef, useState } from "react";
 import ChiTietDonLich from "../don-dat-phong/ChiTietDonLich";
 type Notice = {
@@ -7,6 +8,7 @@ type Notice = {
   loai: string;
   da_doc_luc: string | null;
   ngay_tao: string;
+  ve_sinh?:ViecVeSinh;
   du_lieu: { dat_phong_id?: string;cong_viec_id?:string };
 };
 export default function ThongBaoDon({ token,onVeSinh }: { token: string;onVeSinh?:()=>void }) {
@@ -69,7 +71,7 @@ export default function ThongBaoDon({ token,onVeSinh }: { token: string;onVeSinh
   useEffect(() => {
     if (!open) return;
     const click = (e: MouseEvent) => {
-      if (!wrap.current?.contains(e.target as Node)) setOpen(false);
+      if (!(e.target as HTMLElement).closest?.(".kh-customer-shade") && !wrap.current?.contains(e.target as Node)) setOpen(false);
     };
     const key = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -98,7 +100,7 @@ export default function ThongBaoDon({ token,onVeSinh }: { token: string;onVeSinh
       <div className="qt-booking-bell" ref={wrap}>
         <button
           className="qt-icon-button"
-          title="Đơn mới và đơn hủy"
+          title="Thông báo"
           aria-label={
             "Thông báo đơn" + (unread ? ", " + unread + " chưa đọc" : "")
           }
@@ -162,7 +164,7 @@ export default function ThongBaoDon({ token,onVeSinh }: { token: string;onVeSinh
               </p>
             )}
             <div className="qt-notice-list">
-              {rows.map((n) => (
+              {[...rows].sort((a,b)=>Number(!!b.ve_sinh&&quaHan(b.ve_sinh))-Number(!!a.ve_sinh&&quaHan(a.ve_sinh))).map((n) => n.ve_sinh?<TheVeSinh key={n.id} viec={n.ve_sinh} token={token} now={Date.now()} onDone={load}/>:( 
                 <button
                   key={n.id}
                   className={n.da_doc_luc ? "" : "unread"}

@@ -16,7 +16,7 @@ export async function nhacVeSinh(c: Pick<Client, 'query'>) {
     );
     const due = (
       await c.query(
-        "SELECT d.id,d.phong_id,d.homestay_id,d.tra_phong_luc,d.trang_thai,p.ma_phong FROM public.dat_phong d JOIN public.phong p ON p.id=d.phong_id WHERE (d.trang_thai='Đã nhận phòng' AND d.tra_phong_luc<=now()+interval '15 minutes' AND d.tra_phong_luc>now()-interval '1 day' OR d.trang_thai='Đã trả phòng' AND coalesce(d.da_tra_phong_luc,d.tra_phong_luc)>now()-interval '1 day' AND coalesce(d.da_tra_phong_luc,d.tra_phong_luc)<=now()) ORDER BY d.tra_phong_luc LIMIT 100",
+        "SELECT d.id,d.phong_id,d.homestay_id,CASE WHEN d.trang_thai='Đã trả phòng' THEN coalesce(d.da_tra_phong_luc,d.tra_phong_luc) ELSE d.tra_phong_luc END AS tra_phong_luc,d.trang_thai,p.ma_phong FROM public.dat_phong d JOIN public.phong p ON p.id=d.phong_id WHERE (d.trang_thai='Đã nhận phòng' AND d.tra_phong_luc<=now()+interval '15 minutes' AND d.tra_phong_luc>now()-interval '1 day' OR d.trang_thai='Đã trả phòng' AND coalesce(d.da_tra_phong_luc,d.tra_phong_luc)>now()-interval '1 day' AND coalesce(d.da_tra_phong_luc,d.tra_phong_luc)<=now()) ORDER BY d.tra_phong_luc LIMIT 100",
       )
     ).rows;
     for (const d of due) {
@@ -33,17 +33,15 @@ export async function nhacVeSinh(c: Pick<Client, 'query'>) {
             [d.phong_id, d.id, d.tra_phong_luc],
           )
         ).rows[0];
+      await c.query("UPDATE public.cong_viec_ve_sinh SET phong_id=$2,han_hoan_thanh=$3 WHERE id=$1 AND trang_thai NOT IN ('Hoàn thành','Đã hủy')",[job.id,d.phong_id,d.tra_phong_luc]);
       await c.query(
         "INSERT INTO public.thong_bao(nguoi_dung_id,tieu_de,noi_dung,loai,du_lieu) SELECT DISTINCT n.id,'Phòng sắp checkout',$2,'Sắp trả phòng',$3::jsonb FROM public.nguoi_dung n JOIN public.nguoi_dung_vai_tro nv ON nv.nguoi_dung_id=n.id JOIN public.vai_tro r ON r.id=nv.vai_tro_id WHERE n.trang_thai='Đang hoạt động' AND nv.ngay_thu_hoi IS NULL AND nv.homestay_id=$1 AND r.ma_vai_tro='Nhân viên vệ sinh' AND NOT EXISTS(SELECT 1 FROM public.thong_bao t WHERE t.nguoi_dung_id=n.id AND t.loai='Sắp trả phòng' AND t.du_lieu->>'cong_viec_id'=$4 AND t.du_lieu->>'checkout'=$5)",
         [
           d.homestay_id,
-          (d.trang_thai === 'Đã trả phòng'
-            ? 'Khách đã trả, vệ sinh phòng '
-            : 'Chuẩn bị vệ sinh phòng ') +
-            d.ma_phong +
-            ' sau khi khách trả phòng.',
+          'Phòng '+d.ma_phong+' · Out '+new Date(d.tra_phong_luc).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'}),
           JSON.stringify({
             cong_viec_id: job.id,
+            ma_phong:d.ma_phong,
             phong_id: d.phong_id,
             checkout: new Date(d.tra_phong_luc).toISOString(),
           }),
@@ -109,7 +107,7 @@ export class VeSinhService {
     try {
       return (
         await c.query(
-          "SELECT v.*,(v.nhan_vien_id=$1) AS co_the_hoan_thanh,p.ma_phong,h.ten_homestay,d.tra_phong_luc,d.trang_thai as trang_thai_don,n.ho_ten as nhan_vien FROM public.cong_viec_ve_sinh v JOIN public.phong p ON p.id=v.phong_id JOIN public.homestay h ON h.id=p.homestay_id LEFT JOIN public.dat_phong d ON d.id=v.dat_phong_id LEFT JOIN public.nguoi_dung n ON n.id=v.nhan_vien_id WHERE EXISTS(SELECT 1 FROM public.nguoi_dung_vai_tro nv JOIN public.vai_tro r ON r.id=nv.vai_tro_id WHERE nv.nguoi_dung_id=$1 AND nv.ngay_thu_hoi IS NULL AND (r.ma_vai_tro='Quản trị hệ thống' AND nv.homestay_id IS NULL OR nv.homestay_id=p.homestay_id AND ('ve-sinh'=ANY(r.quyen_trang) OR r.ma_vai_tro='Nhân viên vệ sinh'))) ORDER BY v.ngay_tao DESC LIMIT 500",
+          "SELECT v.id,v.trang_thai,v.hoan_thanh_luc,p.ma_phong,coalesce(d.da_tra_phong_luc,d.tra_phong_luc,v.han_hoan_thanh) AS tra_phong_luc,d.trang_thai AS trang_thai_don,v.dat_phong_id,(d.trang_thai='Đã trả phòng' AND v.trang_thai NOT IN ('Hoàn thành','Đã hủy')) AS co_the_hoan_thanh FROM public.cong_viec_ve_sinh v JOIN public.phong p ON p.id=v.phong_id LEFT JOIN public.dat_phong d ON d.id=v.dat_phong_id WHERE v.trang_thai<>'Đã hủy' AND EXISTS(SELECT 1 FROM public.nguoi_dung_vai_tro nv JOIN public.vai_tro r ON r.id=nv.vai_tro_id JOIN public.nguoi_dung n ON n.id=nv.nguoi_dung_id WHERE n.id=$1 AND n.trang_thai='Đang hoạt động' AND nv.ngay_thu_hoi IS NULL AND (r.ma_vai_tro='Quản trị hệ thống' AND nv.homestay_id IS NULL OR nv.homestay_id=p.homestay_id AND ('ve-sinh'=ANY(r.quyen_trang) OR r.ma_vai_tro='Nhân viên vệ sinh'))) ORDER BY (v.trang_thai<>'Hoàn thành' AND coalesce(d.da_tra_phong_luc,d.tra_phong_luc,v.han_hoan_thanh)<now()-interval '30 minutes') DESC,(v.trang_thai='Hoàn thành') ASC,coalesce(d.da_tra_phong_luc,d.tra_phong_luc,v.han_hoan_thanh) ASC LIMIT 500",
           [uid],
         )
       ).rows;
@@ -139,31 +137,29 @@ export class VeSinhService {
           [id, uid],
         );
       } else if (action === 'hoan-thanh') {
-        if (
-          v.nhan_vien_id !== uid ||
-          !['Đã nhận', 'Đang thực hiện', 'Chờ kiểm tra'].includes(v.trang_thai)
-        )
-          throw new ForbiddenException(
-            'Chỉ người nhận việc được báo hoàn thành',
-          );
-        if (v.trang_thai_don !== 'Đã trả phòng')
+        if(v.trang_thai==='Hoàn thành'){await c.query('COMMIT');return {ok:true};}
+        if(!['Chờ nhận','Đã nhận','Đang thực hiện','Chờ kiểm tra'].includes(v.trang_thai))throw new BadRequestException('Công việc không còn hiệu lực');
+        const booking=v.dat_phong_id?(await c.query('SELECT trang_thai,phong_id FROM public.dat_phong WHERE id=$1 FOR SHARE',[v.dat_phong_id])).rows[0]:null;
+        if(booking&&booking.phong_id!==v.phong_id)throw new BadRequestException('Lịch phòng đã thay đổi. Vui lòng tải lại');
+        if (booking?.trang_thai !== 'Đã trả phòng')
           throw new BadRequestException(
             'Chỉ hoàn tất vệ sinh sau khi đơn đã trả phòng',
           );
-        const note = chu(b.noi_dung || '', 0, 2000);
+        const note = chu(b.noi_dung || 'Xác nhận đã hoàn thành vệ sinh', 0, 2000);
         await c.query(
           'INSERT INTO public.bao_cao_ve_sinh(cong_viec_id,nguoi_bao_cao_id,noi_dung) VALUES($1,$2,$3)',
           [id, uid, note],
         );
         await c.query(
-          "UPDATE public.cong_viec_ve_sinh SET trang_thai='Hoàn thành',hoan_thanh_luc=now(),bat_dau_luc=coalesce(bat_dau_luc,now()) WHERE id=$1",
-          [id],
+          "UPDATE public.cong_viec_ve_sinh SET nhan_vien_id=$2,trang_thai='Hoàn thành',hoan_thanh_luc=now(),bat_dau_luc=coalesce(bat_dau_luc,now()) WHERE id=$1",
+          [id,uid],
         );
         await c.query(
           "UPDATE public.phong p SET trang_thai_van_hanh='Trống',trang_thai_cap_nhat_luc=now() WHERE p.id=$1 AND p.trang_thai_van_hanh NOT IN('Bảo trì','Bị khóa') AND NOT EXISTS(SELECT 1 FROM public.dat_phong d WHERE d.phong_id=p.id AND d.trang_thai='Đã nhận phòng')",
           [v.phong_id],
         );
       } else throw new BadRequestException('Thao tác không hợp lệ');
+      if(action==='hoan-thanh')await c.query("UPDATE public.thong_bao SET da_doc_luc=coalesce(da_doc_luc,now()) WHERE nguoi_dung_id=$1 AND loai='Sắp trả phòng' AND du_lieu->>'cong_viec_id'=$2",[uid,id]);
       await ghiNhatKy(
         c,
         uid,

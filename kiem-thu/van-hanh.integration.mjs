@@ -263,7 +263,8 @@ export async function kiemTraVanHanh({
     () => clean.update(outsider, job.id, { hanh_dong: "nhan" }),
     /chi nhánh/,
   );
-  await clean.update(cleaner, job.id, { hanh_dong: "nhan" });
+  await assert.rejects(()=>clean.update(outsider,job.id,{hanh_dong:'hoan-thanh'}),/chi nhánh/);
+  assert.equal(job.nhan_vien,undefined);
   await assert.rejects(
     () => clean.update(cleaner, job.id, { hanh_dong: "hoan-thanh" }),
     /trả phòng/,
@@ -286,6 +287,8 @@ export async function kiemTraVanHanh({
     1,
   );
 
+  await clean.update(cleaner,job.id,{hanh_dong:'hoan-thanh'});
+  assert.equal((await db.query('SELECT count(*)::int n FROM public.bao_cao_ve_sinh WHERE cong_viec_id=$1',[job.id])).rows[0].n,1);
   const {ThietBiController}=await import(root+'/may-chu/dist/quan-tri/van-hanh.controller.js');const devices=new ThietBiController();devices.db=async()=>adapter;const push='test-push-token-'+randomUUID();await devices.register({nguoiDung:{id:uid}},{ma_thiet_bi:push,nen_tang:'Android'});await devices.remove({nguoiDung:{id:cleaner}},{ma_thiet_bi:push});assert.equal((await db.query('SELECT count(*)::int n FROM public.thiet_bi_thong_bao WHERE ma_thiet_bi=$1',[push])).rows[0].n,1);await devices.remove({nguoiDung:{id:uid}},{ma_thiet_bi:push});assert.equal((await db.query('SELECT count(*)::int n FROM public.thiet_bi_thong_bao WHERE ma_thiet_bi=$1',[push])).rows[0].n,0);const ownNotices=await devices.notices({nguoiDung:{id:uid}});assert.ok(ownNotices.some(x=>x.loai==='Voucher'));const notice=ownNotices.find(x=>x.loai==='Voucher');await devices.read({nguoiDung:{id:cleaner}},notice.id);assert.equal((await db.query('SELECT da_doc_luc FROM public.thong_bao WHERE id=$1',[notice.id])).rows[0].da_doc_luc,null);
   console.log(
     "PASS vận hành: voucher server/tổng tiền/idempotency/hết lượt/hủy/gửi không lặp, hồ sơ khách/điểm chung/quyền, lịch sử, nhắc vệ sinh 15 phút/đúng chi nhánh/không lặp/không làm sớm/hoàn tất.",

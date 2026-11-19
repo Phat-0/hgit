@@ -1,78 +1,56 @@
-import TomTatKhach from './TomTatKhach';
 import { useEffect, useState } from "react";
 import { qlApi, tien, luc } from "./api";
+import TomTatKhach from "./TomTatKhach";
+import HopThoaiKhach from "./HopThoaiKhach";
+import ThemKhach from "./ThemKhach";
 import "./quan-ly.css";
+import "./khach-hang-gon.css";
 export default function KhachHang({ token }: { token: string }) {
-  const [data, setData] = useState<any>({
-      khach: [],
-      diem_chung: [],
-      chi_nhanh: [],
-    }),
+  const [data, setData] = useState<any>({ khach: [], chi_nhanh: [] }),
     [filters, setFilters] = useState({
       tim: "",
       chi_nhanh: "",
       tu: "",
       den: "",
-      toi_thieu: "0",
-      so_thich: "",
+      toi_thieu: "",
     }),
-    [account,setAccount]=useState(false),
+    [sort, setSort] = useState("gan_nhat"),
+    [revision, setRevision] = useState(0),
+    [error, setError] = useState(""),
     [selected, setSelected] = useState<any>(null),
     [detail, setDetail] = useState<any>(null),
-    [edit, setEdit] = useState<any>(null),
-    [error, setError] = useState(""),
-    [busy, setBusy] = useState(false),
-    [revision, setRevision] = useState(0),
-    [archived, setArchived] = useState(false),
-    [sort, setSort] = useState("gan_nhat");
+    [profile, setProfile] = useState<any>(null),
+    [create, setCreate] = useState(false);
   useEffect(() => {
     let active = true;
-    const t = setTimeout(
-      () =>
-        void qlApi(token, "khach-hang?" + new URLSearchParams(filters))
-          .then((x) => {
-            if (active) setData(x);
-          })
-          .catch((e) => {
-            if (active) setError(e.message);
-          }),
-      250,
-    );
+    const timer = setTimeout(() => {
+      void qlApi(token, "khach-hang?" + new URLSearchParams(filters))
+        .then((x) => {
+          if (active) {
+            setData(x);
+            setError("");
+          }
+        })
+        .catch((e) => {
+          if (active) setError(e.message);
+        });
+    }, 250);
     return () => {
       active = false;
-      clearTimeout(t);
+      clearTimeout(timer);
     };
   }, [token, filters, revision]);
   useEffect(() => {
     let active = true;
-    if (!selected?.khach_khoa) return;
     setDetail(null);
-    if (selected?.khach_khoa)
+    if (selected)
       void qlApi(
         token,
         "khach-hang/chi-tiet?" +
           new URLSearchParams({ khoa: selected.khach_khoa }),
       )
         .then((d) => {
-          if (!active) return;
-          setDetail(d);
-          setEdit({
-            khach_khoa: selected.khach_khoa,
-            ten_khach: selected.ten_khach || "",
-            so_dien_thoai: selected.so_dien_thoai || "",
-            ngan_sach_du_kien: d.ho_so?.ngan_sach_du_kien ?? "",
-            so_khach_uu_tien: d.ho_so?.so_khach_uu_tien ?? "",
-            ghi_chu: d.ho_so?.thong_tin_bo_sung?.ghi_chu || "",
-            dong_y_phan_tich_ai: d.ho_so?.dong_y_phan_tich_ai || false,
-            bang_chung_dong_y:
-              d.ho_so?.thong_tin_bo_sung?.bang_chung_dong_y || "",
-            luu_tru: d.ho_so?.thong_tin_bo_sung?.luu_tru || false,
-            so_thich: d.so_thich.map((p: any) => ({
-              ten: p.ten_thuoc_tinh,
-              gia_tri: p.gia_tri,
-              nguon: p.nguon,
-            })),
-          });
+          if (active) setDetail(d);
         })
         .catch((e) => {
           if (active) setError(e.message);
@@ -82,90 +60,33 @@ export default function KhachHang({ token }: { token: string }) {
     };
   }, [token, selected]);
   const rows = [...data.khach]
-      .sort((a: any, b: any) =>
-        sort === "ten"
-          ? String(a.ten_khach).localeCompare(String(b.ten_khach), "vi")
-          : sort === "gan_nhat"
-            ? +new Date(b.gan_nhat || 0) - +new Date(a.gan_nhat || 0)
-            : Number(b[sort]) - Number(a[sort]),
-      )
-      .filter((r: any) => archived || !r.thong_tin_bo_sung?.luu_tru),
-    field = (key: string, value: any) => setEdit({ ...edit, [key]: value });
-  function exportCsv() {
-    const cell = (v: any) =>
-      '"' +
-      String(v ?? "")
-        .replace(/^[=+@-]/, "'$&")
-        .replaceAll('"', '""') +
-      '"';
-    const lines = [
-      [
-        "Tên khách",
-        "Điện thoại",
-        "Số đơn",
-        "Lượt ở",
-        "Đơn hủy",
-        "Giá trị đơn",
-        "Đã thu",
-      ],
-      ...rows.map((r: any) => [
-        r.ten_khach,
-        r.so_dien_thoai,
-        r.so_don,
-        r.da_o,
-        r.huy,
-        r.gia_tri_don,
-        r.da_thu,
-      ]),
-    ];
-    const url = URL.createObjectURL(
-      new Blob(
-        ["\ufeff" + lines.map((l) => l.map(cell).join(",")).join("\r\n")],
-        { type: "text/csv;charset=utf-8" },
-      ),
+    .filter((r: any) => !r.thong_tin_bo_sung?.luu_tru)
+    .sort((a: any, b: any) =>
+      sort === "ten"
+        ? String(a.ten_khach || "").localeCompare(
+            String(b.ten_khach || ""),
+            "vi",
+          )
+        : sort === "gan_nhat"
+          ? +new Date(b.gan_nhat || 0) - +new Date(a.gan_nhat || 0)
+          : Number(b[sort] || 0) - Number(a[sort] || 0),
     );
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "khach-hang.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+  function frequency(r: any) {
+    const first = Date.parse(r.lan_dau),
+      last = Date.parse(r.gan_nhat);
+    return r.so_don > 1 && Number.isFinite(first) && Number.isFinite(last)
+      ? Math.round((last - first) / 86400000 / (r.so_don - 1)) +
+          " ngày / lần đặt"
+      : "—";
   }
   return (
-    <section className="ql-page" aria-label="Quản lý khách hàng">
-      <div className="ql-head">
-        <h2>Khách hàng</h2>
-        <div className="ql-actions">
-          <button
-            onClick={() => {
-              setAccount(false);
-              setSelected(null);
-              setDetail({ don: [] });
-              setEdit({
-                khach_khoa: "",
-                ten_khach: "",
-                so_dien_thoai: "",
-                ngan_sach_du_kien: "",
-                so_khach_uu_tien: "",
-                ghi_chu: "",
-                dong_y_phan_tich_ai: false,
-                bang_chung_dong_y: "",
-                luu_tru: false,
-                so_thich: [],
-              });
-            }}
-          >
-            + Thêm khách
-          </button>
-          <button onClick={exportCsv}>Xuất CSV</button>
-          <button onClick={() => setRevision((v) => v + 1)}>Làm mới</button>
-        </div>
-      </div>
+    <section className="ql-page kh-customers" aria-label="Quản lý khách hàng">
       {error && (
         <p className="ql-error" role="alert">
           {error}
         </p>
       )}
-      <div className="ql-tools">
+      <div className="kh-customer-tools">
         <input
           aria-label="Tìm khách"
           placeholder="Tên, điện thoại…"
@@ -180,81 +101,53 @@ export default function KhachHang({ token }: { token: string }) {
           }
         >
           <option value="">Tất cả chi nhánh</option>
-          {data.chi_nhanh.map((x: any) => (
-            <option key={x.id} value={x.id}>
-              {x.ten_homestay}
+          {data.chi_nhanh.map((b: any) => (
+            <option key={b.id} value={b.id}>
+              {b.ten_homestay}
             </option>
           ))}
         </select>
         <input
-          aria-label="Từ ngày khách"
           type="date"
+          aria-label="Từ ngày khách"
           value={filters.tu}
           onChange={(e) => setFilters({ ...filters, tu: e.target.value })}
         />
         <input
-          aria-label="Đến ngày khách"
           type="date"
+          aria-label="Đến ngày khách"
           value={filters.den}
           onChange={(e) => setFilters({ ...filters, den: e.target.value })}
         />
-        <label>
-          Tối thiểu số đơn
-          <input
-            type="number"
-            min={0}
-            value={filters.toi_thieu}
-            onChange={(e) =>
-              setFilters({ ...filters, toi_thieu: e.target.value })
-            }
-          />
-        </label>
         <input
-          aria-label="Lọc điểm chung"
-          placeholder="Sở thích, nhu cầu…"
-          value={filters.so_thich}
-          onChange={(e) => setFilters({ ...filters, so_thich: e.target.value })}
+          type="number"
+          aria-label="Số đơn tối thiểu"
+          placeholder="Số đơn tối thiểu"
+          min={0}
+          value={filters.toi_thieu}
+          onChange={(e) =>
+            setFilters({ ...filters, toi_thieu: e.target.value })
+          }
         />
-        <label className="ql-check">
-          <input
-            type="checkbox"
-            checked={archived}
-            onChange={(e) => setArchived(e.target.checked)}
-          />
-          Gồm hồ sơ lưu trữ
-        </label>
-      </div>
-      <div className="ql-tools">
-        <label>
-          Sắp xếp
-          <select
-            aria-label="Sắp xếp khách"
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-          >
-            <option value="gan_nhat">Gần nhất</option>
-            <option value="so_don">Tần suất đặt</option>
-            <option value="da_o">Lượt ở</option>
-            <option value="gia_tri_don">Giá trị đơn</option>
-            <option value="da_thu">Đã thu</option>
-            <option value="ten">Tên A–Z</option>
-          </select>
-        </label>
-      </div>
-      <div className="ql-common">
-        {data.diem_chung.map((p: any) => (
-          <button
-            key={p.ten_thuoc_tinh + ":" + p.gia_tri}
-            onClick={() =>
-              setFilters({
-                ...filters,
-                so_thich: filters.so_thich === p.gia_tri ? "" : p.gia_tri,
-              })
-            }
-          >
-            {p.ten_thuoc_tinh}: {p.gia_tri} · {p.so_khach} khách
-          </button>
-        ))}
+        <select
+          aria-label="Sắp xếp khách"
+          value={sort}
+          onChange={(e) => setSort(e.target.value)}
+        >
+          {[
+            ["gan_nhat", "Gần nhất"],
+            ["so_don", "Số đơn"],
+            ["huy", "Hủy"],
+            ["gia_tri_don", "Giá trị đơn"],
+            ["da_thu", "Đã thu"],
+            ["ten", "Tên A–Z"],
+          ].map(([v, n]) => (
+            <option key={v} value={v}>
+              {n}
+            </option>
+          ))}
+        </select>
+        <button onClick={() => setCreate(true)}>+ Thêm khách</button>
       </div>
       <div className="ql-table">
         <table>
@@ -262,13 +155,14 @@ export default function KhachHang({ token }: { token: string }) {
             <tr>
               {[
                 "Khách",
-                "Đơn / lượt ở",
+                "Đơn / hủy",
                 "Tần suất đặt",
                 "Giá trị đơn / đã thu",
                 "Điểm chung",
                 "Gần nhất",
-              ].map((x) => (
-                <th key={x}>{x}</th>
+                "Hồ sơ",
+              ].map((h) => (
+                <th key={h}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -279,30 +173,22 @@ export default function KhachHang({ token }: { token: string }) {
                 className={
                   selected?.khach_khoa === r.khach_khoa ? "ql-selected" : ""
                 }
-                onClick={() => {
-                  setSelected(r);
-                  setError("");
-                }}
+                onClick={() =>
+                  setSelected(selected?.khach_khoa === r.khach_khoa ? null : r)
+                }
               >
                 <td>
                   {r.ten_khach}
                   <small>
                     {r.so_dien_thoai || "Chưa có điện thoại"}
-                    {!r.nguoi_dung_id ? " · Chưa đăng ký" : ""}
+                    {!r.khach_khoa?.startsWith("u:") ? " · Chưa đăng ký" : ""}
                   </small>
                 </td>
                 <td>
-                  {r.so_don} đơn · {r.da_o} lượt ở
-                  <small>{r.huy} hủy / không nhận</small>
+                  {r.so_don || 0} đơn · {r.huy || 0} hủy
                 </td>
                 <td>
-                  {r.so_don > 1
-                    ? Math.round(
-                        (+new Date(r.gan_nhat) - +new Date(r.lan_dau)) /
-                          86400000 /
-                          (r.so_don - 1),
-                      ) + " ngày / lần đặt"
-                    : "Chưa có lần đặt tiếp"}
+                  {frequency(r)}
                   <small>
                     {r.gio_trung_binh
                       ? Number(r.gio_trung_binh).toFixed(1) + " giờ / đơn"
@@ -316,182 +202,56 @@ export default function KhachHang({ token }: { token: string }) {
                 <td>
                   {(r.loai_dat || []).join(", ")}
                   <small>
-                    {r.so_thich.map((p: any) => p.gia_tri).join(", ")}
+                    {(r.so_thich || []).map((p: any) => p.gia_tri).join(", ")}
                   </small>
                 </td>
                 <td>{luc(r.gan_nhat)}</td>
+                <td>
+                  {r.khach_khoa?.startsWith("u:") ? (
+                    <button
+                      className="kh-profile-icon"
+                      aria-label={"Hồ sơ " + r.ten_khach}
+                      title="Hồ sơ khách"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setProfile(r);
+                      }}
+                    >
+                      <svg
+                        width="19"
+                        height="19"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.7"
+                        aria-hidden="true"
+                      >
+                        <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6" />
+                        <circle cx="10" cy="12" r="2" />
+                        <path d="M7 18v-1a3 3 0 0 1 6 0v1M16 13h1M16 17h1" />
+                      </svg>
+                    </button>
+                  ) : (
+                    "—"
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
         {!rows.length && <p>Chưa có khách phù hợp</p>}
       </div>
-      {edit && detail && (
-        <div className="ql-card" style={{ marginTop: 12 }}>
+      {selected && detail && (
+        <section className="kh-order-history">
           <div className="ql-head">
-            <h3>{selected ? "Hồ sơ khách" : "Khách mới"}</h3>
+            <strong>Đơn của {selected.ten_khach}</strong>
             <button
-              onClick={() => {
-                setEdit(null);
-                setSelected(null);
-              }}
+              aria-label="Đóng lịch sử khách"
+              onClick={() => setSelected(null)}
             >
-              Đóng
+              ×
             </button>
           </div>
-          {selected?.khach_khoa?.startsWith("u:")&&<TomTatKhach key={selected.khach_khoa} token={token} khoa={selected.khach_khoa} revision={revision}/>}
-          <form
-            className="ql-form"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              setBusy(true);
-              setError("");
-              try {
-                const body = {
-                  ...edit,
-                  khach_khoa: edit.khach_khoa || "p:" + edit.so_dien_thoai,
-                };
-                if(account&&!selected) {
-                  const result=await qlApi(token,'khach-hang/tai-khoan','POST',{ten_khach:edit.ten_khach,so_dien_thoai:edit.so_dien_thoai,email:edit.email,mat_khau:edit.mat_khau});
-                  body.khach_khoa=result.khach_khoa;
-                  setAccount(false);setSelected({khach_khoa:result.khach_khoa,ten_khach:edit.ten_khach,so_dien_thoai:edit.so_dien_thoai});setEdit({...edit,khach_khoa:result.khach_khoa});
-                }
-                const {email,mat_khau,...profile}=body;
-                await qlApi(token, "khach-hang", "POST", profile);
-                setRevision((v) => v + 1);
-                setEdit(null);
-                setSelected(null);
-              } catch (e) {
-                setError((e as Error).message);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            {!selected&&<><label className="ql-check ql-wide"><input type="checkbox" checked={account} onChange={e=>setAccount(e.target.checked)}/>Tạo tài khoản đăng nhập</label>{account&&<><label>Email<input type="email" required value={edit.email||''} onChange={e=>field('email',e.target.value)} autoComplete="off"/></label><label>Mật khẩu ban đầu<input type="password" required minLength={12} maxLength={128} value={edit.mat_khau||''} onChange={e=>field('mat_khau',e.target.value)} autoComplete="new-password"/></label></>}</>}
-            {[
-              "ten_khach",
-              "so_dien_thoai",
-              "ngan_sach_du_kien",
-              "so_khach_uu_tien",
-            ].map((key, i) => (
-              <label key={key}>
-                {
-                  [
-                    "Tên khách",
-                    "Điện thoại",
-                    "Ngân sách dự kiến",
-                    "Số khách thường đi",
-                  ][i]
-                }
-                <input
-                  required={i === 0 || (!selected && i === 1)}
-                  type={i > 1 ? "number" : "text"}
-                  min={i === 3 ? 1 : 0}
-                  max={i === 3 ? 100 : undefined}
-                  value={edit[key]}
-                  onChange={(e) => field(key, e.target.value)}
-                />
-              </label>
-            ))}
-            <label className="ql-wide">
-              Ghi chú
-              <textarea
-                value={edit.ghi_chu}
-                onChange={(e) => field("ghi_chu", e.target.value)}
-              />
-            </label>
-            <div className="ql-wide ql-prefs">
-              {edit.so_thich.map((p: any, i: number) => (
-                <div className="ql-pref" key={i}>
-                  {["ten", "gia_tri", "nguon"].map((k, j) => (
-                    <input
-                      key={k}
-                      required
-                      aria-label={
-                        ["Loại sở thích", "Giá trị sở thích", "Nguồn sở thích"][
-                          j
-                        ] +
-                        " " +
-                        (i + 1)
-                      }
-                      placeholder={
-                        [
-                          "Loại: tiện nghi",
-                          "Giá trị: bồn tắm",
-                          "Nguồn: khách cung cấp",
-                        ][j]
-                      }
-                      value={p[k]}
-                      onChange={(e) =>
-                        field(
-                          "so_thich",
-                          edit.so_thich.map((x: any, n: number) =>
-                            n === i ? { ...x, [k]: e.target.value } : x,
-                          ),
-                        )
-                      }
-                    />
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      field(
-                        "so_thich",
-                        edit.so_thich.filter((_: any, n: number) => n !== i),
-                      )
-                    }
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                disabled={edit.so_thich.length >= 30}
-                onClick={() =>
-                  field("so_thich", [
-                    ...edit.so_thich,
-                    { ten: "", gia_tri: "", nguon: "Khách cung cấp" },
-                  ])
-                }
-              >
-                + Sở thích
-              </button>
-            </div>
-            <label className="ql-check">
-              <input
-                type="checkbox"
-                checked={edit.dong_y_phan_tich_ai}
-                onChange={(e) => field("dong_y_phan_tich_ai", e.target.checked)}
-              />
-              Khách đã đồng ý phân tích AI
-            </label>
-            {edit.dong_y_phan_tich_ai && (
-              <label>
-                Nguồn xác nhận
-                <input
-                  required
-                  value={edit.bang_chung_dong_y}
-                  onChange={(e) => field("bang_chung_dong_y", e.target.value)}
-                />
-              </label>
-            )}
-            <label className="ql-check">
-              <input
-                type="checkbox"
-                checked={edit.luu_tru}
-                onChange={(e) => field("luu_tru", e.target.checked)}
-              />
-              Lưu trữ hồ sơ
-            </label>
-            <footer>
-              <button className="ql-primary" disabled={busy}>
-                Lưu hồ sơ
-              </button>
-            </footer>
-          </form>
-          <h3>Lịch sử đặt phòng</h3>
           <div className="ql-table">
             <table>
               <thead>
@@ -523,8 +283,32 @@ export default function KhachHang({ token }: { token: string }) {
                 ))}
               </tbody>
             </table>
+            {!detail.don.length && <p>Chưa có đơn</p>}
           </div>
-        </div>
+        </section>
+      )}
+      {profile && (
+        <HopThoaiKhach
+          title={"Hồ sơ · " + profile.ten_khach}
+          onClose={() => setProfile(null)}
+        >
+          <TomTatKhach
+            key={profile.khach_khoa}
+            token={token}
+            khoa={profile.khach_khoa}
+            revision={revision}
+          />
+        </HopThoaiKhach>
+      )}
+      {create && (
+        <ThemKhach
+          token={token}
+          onClose={() => setCreate(false)}
+          onSaved={() => {
+            setCreate(false);
+            setRevision((r) => r + 1);
+          }}
+        />
       )}
     </section>
   );
