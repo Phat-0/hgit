@@ -185,8 +185,8 @@ export default function GioiThieuLuuTru({
     (c) => Number(c.gia_combo),
     (c) => c.luot_dat || 0,
   );
-  const shownRooms = page === "home" ? rooms.slice(0, 3) : rooms,
-    shownCombos = page === "home" ? combos.slice(0, 3) : combos;
+  const shownRooms = page === "home" ? rooms.slice(0, 6) : rooms,
+    shownCombos = page === "home" ? combos.slice(0, 6) : combos;
   return (
     <div
       className={"kh-showcases " + (page === "home" ? "kh-showcases-home" : "")}

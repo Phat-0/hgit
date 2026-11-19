@@ -426,7 +426,6 @@ export default function DatPhongKhach({
                     aria-pressed={comboIds.includes(c.id)}
                     onClick={() => toggleCombo(c)}
                   >
-                    {c.anh?.[0] && <img src={c.anh[0]} alt="" />}
                     <span>
                       <strong>{c.ten_combo}</strong>
                       <small>
@@ -643,9 +642,6 @@ export default function DatPhongKhach({
             </fieldset>
           </fieldset>
           <aside className="kh-reserve-summary">
-            {room?.anh.find(Boolean) && (
-              <img src={room.anh.find(Boolean)!} alt={room.ten_phong} />
-            )}
             <h3>{room?.ten_phong || "Chọn phòng để bắt đầu"}</h3>
             <p>{room?.ten_homestay}</p>
             {request.q && (

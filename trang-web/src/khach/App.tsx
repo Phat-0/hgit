@@ -375,7 +375,7 @@ export default function App() {
     document.addEventListener('mousedown', outside); document.addEventListener('keydown', escape);
     return () => { document.removeEventListener('mousedown', outside); document.removeEventListener('keydown', escape); };
   }, [navOpen]);
-  useHieuUngCuon(home?.giao_dien?.hien_hoat_anh!==false,page==='home',!!home);
+  useHieuUngCuon(true,page==='home',!!home);
   useEffect(()=>{setNavOpen(false);setLightbox(null);setSelected(null);setComboDetail('');setBookingTarget(null);setFullError('');setComboChon(new URLSearchParams(location.search).get('combo')||'');setRoomIntent(new URLSearchParams(location.search).get('phong')||'');if(location.hash==='#dat-phong')setBookingOpen(true);},[route]);
   const modal = selected || login || history !== null;
   const ui=layGiaoDien(home?.giao_dien);
@@ -392,7 +392,7 @@ export default function App() {
   const rgb=[1,3,5].map(i=>parseInt(ui.mau_nhan.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
   const buttonText=rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722>.179?'#20142b':'#fff';
   return (
-    <main className={"kh-site kh-cms-custom kh-page-"+page+" "+(ui.hien_hoat_anh===false?"kh-no-home-motion ":"")+(ui.anh_ben_trai?"kh-hero-left":"")} style={{'--kh-font':'"Home Serif", Georgia, serif','--kh-bg':ui.mau_nen,'--kh-site-image':ui.anh_nen_chung?`url(${JSON.stringify(ui.anh_nen_chung)})`:'none','--kh-accent':ui.mau_nhan,'--kh-button-text':buttonText,'--kh-columns':ui.so_cot,'--kh-hero-image':home?.hero?.anh_nen?`url(${JSON.stringify(home.hero.anh_nen)})`:'none'} as CSSProperties}>
+    <main className={"kh-site kh-cms-custom kh-page-"+page+" "+(ui.anh_ben_trai?"kh-hero-left":"")} style={{'--kh-font':'"Home Serif", Georgia, serif','--kh-bg':ui.mau_nen,'--kh-site-image':ui.anh_nen_chung?`url(${JSON.stringify(ui.anh_nen_chung)})`:'none','--kh-accent':ui.mau_nhan,'--kh-button-text':buttonText,'--kh-columns':ui.so_cot,'--kh-hero-image':home?.hero?.anh_nen?`url(${JSON.stringify(home.hero.anh_nen)})`:'none'} as CSSProperties}>
 
       <header className="kh-nav" ref={navRef}>
         <a className="kh-brand" href="/">
@@ -457,8 +457,8 @@ export default function App() {
       )}
       {home?.hien_phong && page==='home' && (
         <>
-          <>{ui.hien_thong_ke!==false&&<ConSoLuuTru name={ui.tieu_de_thong_ke||ui.ten_web} stats={catalog.thong_ke} animate={ui.hien_hoat_anh!==false}/>}</>
-          <section id="dat-phong" className={"kh-booking-split "+(bookingOpen?"is-open":"")}><button type="button" className="kh-booking-toggle" aria-expanded={bookingOpen} aria-controls="kh-booking-panel" onClick={()=>setBookingOpen(!bookingOpen)}><BieuTuong ten="calendar"/>{ui.nhan_dat_don||"Đặt đơn"} <span aria-hidden="true">{bookingOpen?'−':'+'}</span></button><KhungDatDonChim title={ui.nhan_dat_don||"Đặt đơn"} description={ui.khau_hieu} open={bookingOpen} animate={ui.hien_hoat_anh!==false} duration={ui.hien_hoat_anh===false?300:ui.toc_do_mo_dat_don||1600}><section className="kh-search" aria-label="Tìm phòng trống">
+          <>{ui.hien_thong_ke!==false&&<ConSoLuuTru name={ui.tieu_de_thong_ke||ui.ten_web} stats={catalog.thong_ke} animate={true}/>}</>
+          <section id="dat-phong" className={"kh-booking-split "+(bookingOpen?"is-open":"")}><button type="button" className="kh-booking-toggle" aria-expanded={bookingOpen} aria-controls="kh-booking-panel" onClick={()=>setBookingOpen(!bookingOpen)}><BieuTuong ten="calendar"/>{ui.nhan_dat_don||"Đặt đơn"} <span aria-hidden="true">{bookingOpen?'−':'+'}</span></button><KhungDatDonChim title={ui.nhan_dat_don||"Đặt đơn"} description={ui.khau_hieu} open={bookingOpen} animate={true} duration={ui.toc_do_mo_dat_don||1600}><section className="kh-search" aria-label="Tìm phòng trống">
             {roomIntent&&<p className="kh-combo-intent">Đang chọn {catalog.phong.find(p=>p.id===roomIntent)?.ten_phong||'phòng'} · Chọn lịch để kiểm tra phòng trống. <button type="button" onClick={()=>setRoomIntent('')}>Bỏ chọn</button></p>}
             {comboChon&&<p className="kh-combo-intent">Đang chọn {catalog.combo.find(c=>c.id===comboChon)?.ten_combo||'combo'} · Kiểm tra lịch để xem phòng áp dụng. <button type="button" onClick={()=>setComboChon('')}>Bỏ chọn</button></p>}
             <form onSubmit={search}>

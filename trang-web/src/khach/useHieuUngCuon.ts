@@ -19,26 +19,18 @@ export default function useHieuUngCuon(
       return;
     const native = CSS.supports("animation-timeline: view()");
     const seen = new WeakSet<Element>();
-    const observer = native
-      ? null
-      : new IntersectionObserver(
-          (entries) =>
-            entries.forEach((e) => {
-              if (e.isIntersecting) {
-                e.target.setAttribute("data-reveal", "shown");
-                observer?.unobserve(e.target);
-              }
-            }),
-          { threshold: 0.05, rootMargin: "0px 0px -16px 0px" },
-        );
+    const observer = new IntersectionObserver(entries=>entries.forEach(e=>{
+      if(e.isIntersecting){e.target.setAttribute('data-motion-play','');}
+      else e.target.removeAttribute('data-motion-play');
+    }),{threshold:.06,rootMargin:'0px 0px -8px 0px'});
     const register = (el: Element) => {
       if (seen.has(el) || el.closest(".kh-booking-split")) return;
       seen.add(el);
-      if (native) el.setAttribute("data-scroll-reveal", "");
-      else {
-        el.setAttribute("data-reveal", "pending");
-        observer?.observe(el);
-      }
+      if(native)el.setAttribute('data-scroll-reveal','');
+      else el.setAttribute('data-motion-wait','');
+      const bounds=el.getBoundingClientRect();
+      if(bounds.top<innerHeight&&bounds.bottom>0){el.setAttribute('data-motion-play','');}
+      observer.observe(el);
     };
     const scan = (node: Element) => {
       if (node.matches(selectors)) register(node);
@@ -57,10 +49,11 @@ export default function useHieuUngCuon(
       observer?.disconnect();
       changes.disconnect();
       root
-        .querySelectorAll("[data-scroll-reveal],[data-reveal]")
+        .querySelectorAll("[data-scroll-reveal],[data-motion-wait]")
         .forEach((el) => {
           el.removeAttribute("data-scroll-reveal");
-          el.removeAttribute("data-reveal");
+          el.removeAttribute("data-motion-wait");
+          el.removeAttribute("data-motion-play");
         });
     };
   }, [enabled, home, ready]);

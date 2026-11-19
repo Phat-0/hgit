@@ -260,3 +260,18 @@
 .kh-site .kh-footer [data-scroll-reveal] {
   animation-range: entry 0% entry 100% !important;
 }
+
+/* A timed CSS entrance is visible on load and even after a fast scroll jump. */
+@keyframes kh-visible-enter{from{opacity:0;transform:translate3d(0,48px,0)}to{opacity:1;transform:translate3d(0,0,0)}}
+@keyframes kh-image-enter{from{opacity:.15;transform:translate3d(0,24px,0) scale(1.06)}to{opacity:1;transform:translate3d(0,0,0) scale(1)}}
+.kh-site [data-motion-play]{animation:kh-visible-enter 1100ms cubic-bezier(.22,.61,.36,1) both!important;animation-timeline:auto!important;animation-range:normal!important;transition:none!important}
+.kh-site img[data-motion-play]{animation-name:kh-image-enter!important;animation-duration:1500ms!important}
+.kh-site [data-motion-play]:focus-within{opacity:1!important;transform:none!important}
+@media(prefers-reduced-motion:reduce){.kh-site [data-motion-play]{animation:none!important;opacity:1!important;transform:none!important}}
+
+.kh-site [data-motion-wait]:not([data-motion-play]){opacity:0;transform:translateY(40px)}
+/* Override the older native-timeline and gallery reset selectors explicitly. */
+main.kh-site.kh-cms-custom [data-scroll-reveal][data-motion-play]{animation:kh-visible-enter 1100ms cubic-bezier(.22,.61,.36,1) both!important;animation-timeline:auto!important;animation-range:normal!important;transition:none!important}
+main.kh-site.kh-cms-custom img[data-scroll-reveal][data-motion-play]{animation:kh-image-enter 1500ms cubic-bezier(.22,.61,.36,1) both!important;animation-timeline:auto!important;animation-range:normal!important}
+@media(prefers-reduced-motion:reduce){main.kh-site.kh-cms-custom [data-motion-play],main.kh-site.kh-cms-custom img[data-motion-play]{animation:none!important;opacity:1!important;transform:none!important}}
+@media(prefers-reduced-motion:reduce){main.kh-site.kh-cms-custom [data-scroll-reveal],main.kh-site.kh-cms-custom [data-motion-wait]{animation:none!important;opacity:1!important;transform:none!important}}
