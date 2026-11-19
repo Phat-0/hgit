@@ -45,5 +45,5 @@ class _AppTextScaler extends TextScaler {
   @override
   double scale(double fontSize) => system.scale(fontSize) * factor;
   @override
-  double get textScaleFactor => system.textScaleFactor * factor;
+  double get textScaleFactor => scale(14) / 14;
 }
