@@ -1,3 +1,4 @@
+import TomTatKhach from './TomTatKhach';
 import { useEffect, useState } from "react";
 import { qlApi, tien, luc } from "./api";
 import "./quan-ly.css";
@@ -338,6 +339,7 @@ export default function KhachHang({ token }: { token: string }) {
               Đóng
             </button>
           </div>
+          {selected?.khach_khoa?.startsWith("u:")&&<TomTatKhach key={selected.khach_khoa} token={token} khoa={selected.khach_khoa} revision={revision}/>}
           <form
             className="ql-form"
             onSubmit={async (e) => {

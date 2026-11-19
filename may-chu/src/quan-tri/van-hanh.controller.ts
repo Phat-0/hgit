@@ -1,3 +1,4 @@
+import {TomTatKhachService} from './tom-tat-khach.service.js';
 import {
   Body,
   Controller,
@@ -24,6 +25,7 @@ type R = Request & { nguoiDung: { id: string } };
 export class VanHanhController {
   constructor(
     private readonly khach: KhachHangQuanTriService,
+    private readonly summaries:TomTatKhachService,
     private readonly history: LichSuService,
     private readonly clean: VeSinhService,
     private readonly vouchers: VoucherService,
@@ -38,6 +40,8 @@ export class VanHanhController {
     return this.khach.save(r.nguoiDung.id, b);
   }
   @Post('khach-hang/tai-khoan') account(@Req() r:R,@Body() b:Record<string,unknown>){return this.khach.createAccount(r.nguoiDung.id,b);}
+  @Get('khach-hang/tom-tat') summary(@Req() r:R,@Query('khoa') key:string){return this.summaries.read(r.nguoiDung.id,key);}
+  @Post('khach-hang/tom-tat') generateSummary(@Req() r:R,@Body() b:Record<string,unknown>){return this.summaries.summarize(r.nguoiDung.id,String(b.khach_khoa||''));}
   @Get('lich-su') logs(@Req() r: R, @Query() q: Record<string, string>) {
     return this.history.list(r.nguoiDung.id, q);
   }

@@ -1,3 +1,4 @@
+import {TomTatKhachService} from './tom-tat-khach.service.js';
 import {VanHanhController,ThietBiController} from './van-hanh.controller.js';
 import {KhachHangQuanTriService} from './khach-hang.service.js';
 import {LichSuService} from './lich-su.service.js';
@@ -52,7 +53,7 @@ import { LichPhongService } from './lich-phong.service.js';
     LichPhongController,
     DonLichController,
   ],
-  providers: [KhachHangQuanTriService,LichSuService,VeSinhService,VoucherService,ThuChiService,TepVaChatDonService,HienThiLichService,BaoCaoService,VaiTroService,
+  providers: [TomTatKhachService,KhachHangQuanTriService,LichSuService,VeSinhService,VoucherService,ThuChiService,TepVaChatDonService,HienThiLichService,BaoCaoService,VaiTroService,
     TienIchChatService,
     TrangChuService,
     NhanVienService,

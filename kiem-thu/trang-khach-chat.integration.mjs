@@ -1203,4 +1203,5 @@ await db.exec(fs.readFileSync(root+'/co-so-du-lieu/migrations/20261118205919_kha
 const {kiemTraVanHanh}=await import('./van-hanh.integration.mjs');
 await kiemTraVanHanh({db,conn,service,root,admin,uid,branch,type,room,room2});
 const {kiemTraDemVaTaiKhoan}=await import('./dem-30-tai-khoan.integration.mjs');await kiemTraDemVaTaiKhoan({db,root,service,connection,admin,branch,type});
+const {kiemTraTomTatKhach}=await import('./tom-tat-khach.integration.mjs');await kiemTraTomTatKhach({db,root,connection,admin,uid,other});
 await db.close();
