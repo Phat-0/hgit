@@ -62,6 +62,65 @@ class _DuLieuQuanTriState extends State<DuLieuQuanTri> {
     catch(e) { if(mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e'))); }
     finally { if(mounted) setState(() => busy = false); }
   }
+  Future<void> openBooking(Json booking) async {
+    final id = label(booking, 'id');
+    if (id.isEmpty) return;
+    final detail = widget.api.request('/lich-phong/don-dat-phong/$id', admin: true);
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: FractionallySizedBox(
+          heightFactor: .75,
+          child: FutureBuilder<dynamic>(
+            future: detail,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Center(child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text('${snapshot.error}'),
+                ));
+              }
+              if (snapshot.data is! Map) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final order = Map<String, dynamic>.from(snapshot.data as Map);
+              return ListView(
+                padding: const EdgeInsets.all(20),
+                children: [
+                  Text(label(order, 'ma_dat_phong'),
+                    style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 12),
+                  for (final item in [
+                    ('Khách hàng', label(order, 'ten_khach')),
+                    ('Số điện thoại', label(order, 'so_dien_thoai')),
+                    ('Phòng', label(order, 'ten_phong')),
+                    ('Nhận phòng', time(order['nhan_phong_luc'])),
+                    ('Trả phòng', time(order['tra_phong_luc'])),
+                    ('Trạng thái', label(order, 'trang_thai')),
+                    ('Thanh toán', label(order, 'trang_thai_thanh_toan')),
+                  ])
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(item.$1),
+                      subtitle: Text(item.$2),
+                    ),
+                  for (final combo in rows(order['combo_da_chon']))
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(label(combo, 'ten_combo')),
+                      subtitle: Text('Số lượng: ${combo['so_luong'] ?? 1}'),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
   List<(Json, bool)> calendarEntries(dynamic data, String roomId) {
     if (data is! Map) return [];
     final entries = [
@@ -159,6 +218,7 @@ class _DuLieuQuanTriState extends State<DuLieuQuanTri> {
                 child: ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(entry.$2 ? Icons.event_busy : Icons.event_available),
+                  onTap: entry.$2 ? null : () => openBooking(entry.$1),
                   title: Text(entry.$2
                       ? label(entry.$1, 'ly_do', 'Khóa lịch')
                       : label(entry.$1, 'ten_khach', label(entry.$1, 'ma_dat_phong'))),
@@ -169,6 +229,19 @@ class _DuLieuQuanTriState extends State<DuLieuQuanTri> {
                 ),
               ),
           ]
+          else if (widget.type == 'dat-phong')
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.receipt_long),
+              title: Text(label(row, 'ten_khach', label(row, 'ma_dat_phong'))),
+              subtitle: Text([
+                label(row, 'ma_dat_phong'),
+                label(row, 'ten_phong'),
+                label(row, 'trang_thai_hien_thi', label(row, 'trang_thai')),
+              ].where((text) => text.isNotEmpty).join(' · ')),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => openBooking(row),
+            )
           else ...[for(final entry in row.entries.where((e) => e.value != null && e.value is! List && e.value is! Map && !e.key.endsWith('_id') && e.key != 'id')) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('${entry.key.replaceAll('_',' ')}: ${entry.value}'))],
         ])));
       })]);

@@ -13,6 +13,9 @@ export class LichPhongController{
  @Get() calendar(@Req() r:Auth,@Query('homestay_id') branch:string,@Query('bat_dau') a:string,@Query('ket_thuc') b:string){return this.service.calendar(r.nguoiDung.id,branch||'',a,b);}
  @Get('cau-hinh-gio') hourSettings(@Req() r:Auth){return this.service.hourSettings(r.nguoiDung.id);}
  @Patch('cau-hinh-gio') saveHourSettings(@Req() r:Auth,@Body() b:unknown){return this.service.saveHourSettings(r.nguoiDung.id,b);}
+ @Get('kiem-tra-khung-gio') availability(@Req() r:Auth,@Query('phong_id') room:string,@Query('bat_dau') start:string,@Query('ket_thuc') end:string,@Query('don_id') order=''){
+  return this.service.bookingAvailability(r.nguoiDung.id,room,start,end,order);
+ }
  @Get('don-dat-phong/thong-ke') bookingCounts(@Req() r:Auth,@Query('tim_kiem') search:string){return this.service.bookingCounts(r.nguoiDung.id,search||'');}
  @Get('don-dat-phong/tuy-chon') bookingOptions(@Req() r:Auth){return this.service.bookingOptions(r.nguoiDung.id);}
  @Post('don-dat-phong') createBooking(@Req() r:Auth,@Body() b:unknown){return this.service.createBooking(r.nguoiDung.id,b);}

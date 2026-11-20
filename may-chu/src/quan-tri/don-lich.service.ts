@@ -1,3 +1,5 @@
+import {docGioPhuThu,tinhTienPhuThu} from '../khach-hang/phu-thu-khach.js';
+import {docSoLuongCombo} from '../khach-hang/so-luong-combo.js';
 import {docChiTietDon} from './chi-tiet-don.sql.js';
 import {traVoucher,luuVoucher} from './voucher.sql.js';
 import {TRANG_THAI_PHONG} from './trang-thai-phong.sql.js';
@@ -34,7 +36,7 @@ export class DonLichService{
  async edit(uid:string,id:string,body:unknown){
   await this.admin.kiemTraTrang(uid,'lich|dat-phong');this.id(id);
   if(!body||typeof body!=='object'||Array.isArray(body))throw new BadRequestException('Dữ liệu đơn không hợp lệ');
-  const x=body as Record<string,unknown>,allowed=['ma_voucher','ten_khach','ten_don','phong_id','hinh_thuc_dat','nhan_phong_luc','tra_phong_luc','so_khach','tien_phong','so_dien_thoai','ghi_chu','combo_id','trang_thai_sua','ly_do_sua_trang_thai','trang_thai_thanh_toan','tien_da_thanh_toan'];
+  const x=body as Record<string,unknown>,allowed=['ma_voucher','ten_khach','ten_don','phong_id','hinh_thuc_dat','nhan_phong_luc','tra_phong_luc','so_khach','tien_phong','so_dien_thoai','ghi_chu','combo_id','combo_so_luong','gio_nhan_som','gio_tra_muon','trang_thai_sua','ly_do_sua_trang_thai','trang_thai_thanh_toan','tien_da_thanh_toan'];
   if(Object.keys(x).some(k=>!allowed.includes(k)))throw new BadRequestException('Trường dữ liệu không được phép');
   const guestName=x.ten_khach??x.ten_don;
   const name=typeof guestName==='string'?guestName.trim():'',room=String(x.phong_id||''),kind=String(x.hinh_thuc_dat||'') as HinhThucDat;
@@ -55,7 +57,12 @@ export class DonLichService{
    const reason=String(x.ly_do_sua_trang_thai||'').trim();
    if(!['Chờ thanh toán','Chờ xác nhận','Đã xác nhận','Đã nhận phòng','Đã trả phòng','Không nhận phòng'].includes(target)||correction&&(!reason||reason.length>500))throw new BadRequestException('Đổi lại trạng thái cần lý do từ 1 đến 500 ký tự');
    if(target==='Chờ thanh toán'&&!d.het_han_giu_cho)throw new BadRequestException('Không thể đổi về Chờ thanh toán khi đơn không có hạn giữ chỗ');
-   const changedSchedule=room!==d.phong_id||kind!==d.hinh_thuc_dat||start.getTime()!==new Date(d.nhan_phong_luc).getTime()||end.getTime()!==new Date(d.tra_phong_luc).getTime();
+   const oldEarly=Number(d.cau_hinh_gia_chot?.gio_nhan_som??0),oldLate=Number(d.cau_hinh_gia_chot?.gio_tra_muon??0);
+   const extra=docGioPhuThu({
+    gio_nhan_som:x.gio_nhan_som??(kind===d.hinh_thuc_dat?oldEarly:0),
+    gio_tra_muon:x.gio_tra_muon??(kind===d.hinh_thuc_dat?oldLate:0),
+   },kind,start,end);
+   const changedSchedule=room!==d.phong_id||kind!==d.hinh_thuc_dat||start.getTime()!==new Date(d.nhan_phong_luc).getTime()||end.getTime()!==new Date(d.tra_phong_luc).getTime()||extra.early!==oldEarly||extra.late!==oldLate;
    if(changedSchedule&&start.getTime()<Date.now()-60000)throw new BadRequestException('Không chuyển đơn sang giờ nhận phòng đã qua');
    const rooms=await c.query('SELECT p.*,'+TRANG_THAI_PHONG+' AS trang_thai_hien_thi,l.suc_chua,h.trang_thai AS trang_thai_chi_nhanh FROM public.phong p JOIN public.loai_phong l ON l.id=p.loai_phong_id JOIN public.homestay h ON h.id=p.homestay_id WHERE p.id=$1 FOR UPDATE OF p',[room]);
    if(!rooms.rowCount)throw new BadRequestException('Không tìm thấy phòng');const p=rooms.rows[0];
@@ -67,10 +74,18 @@ export class DonLichService{
     if(!p[flag]||p.trang_thai_chi_nhanh!=='Đang hoạt động'||['Bảo trì','Bị khóa'].includes(p.trang_thai_van_hanh))throw new BadRequestException('Phòng không nhận đặt theo hình thức này');
     const config=await c.query('SELECT khung_gio FROM public.cau_hinh_gio_dat_phong WHERE id=1 FOR SHARE');
     savedHours=kiemTraCauHinhGio(config.rows[0]?.khung_gio);
-    kiemTraThoiGianDat(kind,start,end,savedHours,Number(p.so_gio_toi_thieu));
+    kiemTraThoiGianDat(kind,extra.coreStart,extra.coreEnd,savedHours,Number(p.so_gio_toi_thieu));
    }
    const comboId=x.combo_id===undefined?d.combo_id:x.combo_id;
-   if(comboId&&(changedSchedule||comboId!==d.combo_id)){this.id(String(comboId));const combo=await c.query(COMBO_THEO_PHONG+" AND co.trang_thai='Đang bán' AND (co.bat_dau IS NULL OR co.bat_dau<=$4) AND (co.ket_thuc IS NULL OR co.ket_thuc>=$5) AND (co.so_gio_bao_gom IS NULL OR $6='Theo giờ') FOR SHARE OF co",[comboId,p.homestay_id,room,start.toISOString(),end.toISOString(),kind]);if(!combo.rowCount)throw new BadRequestException('Combo của đơn không áp dụng cho phòng hoặc thời gian mới');}
+   const quantity=docSoLuongCombo(x.combo_so_luong,comboId?[String(comboId)]:[])[String(comboId)];
+   const previousCombo=d.combo_da_chon.find((item: {id:string})=>item.id===comboId);
+   let selectedCombo=previousCombo;
+   if(comboId&&(changedSchedule||comboId!==d.combo_id||(x.combo_so_luong!==undefined&&!previousCombo))){this.id(String(comboId));const combo=await c.query(COMBO_THEO_PHONG.replace('SELECT co.id','SELECT co.id,co.ten_combo,co.gia_combo,co.so_gio_bao_gom')+" AND co.trang_thai='Đang bán' AND (co.bat_dau IS NULL OR co.bat_dau<=$4) AND (co.ket_thuc IS NULL OR co.ket_thuc>=$5) AND (co.so_gio_bao_gom IS NULL OR $6='Theo giờ') FOR SHARE OF co",[comboId,p.homestay_id,room,start.toISOString(),end.toISOString(),kind]);if(!combo.rowCount)throw new BadRequestException('Combo của đơn không áp dụng cho phòng hoặc thời gian mới');selectedCombo=previousCombo??combo.rows[0];}
+   if(selectedCombo&&x.combo_so_luong!==undefined){
+    if(selectedCombo.so_gio_bao_gom!=null&&quantity!==1)
+      throw new BadRequestException('Combo giờ chỉ được chọn một gói');
+    selectedCombo={...selectedCombo,so_luong:quantity};
+   }
    const storedComboIds=Array.isArray(d.cau_hinh_gia_chot?.combo_ids)?d.cau_hinh_gia_chot.combo_ids:[];
    if(changedSchedule&&comboId===d.combo_id)for(const extraId of storedComboIds.filter((v:unknown)=>typeof v==='string'&&v!==comboId)){
     this.id(extraId);const valid=await c.query(COMBO_THEO_PHONG+" AND co.trang_thai='Đang bán' AND (co.bat_dau IS NULL OR co.bat_dau<=$4) AND (co.ket_thuc IS NULL OR co.ket_thuc>=$5) AND (co.so_gio_bao_gom IS NULL OR $6='Theo giờ') FOR SHARE OF co",[extraId,p.homestay_id,room,start.toISOString(),end.toISOString(),kind]);
@@ -87,8 +102,13 @@ export class DonLichService{
    if(amount+Number(d.tien_dich_vu)-Number(d.tien_giam)<Math.max(received,Number(paid.rows[0]?.tong||0)))throw new ConflictException('Tổng tiền mới thấp hơn tiền đã thu; cần xử lý thanh toán trước');
    if(received<Number(paid.rows[0]?.tong||0))throw new ConflictException('Không thể giảm tiền đã ghi nhận dưới giao dịch thực thu; xử lý hoàn tiền trước');
    const oldRoom=await c.query('SELECT ten_phong FROM public.phong WHERE id=$1',[d.phong_id]);
-   const snapshot={...d.cau_hinh_gia_chot,tien_phong_chot:amount,nguoi_sua_id:uid,gia_moi_gio:p.gia_moi_gio,gia_moi_ngay:p.gia_moi_ngay,gia_moi_dem:p.gia_moi_dem,so_gio_toi_thieu:p.so_gio_toi_thieu,gia_phu_thu_gio:p.gia_phu_thu_gio,khung_gio:savedHours};
-   if(comboId!==d.combo_id){snapshot.combo_ids=comboId?[comboId]:[];snapshot.combo_da_chon=[];}
+   const snapshot={...d.cau_hinh_gia_chot,tien_phong_chot:amount,nguoi_sua_id:uid,gia_moi_gio:p.gia_moi_gio,gia_moi_ngay:p.gia_moi_ngay,gia_moi_dem:p.gia_moi_dem,so_gio_toi_thieu:p.so_gio_toi_thieu,gia_phu_thu_gio:p.gia_phu_thu_gio,khung_gio:savedHours,...(changedSchedule?{gio_nhan_som:extra.early,gio_tra_muon:extra.late,tien_phu_thu:tinhTienPhuThu(extra.early,extra.late,p.gia_phu_thu_gio)}:{})};
+   if(comboId!==d.combo_id){snapshot.combo_ids=comboId?[comboId]:[];snapshot.combo_da_chon=selectedCombo?[{...selectedCombo,so_luong:quantity}]:[];}
+   else if(selectedCombo&&x.combo_so_luong!==undefined){
+    snapshot.combo_da_chon=d.combo_da_chon.some((item:{id:string})=>item.id===comboId)
+      ? d.combo_da_chon.map((item:{id:string})=>item.id===comboId?selectedCombo:item)
+      : [...d.combo_da_chon,selectedCombo];
+   }
    await c.query(`UPDATE public.dat_phong SET ten_don=$2,phong_id=$3,homestay_id=$4,hinh_thuc_dat=$5,
     nhan_phong_luc=$6,tra_phong_luc=$7,so_khach=$8,tien_phong=$9,so_dien_thoai_dat=$10,
     nguoi_dung_id=CASE WHEN so_dien_thoai_dat IS DISTINCT FROM $10 THEN NULL ELSE nguoi_dung_id END,

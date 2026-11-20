@@ -22,6 +22,8 @@ export type DonSua = {
   ten_phong: string;
   ma_khuyen_mai?:string;
   combo_id?: string | null;
+  combo_da_chon?: {id:string;ten_combo:string;so_luong?:number;gia_combo:number;so_gio_bao_gom?:number|null;gia_chua_xac_dinh?:boolean}[];
+  cau_hinh_gia_chot?: {gio_nhan_som?:number;gio_tra_muon?:number};
   trang_thai?:string;trang_thai_thanh_toan?:string;tien_da_thanh_toan?:string;tien_dich_vu?:string;tien_giam?:string;
 };
 export type SeedDon = {
@@ -89,6 +91,7 @@ export default function FormDonDatPhong({
   const [roomId, setRoomId] = useState(don?.phong_id || seed?.phong_id || ""),
     [branch, setBranch] = useState(""),
     [combo, setCombo] = useState(don?.combo_id || ""),
+    [comboQuantity, setComboQuantity] = useState(String(don?.combo_da_chon?.find(c=>c.id===don.combo_id)?.so_luong ?? 1)),
     [name, setName] = useState(don?.ten_khach || ""),
     [phone, setPhone] = useState(don?.so_dien_thoai || ""),
     [guests, setGuests] = useState(String(don?.so_khach || 1)),
@@ -102,6 +105,11 @@ export default function FormDonDatPhong({
   const fullAmount=Number(price||0)+Number(don?.tien_dich_vu||0)-discount;
   useEffect(()=>{if(!voucherTouched&&(!voucher||(Number(price)===Number(don?.tien_phong)&&roomId===don?.phong_id)))return;let active=true;setVoucherError("");if(!voucher.trim()){setDiscount(0);setVoucherBusy(false);return;}setVoucherBusy(true);const t=setTimeout(()=>void quanTriApi<{tien_giam:number}>(token,"voucher/thu","POST",{ma_voucher:voucher,dat_phong_id:don?.id,phong_id:roomId,tong_tien:Number(price||0)+Number(don?.tien_dich_vu||0)}).then(x=>{if(active)setDiscount(x.tien_giam)}).catch(e=>{if(active)setVoucherError(e.message)}).finally(()=>{if(active)setVoucherBusy(false)}),300);return()=>{active=false;clearTimeout(t)}},[voucher,voucherTouched,roomId,price,token]);
   useEffect(()=>{if(!paymentTouched)return;if(payment==='Đủ')setPaid(String(fullAmount));else if(payment==='Chưa thanh toán')setPaid('0')},[payment,fullAmount,paymentTouched]);
+  const [early, setEarly] = useState(String(don?.cau_hinh_gia_chot?.gio_nhan_som ?? 0));
+  const [late, setLate] = useState(String(don?.cau_hinh_gia_chot?.gio_tra_muon ?? 0));
+  const validExtra = kind === "gio" || [early, late].every(v => /^[0-9]+$/.test(v) && Number(v) <= 12);
+  const earlyHours = kind !== "gio" && validExtra ? Number(early) : 0;
+  const lateHours = kind !== "gio" && validExtra ? Number(late) : 0;
   const [start, setStart] = useState(seed?.date || ngayVN()),
     [end, setEnd] = useState(seed?.date || ngayVN()),
     [from, setFrom] = useState(seed?.time || "08:00"),
@@ -123,19 +131,20 @@ export default function FormDonDatPhong({
             ?.homestay_id || "",
         );
         if (don) {
-          const a = dayOf(don.nhan_phong_luc),
-            b = dayOf(don.tra_phong_luc);
+          const coreStart = new Date(Date.parse(don.nhan_phong_luc) + earlyHours * 3600000).toISOString();
+          const coreEnd = new Date(Date.parse(don.tra_phong_luc) - lateHours * 3600000).toISOString();
+          const a = dayOf(coreStart), b = dayOf(coreEnd);
           setStart(a);
           setEnd(
             kind !== "gio" &&
-              clockOf(don.tra_phong_luc) <= clockOf(don.nhan_phong_luc)
+              clockOf(coreEnd) <= clockOf(coreStart)
               ? new Date(new Date(b + "T12:00:00+07:00").getTime() - 86400000)
                   .toISOString()
                   .slice(0, 10)
               : b,
           );
-          setFrom(clockOf(don.nhan_phong_luc));
-          setTo(clockOf(don.tra_phong_luc));
+          setFrom(clockOf(coreStart));
+          setTo(clockOf(coreEnd));
         } else {
           const t = goiYThoiGian(kind, j.cau_hinh_gio);
           setStart(seed?.date || t.day);
@@ -174,8 +183,15 @@ export default function FormDonDatPhong({
     };
   }, [token, don?.id]);
   const room = rooms.find((r) => r.id === roomId),
-    selectedCombo = combos.find((c) => c.id === combo);
-  const interval = useMemo(
+    savedCombo = don?.combo_da_chon?.find((c) => c.id === combo),
+    selectedCombo = savedCombo ?? combos.find((c) => c.id === combo);
+  const quantity = Number(comboQuantity);
+  const validQuantity = !combo || (/^[0-9]+$/.test(comboQuantity) &&
+    quantity >= 1 && quantity <= (selectedCombo?.so_gio_bao_gom != null ? 1 : 20));
+  const otherCombos = combo === don?.combo_id
+    ? (don?.combo_da_chon ?? []).filter(c=>c.id!==combo).reduce((sum,c)=>sum+c.gia_combo*(c.so_luong??1),0)
+    : 0;
+  const coreInterval = useMemo(
     () =>
       khoangThoiGianLich(
         kind === "dem" ? "qua-dem" : kind,
@@ -186,14 +202,44 @@ export default function FormDonDatPhong({
       ),
     [kind, start, end, from, to, hours],
   );
+  const interval = useMemo(() => ({
+    start: new Date(+coreInterval.start - earlyHours * 3600000),
+    end: new Date(+coreInterval.end + lateHours * 3600000),
+  }), [coreInterval, earlyHours, lateHours]);
+  const slot = useMemo(() => {
+    if (!roomId || !(interval.start < interval.end)) return "";
+    if (don && roomId === don.phong_id &&
+      +interval.start === Date.parse(don.nhan_phong_luc) &&
+      +interval.end === Date.parse(don.tra_phong_luc)) return "";
+    return new URLSearchParams({
+      phong_id: roomId, bat_dau: interval.start.toISOString(),
+      ket_thuc: interval.end.toISOString(), don_id: don?.id ?? "",
+    }).toString();
+  }, [roomId, interval, don]);
+  const [blockedSlot, setBlockedSlot] = useState("");
+  const unavailable = !!slot && blockedSlot === slot;
+  const conflictMessage = "Lịch của bạn đã được đặt, xin vui lòng chọn lại.";
+  useEffect(() => {
+    if (!slot) return;
+    let active = true;
+    const timer = window.setTimeout(() => {
+      void quanTriApi<{kha_dung:boolean}>(token, "lich-phong/kiem-tra-khung-gio?" + slot)
+        .then(result => { if (active) setBlockedSlot(result.kha_dung ? "" : slot); })
+        .catch(() => { if (active) setBlockedSlot(""); });
+    }, 250);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [slot, token]);
   const auto = tinhGiaDon(
     room,
     kind,
-    interval.start,
-    interval.end,
+    coreInterval.start,
+    coreInterval.end,
     hours,
-    selectedCombo,
-  );
+    selectedCombo ? {
+      gia_combo: Number(selectedCombo.gia_combo) * (validQuantity ? quantity : 1),
+      so_gio_bao_gom: selectedCombo.so_gio_bao_gom ?? null,
+    } : undefined,
+  ) + otherCombos + (earlyHours + lateHours) * (Number(room?.gia_phu_thu_gio) || 0);
   useEffect(() => {
     if (ready && !priceManual) setPrice(String(auto));
   }, [auto, ready, priceManual]);
@@ -207,6 +253,7 @@ export default function FormDonDatPhong({
     setKind(k);
     setPriceManual(false);
     setCombo("");
+    setComboQuantity("1");
     const t = goiYThoiGian(k, hours);
     setFrom(t.start);
     setTo(t.end);
@@ -239,7 +286,15 @@ export default function FormDonDatPhong({
   async function save(e: FormEvent) {
     e.preventDefault();
     setError("");
+    if (unavailable) {
+      setError(conflictMessage);
+      return;
+    }
     if (!ready || !roomId || voucherBusy || voucherError) return;
+    if (!validQuantity || !validExtra) {
+      setError(validExtra ? "Nhập số lượng combo hợp lệ." : "Nhập số giờ phụ thu nguyên từ 0 đến 12.");
+      return;
+    }
     if (
       !Number.isFinite(interval.start.getTime()) ||
       !Number.isFinite(interval.end.getTime()) ||
@@ -261,7 +316,11 @@ export default function FormDonDatPhong({
               ? "Theo ngày"
               : "Theo đêm",
         combo_id: combo || null,
+        ...(combo && (!don || combo!==don.combo_id || quantity!==(savedCombo?.so_luong??1))
+          ? {combo_so_luong:{[combo]:quantity}} : {}),
         ...(!don||voucherTouched?{ma_voucher:voucher}:{}),
+        gio_nhan_som: earlyHours,
+        gio_tra_muon: lateHours,
         nhan_phong_luc: interval.start.toISOString(),
         tra_phong_luc: interval.end.toISOString(),
         so_khach: Number(guests),
@@ -282,7 +341,11 @@ export default function FormDonDatPhong({
       await onSaved();
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không lưu được đơn");
+      const message = e instanceof Error ? e.message : "Không lưu được đơn";
+      if (slot && /Khoảng thời gian đã có khóa|Phòng có lịch trùng/i.test(message)) {
+        setBlockedSlot(slot);
+        setError(conflictMessage);
+      } else setError(message);
     } finally {
       setBusy(false);
     }
@@ -297,6 +360,7 @@ export default function FormDonDatPhong({
           <h2 id="fd-title">
             {don ? "Chỉnh sửa đơn đặt phòng" : "Tạo đơn đặt phòng"}
           </h2>
+          {unavailable && <span role="img" aria-label="Phòng không thể đặt" title="Phòng không thể đặt">⚠</span>}
           <button
             aria-label="Đóng biểu mẫu đơn"
             disabled={busy}
@@ -442,12 +506,26 @@ export default function FormDonDatPhong({
               </p>
             )}
             <label>Voucher<input aria-label="Voucher đơn quản trị" value={voucher} maxLength={40} onChange={e=>{setVoucher(e.target.value.toUpperCase());setVoucherTouched(true)}}/>{voucherBusy&&<small>Đang kiểm tra…</small>}{voucherError&&<small role="alert">{voucherError}</small>}{discount>0&&<small>Giảm {vnd(discount)}</small>}</label>
-              <label>
+            {kind !== "gio" && ([
+              ["Check-in sớm (giờ)", early, setEarly],
+              ["Check-out muộn (giờ)", late, setLate],
+            ] as const).map(([label, value, setValue]) => (
+              <label key={label}>
+                {label}
+                <input inputMode="numeric" maxLength={2} value={value}
+                  onChange={e => {
+                    setValue(e.target.value);
+                    setPriceManual(false);
+                  }} />
+              </label>
+            ))}
+            <label>
               Combo
               <select
                 value={combo}
                 onChange={(e) => {
                   setCombo(e.target.value);
+                  setComboQuantity(String(don?.combo_da_chon?.find(c=>c.id===e.target.value)?.so_luong ?? 1));
                   setPriceManual(false);
                 }}
               >
@@ -473,6 +551,17 @@ export default function FormDonDatPhong({
                   ))}
               </select>
             </label>
+            {combo && selectedCombo?.so_gio_bao_gom == null && (
+              <label>
+                Số lượng combo
+                <input inputMode="numeric" maxLength={2} value={comboQuantity}
+                  aria-invalid={!validQuantity}
+                  onChange={(e) => {
+                    setComboQuantity(e.target.value);
+                    setPriceManual(false);
+                  }} />
+              </label>
+            )}
             <label>
               Số khách
               <input
@@ -529,6 +618,7 @@ export default function FormDonDatPhong({
               ))}
             </div>
           )}
+          {unavailable && <p className="cn-error" role="status">Giờ không khả dụng</p>}
           {error && (
             <p className="cn-error" role="alert">
               {error}
@@ -543,7 +633,7 @@ export default function FormDonDatPhong({
             <button type="button" disabled={busy} onClick={onClose}>
               Thoát
             </button>
-            <button type="submit" disabled={busy || !ready || voucherBusy || !!voucherError}>
+            <button type="submit" disabled={busy || !ready || voucherBusy || !!voucherError || !validQuantity || !validExtra}>
               {busy ? "Đang lưu…" : "Lưu đơn"}
             </button>
           </footer>
