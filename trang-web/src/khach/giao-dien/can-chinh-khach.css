@@ -235,7 +235,7 @@
   max-height: 215px;
   overflow: auto;
 }
-.kh-reserve-combo-list > button {
+.kh-reserve-combo-list button {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -249,7 +249,7 @@
   text-align: left;
   cursor: pointer;
 }
-.kh-reserve-combo-list > button[aria-pressed="true"] {
+.kh-reserve-combo-list button[aria-pressed="true"] {
   background: #efdab8;
   border-color: #aa7c3f;
 }
@@ -498,7 +498,7 @@
   .kh-reserve-dates .lp-range-button {
     font-size: 11px;
   }
-  .kh-reserve-combo-list > button {
+  .kh-reserve-combo-list button {
     gap: 6px;
   }
   .kh-reserve-combo-list img {

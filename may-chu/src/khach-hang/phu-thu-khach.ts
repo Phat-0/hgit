@@ -14,10 +14,10 @@ export function docGioPhuThu(
       !Number.isFinite(raw) ||
       raw < 0 ||
       raw > 12 ||
-      !Number.isInteger(raw * 2)
+      !Number.isInteger(raw)
     )
       throw new BadRequestException(
-        'Giờ phụ thu phải theo mốc 30 phút, tối đa 12 giờ mỗi phía',
+        'Giờ phụ thu phải là số nguyên, tối đa 12 giờ mỗi phía',
       );
     return raw;
   };

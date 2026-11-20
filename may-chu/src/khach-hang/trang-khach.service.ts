@@ -1,3 +1,4 @@
+import { docSoLuongCombo } from './so-luong-combo.js';
 import {nhanKhoa,xongKhoa} from '../quan-tri/khoa-yeu-cau.sql.js';
 import {traVoucher,luuVoucher} from '../quan-tri/voucher.sql.js';
 import {TRANG_THAI_PHONG} from '../quan-tri/trang-thai-phong.sql.js';
@@ -136,6 +137,22 @@ export class TrangKhachService {
     );
     return !r.rows[0].busy;
   }
+  async currentRooms() {
+    const data = await this.catalog();
+    const c = await this.conn.db();
+    try {
+      const config = await this.config(c);
+      const start = new Date(Math.ceil(Date.now() / 1800000) * 1800000);
+      const result = [];
+      for (const p of data.phong) {
+        if (!p.cho_dat_theo_gio) continue;
+        const end = new Date(+start + Math.max(1, Number(p.so_gio_toi_thieu) || 1) * 3600000);
+        try { kiemTraThoiGianDat('Theo giờ', start, end, config, Number(p.so_gio_toi_thieu)); } catch { continue; }
+        if (await this.free(c, p.id, start, end)) result.push(p);
+      }
+      return result;
+    } finally { await c.end(); }
+  }
   async rooms(x: Record<string, unknown>) {
     const { start, end, kind } = this.interval(x),
       branch = String(x.chi_nhanh_id || '');
@@ -258,16 +275,18 @@ export class TrangKhachService {
       throw new BadRequestException('Danh sách combo không hợp lệ, tối đa 10 combo khác nhau');
     const comboIds=rawIds.map(v=>this.conn.id(String(v)));
     if(x.combo_id && String(x.combo_id)!==comboIds[0])throw new BadRequestException('Combo chính không khớp danh sách');
-    const selectedCombos: {id:string;ten_combo:string;gia_combo:number;so_gio_bao_gom:number|null}[]=[];
+    const quantities=docSoLuongCombo(x.combo_so_luong,comboIds);
+    const selectedCombos: {id:string;ten_combo:string;gia_combo:number;so_gio_bao_gom:number|null;so_luong:number}[]=[];
     for(const comboId of comboIds){
       const found=await c.query(COMBO_THEO_PHONG+" AND co.trang_thai='Đang bán' AND (co.bat_dau IS NULL OR co.bat_dau<=$4) AND (co.ket_thuc IS NULL OR co.ket_thuc>=$5) AND (co.so_gio_bao_gom IS NULL OR $6='Theo giờ') FOR SHARE OF co",[comboId,p.homestay_id,p.id,start.toISOString(),end.toISOString(),kind]);
       if(!found.rowCount)throw new BadRequestException('Combo không áp dụng cho phòng và thời gian này');
       const co=(await c.query('SELECT id,ten_combo,gia_combo,so_gio_bao_gom FROM public.combo WHERE id=$1',[comboId])).rows[0];
-      selectedCombos.push({...co,gia_combo:Number(co.gia_combo)});
+      if(co.so_gio_bao_gom!=null && quantities[comboId]!==1)throw new BadRequestException('Combo giờ chỉ áp dụng một gói cho mỗi phòng');
+      selectedCombos.push({...co,gia_combo:Number(co.gia_combo),so_luong:quantities[comboId]});
     }
     const hourCombos=selectedCombos.filter(co=>co.so_gio_bao_gom!=null);
     if(hourCombos.length>1)throw new BadRequestException('Mỗi lịch nghỉ chỉ dùng một combo giờ');
-    const serviceAmount=selectedCombos.filter(co=>co.so_gio_bao_gom==null).reduce((sum,co)=>sum+co.gia_combo,0);
+    const serviceAmount=selectedCombos.filter(co=>co.so_gio_bao_gom==null).reduce((sum,co)=>sum+co.gia_combo*co.so_luong,0);
     const baseAmount=(await this.price(c,p,extra.coreStart,extra.coreEnd,kind,hourCombos[0]))+serviceAmount;
     if(!Number.isSafeInteger(baseAmount)||baseAmount<0||baseAmount>1e12)throw new BadRequestException('Tổng giá combo không hợp lệ');
     const surcharge = tinhTienPhuThu(extra.early, extra.late, p.gia_phu_thu_gio);
@@ -319,7 +338,7 @@ export class TrangKhachService {
   async combos(x: Record<string, unknown>) {
     const c = await this.conn.db();
     try {
-      const { p, start, end, kind, extra, surcharge } = await this.prepare(c, {...x, ma_voucher:'',combo_id: null,combo_ids:[]});
+      const { p, start, end, kind, extra, surcharge } = await this.prepare(c, {...x, ma_voucher:'',combo_id: null,combo_ids:[],combo_so_luong:{}});
       const r = await c.query(
         `SELECT co.*,ARRAY(SELECT homestay_id FROM public.combo_chi_nhanh WHERE combo_id=co.id) AS chi_nhanh_ids FROM public.combo co WHERE co.trang_thai='Đang bán' AND (co.bat_dau IS NULL OR co.bat_dau<=$2) AND (co.ket_thuc IS NULL OR co.ket_thuc>=$3) AND (co.so_gio_bao_gom IS NULL OR $4='Theo giờ') AND (co.pham_vi='toan_he_thong' OR co.pham_vi='chi_nhanh' AND EXISTS(SELECT 1 FROM public.combo_chi_nhanh cc WHERE cc.combo_id=co.id AND cc.homestay_id=$5) OR co.pham_vi='phong' AND EXISTS(SELECT 1 FROM public.combo_phong cp WHERE cp.combo_id=co.id AND cp.phong_id=$1)) ORDER BY co.ten_combo`,
         [p.id, start.toISOString(), end.toISOString(), kind, p.homestay_id],
@@ -349,7 +368,7 @@ export class TrangKhachService {
       await c.end();
     }
   }
-  async create(x: Record<string, unknown>, authorization?: string) {
+  async create(x: Record<string, unknown>, authorization?: string, authenticatedApp = false) {
     const user = await this.conn.identity(authorization),
       name = String(x.ten_khach || '').trim(),
       phone = chuanHoaSoDienThoai(x.so_dien_thoai),
@@ -364,6 +383,7 @@ export class TrangKhachService {
       guests < 1
     )
       throw new BadRequestException('Tên, số khách hoặc ghi chú không hợp lệ');
+    if (authenticatedApp && !user) throw new UnauthorizedException();
     const c = await this.conn.db();
     try {
       await this.expire(c);
@@ -384,7 +404,7 @@ export class TrangKhachService {
       if (guests > q.p.suc_chua)
         throw new BadRequestException('Số khách vượt sức chứa phòng');
       const result = await c.query(
-        `INSERT INTO public.dat_phong(ma_dat_phong,ten_don,nguoi_dung_id,homestay_id,phong_id,hinh_thuc_dat,nhan_phong_luc,tra_phong_luc,so_khach,trang_thai,tien_phong,het_han_giu_cho,ghi_chu,so_dien_thoai_dat,nguon_dat,combo_id,cau_hinh_gia_chot,khoa_yeu_cau) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'Chờ xác nhận',$10,now()+interval '15 minutes',$11,$12,'khach',$13,$14::jsonb,$15) RETURNING id,ma_dat_phong,tong_tien,trang_thai,het_han_giu_cho`,
+        `INSERT INTO public.dat_phong(ma_dat_phong,ten_don,nguoi_dung_id,homestay_id,phong_id,hinh_thuc_dat,nhan_phong_luc,tra_phong_luc,so_khach,trang_thai,tien_phong,het_han_giu_cho,ghi_chu,so_dien_thoai_dat,nguon_dat,combo_id,cau_hinh_gia_chot,khoa_yeu_cau) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,CASE WHEN $16::boolean THEN 'Đã xác nhận' ELSE 'Chờ xác nhận' END,$10,CASE WHEN $16::boolean THEN NULL ELSE now()+interval '15 minutes' END,$11,$12,'khach',$13,$14::jsonb,$15) RETURNING id,ma_dat_phong,tong_tien,trang_thai,het_han_giu_cho`,
         [
           'DP' + randomUUID().replaceAll('-', '').toUpperCase(),
           name,
@@ -412,6 +432,7 @@ export class TrangKhachService {
             so_gio_toi_thieu: q.p.so_gio_toi_thieu,
           }),
           requestId,
+          authenticatedApp,
         ],
       );
       if(q.voucher)await luuVoucher(c,result.rows[0].id,q.voucher);

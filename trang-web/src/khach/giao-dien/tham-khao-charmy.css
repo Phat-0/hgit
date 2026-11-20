@@ -575,7 +575,7 @@
 .kh-reserve .kh-reserve-form-fields[hidden]{display:none}
 .kh-reserve .kh-reserve-combo-toolbar{justify-content:flex-start;margin:0}
 .kh-reserve .kh-reserve-combo-list{max-height:520px;align-content:start}
-.kh-reserve .kh-reserve-combo-list>button{min-height:64px;flex-shrink:0}
+.kh-reserve .kh-reserve-combo-list button{min-height:64px;flex-shrink:0}
 .kh-reserve-selected-combos{display:grid;gap:7px;padding:10px 0;border-top:1px solid #bfa17755;font-size:11px;color:#765536}
 .kh-reserve-selected-combos>div{display:flex;align-items:center;gap:8px;padding:6px 8px;background:#fbf4e8;border:1px solid #d5bb9480;border-radius:7px}
 .kh-reserve-selected-combos>div>span{flex:1;min-width:0;line-height:1.5}
@@ -596,7 +596,7 @@
 .kh-related-copy>span{font-size:12px;color:#e9be80}
 .kh-site.kh-no-home-motion [data-reveal],.kh-site.kh-no-home-motion .kh-stay-numbers :is(h2,article),.kh-site.kh-no-home-motion .kh-cms-hero>div:first-child,.kh-site.kh-no-home-motion .kh-gallery-main{animation:none!important;transition:none!important;opacity:1!important;transform:none!important}
 @media(max-width:760px){.kh-room-related>div{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.kh-room-related h2{font-size:21px}.kh-related-copy{padding:10px}.kh-related-copy strong{font-size:16px}.kh-site .kh-stay-numbers article{padding:12px 6px}.kh-site .kh-stay-numbers>div{gap:10px}.kh-site .kh-stay-numbers>h2{padding:8px 16px}.kh-reserve .kh-reserve-form-fields{gap:10px}.kh-map-dialog>header h2{font-size:19px;padding:8px 10px}}
-@media(max-width:600px){.kh-reserve-form-fields>.kh-reserve-kind,.kh-reserve-form-fields>.kh-reserve-dates{grid-column:1/-1}.kh-reserve .kh-reserve-combo-list{max-height:430px}.kh-reserve .kh-reserve-combo-list>button{min-height:60px}}
+@media(max-width:600px){.kh-reserve-form-fields>.kh-reserve-kind,.kh-reserve-form-fields>.kh-reserve-dates{grid-column:1/-1}.kh-reserve .kh-reserve-combo-list{max-height:430px}.kh-reserve .kh-reserve-combo-list button{min-height:60px}}
 @media(prefers-reduced-motion:reduce){:root:not([data-motion-mode="full"]) .kh-map-dialog>header, :root:not([data-motion-mode="full"]) .kh-map-dialog .kh-map-group, :root:not([data-motion-mode="full"]) .kh-site .kh-stay-numbers>h2{animation:none!important;opacity:1!important;transform:none!important}}
 .kh-map-dialog .kh-map-layout>aside{background:transparent;padding:0;margin:0;border:0;border-radius:0;max-height:min(68dvh,620px);scrollbar-color:#8f6a40 #251d15}
 .kh-room-related article{padding:0;margin:0}

@@ -4,8 +4,9 @@ import 'package:uuid/uuid.dart';
 import '../dung_chung/api.dart';
 
 class TroChuyen extends StatefulWidget {
-  const TroChuyen({super.key, required this.api});
+  const TroChuyen({super.key, required this.api, this.threadId});
   final Api api;
+  final String? threadId;
   @override
   State<TroChuyen> createState() => _TroChuyenState();
 }
@@ -21,7 +22,7 @@ class _TroChuyenState extends State<TroChuyen> with WidgetsBindingObserver {
   void initState() { super.initState(); WidgetsBinding.instance.addObserver(this); start(); }
   Future<void> start() async {
     try {
-      final result = await widget.api.request('/chat', body: {'chi_nhanh_id': null});
+      final result = widget.threadId != null ? {'id': widget.threadId} : await widget.api.request('/chat', body: {'chi_nhanh_id': null});
       if (!mounted) return;
       id = '${result['id']}';
       widget.api.guest = result['guest_token'] ?? widget.api.guest;

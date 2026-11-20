@@ -25,49 +25,33 @@ flutter build apk --release --dart-define=API_URL=https://TEN-MIEN-CUA-BAN/api
 
 `TEN-MIEN-CUA-BAN` phải được thay bằng server thực tế. Chữ ký phát hành và cấu hình production cần hoàn thiện trước khi phát hành Play Store.
 
-## Đã viết
+## Phiên bản mới
 
-- Trang khách tông nâu/vàng, nội dung hero lấy từ quản trị web; dữ liệu phòng, combo, chi nhánh, đánh giá và số liệu từ API.
-- Chuyển tab có fade/slide; khối xuất hiện khi vào viewport. Tôn trọng cài đặt giảm chuyển động của hệ thống.
-- Bố cục 1/2/3 cột theo chiều rộng và cỡ chữ; không khóa chiều cao thẻ theo chữ. Cỡ chữ 100/115/130/150% lưu trên thiết bị và kết hợp cỡ chữ hệ thống.
-- Chi tiết phòng, album vuốt ngang, ảnh toàn màn hình và pinch zoom.
-- Chọn giờ/ngày/đêm, giờ cuộn mốc 30 phút theo thiết lập quản trị, phụ thu nhận sớm/trả muộn, số khách, combo, voucher; báo giá từ server.
-- Tạo yêu cầu đặt phòng có UUID chống lặp; giữ UUID khi gửi lại cùng biểu mẫu sau lỗi mạng. Server quyết định giá và chống trùng lịch.
-- OTP dùng tài khoản Supabase hiện tại; xem đơn của tôi. Token chỉ ở RAM trong phiên, chưa lưu phiên đăng nhập và tự refresh. Khi token hết hạn cần đăng nhập lại.
-- Chat văn bản với CSKH, cập nhật mỗi 5 giây khi app hoạt động. AI trả lời theo thiết lập backend hiện tại; app không gọi Gemini trực tiếp.
+Chi tiết tính năng, kiểm thử và phần còn lại: [App khách và số lượng combo](../tai-lieu/app-khach-va-so-luong-combo.md).
 
-## Phạm vi còn lại
-
-Đây là nền app khách đầu tiên, chưa phải toàn bộ chức năng web. Chưa có màn hình nhân viên/quản trị/vệ sinh, push notification, upload/xem tệp chat, bản đồ, thanh toán, hủy đơn và tìm phòng theo thời gian ngay tại trang chủ. Combo hiện xem được; áp dụng khi chọn phòng rồi mở đặt phòng. Chưa có album stack/parallax và review carousel đầy đủ như web. Những phần này cần nối tiếp sau khi chạy thiết bị và kiểm tra các luồng cơ bản.
+App yêu cầu đăng nhập trước khi vào, thanh điều hướng 5 mục, danh sách hai sản phẩm/hàng, cỡ chữ thích ứng. Đặt phòng/giá/combo dùng chung API với web. Quản trị app hiện có phần xem dữ liệu và luồng lịch/vệ sinh/tin nhắn; chưa đủ CRUD như web.
 
 ## Kiểm tra
 
 ```powershell
 flutter analyze
 flutter test
-flutter run --profile --dart-define=API_URL=http://10.0.2.2:3000/api
-```
-
-Đã thêm test API lỗi phòng hết chỗ/khóa chống lặp và test bố cục rộng 320/390/768/1024 với text scale 1/1.5/2. Các test Flutter chưa được chạy trong môi trường soạn mã này do không có SDK. Kiểm tra cú pháp Dart đã chạy đạt bằng parser; không thay thế analyze, test hay kiểm tra emulator.
-
-Trên thiết bị kiểm tra thêm: xoay ngang, bàn phím, màn hình nhỏ, cỡ chữ hệ thống 200%, giảm chuyển động, mạng yếu/mất mạng, phòng vừa được đặt, nhận OTP, chat và quay lại app sau khi chạy nền. Không tạo đơn thật tự động trong test.
-
-## Kết nối MCP
-
-Xem [hướng dẫn Android Studio + SimUtil](../tai-lieu/ket-noi-mcp-android.md).
-
-## Sửa cache Kotlin trên Windows khác ổ đĩa
-
-Cấu hình Android tắt Kotlin incremental và dùng compiler in-process để tránh lỗi different roots giữa Pub Cache ổ C và dự án ổ D. Sau lỗi cache cũ, dừng flutter run rồi chạy một lần:
-
-```powershell
-cd D:\DoAnTotNghiep\ung-dung-di-dong
-.\android\gradlew.bat -p .\android --stop
-flutter clean
-flutter pub get
-flutter analyze
-flutter test
 flutter run -d emulator-5554
 ```
 
-Các lần sau chỉ cần `flutter run`. Cấu hình này có thể khiến biên dịch Kotlin lâu hơn nhưng không đổi dữ liệu ứng dụng. Chưa xác minh build lại trên máy Windows qua MCP terminal.
+Chưa chạy analyzer/test/emulator trong môi trường này vì chưa có Flutter SDK và tunnel thiết bị đang ngắt. Kiểm tra cú pháp Dart đạt; kiểm thử nhiều cỡ chữ đã được viết, chưa được chạy. Không coi kiểm tra cú pháp là bằng chứng giao diện đã chạy đúng.
+
+## Kết nối MCP
+
+Xem [Android Studio + SimUtil](../tai-lieu/ket-noi-mcp-android.md).
+
+## Lỗi Kotlin trên Windows
+
+Nếu còn cache lỗi giữa Pub Cache ổ C và mã ổ D, dừng lần chạy cũ, rồi chạy một lần:
+
+```powershell
+.\android\gradlew.bat -p .\android --stop
+flutter clean
+flutter pub get
+flutter run -d emulator-5554
+```

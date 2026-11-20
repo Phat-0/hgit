@@ -15,6 +15,7 @@ export async function docChiTietDon(
       id: r.combo_id,
       ten_combo: r.ten_muc_chot,
       gia_combo: Number(r.don_gia_chot),
+      so_luong: Number(r.so_luong),
       so_gio_bao_gom: r.du_lieu_chot?.so_gio_bao_gom,
       gia_chua_xac_dinh: r.du_lieu_chot?.gia_chua_xac_dinh,
     }));

@@ -186,7 +186,7 @@ main.kh-site.kh-cms-custom [data-motion-play][data-motion-style="soft"] {
   max-height: none !important;
   overflow: visible !important;
 }
-.kh-reserve .kh-reserve-combo-list > button {
+.kh-reserve .kh-reserve-combo-list button {
   min-height: 48px !important;
 }
 @media (max-width: 760px) {
@@ -214,3 +214,8 @@ main.kh-site {
 /* Static photo surface: scrolling never changes its crop or scale. */
 main.kh-site.kh-page-home .kh-cms-hero::before{inset:0!important;transform:none!important;background-position:center!important;background-size:cover!important}
 main.kh-site.kh-cms-custom{background-image:radial-gradient(ellipse 320px 140px at 5% 38%,#c28d4410,transparent),radial-gradient(ellipse 420px 180px at 96% 76%,#cfa3600b,transparent),linear-gradient(120deg,#f0c07d05,transparent 45%),linear-gradient(180deg,#34251d33,#160f0c33)!important}
+
+.kh-reserve-combo-list > div { display: grid; gap: 8px; min-width: 0; }
+.kh-reserve-combo-list > div > button { width: 100%; }
+.kh-reserve-combo-list > div > label { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.kh-reserve-combo-list input[type="number"] { width: 88px; max-width: 100%; border-radius: 12px; }

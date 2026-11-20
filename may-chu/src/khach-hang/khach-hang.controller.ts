@@ -34,6 +34,10 @@ export class KhachHangController {
     return this.rooms.options();
   }
   @Get('gioi-thieu') async catalog(@Req() r:Request){await this.conn.limit(r.ip||'unknown','catalog',60);return this.rooms.catalog();}
+  @Get('phong-trong-hien-tai') async currentRooms(@Req() r: Request) {
+    await this.conn.limit(r.ip || 'unknown', 'current-rooms', 30);
+    return this.rooms.currentRooms();
+  }
   @Get('phong') async search(
     @Req() r: Request,
     @Query() q: Record<string, unknown>,
@@ -65,6 +69,10 @@ export class KhachHangController {
   ) {
     await this.conn.limit(r.ip || 'unknown', 'book', 3, 600);
     return this.rooms.create(x || {}, r.headers.authorization);
+  }
+  @Post('app/dat-phong') async createApp(@Req() r: Request, @Body() x: Record<string, unknown>) {
+    await this.conn.limit(r.ip || 'unknown', 'book-app', 3, 600);
+    return this.rooms.create(x || {}, r.headers.authorization, true);
   }
   @Get('gio-hang/so-don') async cartCount(@Req() r:Request) {
     await this.conn.limit(r.ip||'unknown','cart-count',60);

@@ -7,7 +7,7 @@ import {
   ngayVietNam,
 } from "../../dung-chung/lich/mac-dinh-thoi-gian";
 import { khoangThoiGianLich } from "../../dung-chung/lich/khung-gio-dat-phong";
-import ChonKhoangGio,{DaiGio} from "./ChonKhoangGio";
+import ChonKhoangGio from "./ChonKhoangGio";
 import { mocTraPhong } from "./moc-gio-khach";
 import type { PhongKhach } from "./GioiThieuLuuTru";
 export type KetQuaDatPhong = {
@@ -86,6 +86,7 @@ export default function DatPhongKhach({
     [comboIds, setComboIds] = useState<string[]>(
       target.comboId ? [target.comboId] : [],
     ),
+    [comboQuantities,setComboQuantities] = useState<Record<string,number>>({}),
     [showCombos, setShowCombos] = useState(false),
     [guestConfirm, setGuestConfirm] = useState(false),
     [early, setEarly] = useState(0),
@@ -161,13 +162,15 @@ export default function DatPhongKhach({
               : "Theo đêm",
         combo_id: comboIds[0] || null,
         combo_ids: comboIds,
+        combo_so_luong:Object.fromEntries(comboIds.map(id=>[id,comboQuantities[id]||1])),
         ma_voucher:voucher,
         gio_nhan_som: kind === "gio" ? 0 : early,
         gio_tra_muon: kind === "gio" ? 0 : late,
       },
       message: "",
     };
-  }, [roomId, kind, start, end, st, et, config, comboIds, room, early, late,voucher]);
+  }, [roomId, kind, start, end, st, et, config, comboIds, room, early, late,voucher,comboQuantities]);
+  const unavailable = /vừa được đặt|trùng|khoảng cách 30 phút|đã có khóa/i.test(error);
   const serialized = JSON.stringify(request.q),
     key = useRef(crypto.randomUUID()),
     inFlight = useRef(false),
@@ -323,6 +326,7 @@ export default function DatPhongKhach({
   }
   async function submit(e?: FormEvent, allowGuest = false) {
     e?.preventDefault();
+    if(unavailable){window.alert("Lịch của bạn đã được đặt, xin vui lòng chọn lại.");return;}
     if (showCombos) {
       setShowCombos(false);
       return;
@@ -420,9 +424,8 @@ export default function DatPhongKhach({
                   </p>
                 )}
                 {combos.map((c) => (
-                  <button
+                  <div key={c.id}><button
                     type="button"
-                    key={c.id}
                     aria-pressed={comboIds.includes(c.id)}
                     onClick={() => toggleCombo(c)}
                   >
@@ -438,6 +441,8 @@ export default function DatPhongKhach({
                     <b>{money(Number(c.gia_combo))}</b>
                     <span>{comboIds.includes(c.id) ? "✓" : "+"}</span>
                   </button>
+                  {comboIds.includes(c.id) && <label>Số lượng <input aria-label={'Số lượng '+c.ten_combo} type="number" inputMode="numeric" min={1} max={c.so_gio_bao_gom != null?1:20} step={1} value={comboQuantities[c.id]||1} onChange={e=>{const n=Number(e.target.value);if(Number.isInteger(n)&&n>=1&&n<=(c.so_gio_bao_gom != null?1:20))setComboQuantities(q=>({...q,[c.id]:n}));}}/></label>}
+                  </div>
                 ))}
               </div>
             )}
@@ -567,13 +572,13 @@ export default function DatPhongKhach({
                     ).map(([title, value, setter]) => (
                       <label key={title}>
                         {title}
-                        <DaiGio label={title} items={Array.from({length:25},(_,i)=>({ngay:'extra',gio:(i/2).toLocaleString('vi-VN')+' giờ',time:i/2}))} value={'extraT'+value.toLocaleString('vi-VN')+' giờ'} onChange={slot=>{const next=slot.time,oldTotal=Math.ceil(early+late),newTotal=Math.ceil((title==='Check-in sớm'?next:early)+(title==='Check-out muộn'?next:late)),delta=(newTotal-oldTotal)*Number(room?.gia_phu_thu_gio||0);setter(next);setPrice(p=>p===null?p:Math.max(0,p+delta));setSurcharge(p=>Math.max(0,p+delta));}}/>
+                        <input type="number" inputMode="numeric" min={0} max={12} step={1} value={value} onChange={e=>{const n=Number(e.target.value);if(Number.isInteger(n)&&n>=0&&n<=12)setter(n);}}/>
                       </label>
                     ))}
                   </div>
                   <small>
                     Phụ thu {money(Number(room?.gia_phu_thu_gio || 0))}/giờ ·
-                    Tổng giờ lẻ làm tròn lên.
+                    Nhập số giờ nguyên từ 0 đến 12.
                   </small>
                 </div>
               )}
@@ -666,7 +671,7 @@ export default function DatPhongKhach({
                   <div key={id}>
                     <span>
                       {comboCache.current.get(id)?.ten_combo ||
-                        "Combo cần kiểm tra lại"}
+                        "Combo cần kiểm tra lại"} × {comboQuantities[id]||1}
                     </span>
                     <button
                       type="button"
@@ -717,6 +722,7 @@ export default function DatPhongKhach({
                 </button>
               </div>
             )}
+            {unavailable && <p role="status" className="kh-error"><span aria-label="Phòng không thể đặt">⚠</span> Giờ không khả dụng</p>}
             {(error || request.message) && (
               <p role="alert" className="kh-error">
                 {error || request.message}
@@ -733,7 +739,7 @@ export default function DatPhongKhach({
               disabled={
                 busy ||
                 (!showCombos &&
-                  (quoting || price === null || quoteKey !== serialized))
+                  (!unavailable && (quoting || price === null || quoteKey !== serialized)))
               }
             >
               {busy
