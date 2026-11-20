@@ -15,6 +15,7 @@ class _HomestayAppState extends State<HomestayApp> {
   final api = Api();
   final navigator = GlobalKey<NavigatorState>();
   double scale = 1;
+  bool restoring = true;
   @override
   void initState() { super.initState(); api.addListener(sessionChanged); load(); }
   void sessionChanged() {
@@ -23,7 +24,11 @@ class _HomestayAppState extends State<HomestayApp> {
   }
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
-    if (mounted) setState(() => scale = (prefs.getDouble('co_chu') ?? 1).clamp(1.0, 1.5).toDouble());
+    await api.restoreSession();
+    if (mounted) setState(() {
+      scale = (prefs.getDouble('co_chu') ?? 1).clamp(1.0, 1.5).toDouble();
+      restoring = false;
+    });
   }
   Future<void> change(double value) async {
     setState(() => scale = value);
@@ -37,12 +42,12 @@ class _HomestayAppState extends State<HomestayApp> {
     debugShowCheckedModeBanner: false,
     title: 'Homestay', locale: const Locale('vi'),
     supportedLocales: const [Locale('vi')], localizationsDelegates: GlobalMaterialLocalizations.delegates,
-    theme: ThemeData(useMaterial3: true, brightness: Brightness.dark, scaffoldBackgroundColor: const Color(0xff251a15), colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xffe9bd80), brightness: Brightness.dark), inputDecorationTheme: InputDecorationTheme(border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)), isDense: true)),
+    theme: ThemeData(useMaterial3: true, brightness: Brightness.dark, scaffoldBackgroundColor: const Color(0xff322720), colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xffe9bd80), brightness: Brightness.dark), inputDecorationTheme: InputDecorationTheme(border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)), isDense: true)),
     builder: (context, child) {
       final media = MediaQuery.of(context);
       return MediaQuery(data: media.copyWith(textScaler: _AppTextScaler(media.textScaler, scale)), child: child!);
     },
-    home: api.token == null ? TaiKhoan(api: api) : KhungUngDung(api: api, scale: scale, onScale: change),
+    home: restoring ? const Scaffold(body: Center(child: CircularProgressIndicator())) : api.token == null ? TaiKhoan(api: api) : KhungUngDung(api: api, scale: scale, onScale: change),
   );
 }
 class _AppTextScaler extends TextScaler {

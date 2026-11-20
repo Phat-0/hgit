@@ -58,6 +58,42 @@ export class XacThucService {
     return {access_token:data.session.access_token,refresh_token:data.session.refresh_token,expires_in:data.session.expires_in,nguoi_dung:{id:data.user.id,email:data.user.email}};
   }
 
+  async hoSo(id: string) {
+    const db = await moDb();
+    try {
+      const result = await db.query(
+        "SELECT ho_ten, so_dien_thoai, anh_dai_dien FROM public.nguoi_dung WHERE id=$1 AND trang_thai='Đang hoạt động'", [id],
+      );
+      return result.rows[0] ?? {};
+    } finally { await db.end(); }
+  }
+
+  async suaHoSo(id: string, body: unknown) {
+    const data = body as Record<string, unknown> | null;
+    const name = typeof data?.ho_ten === 'string' ? data.ho_ten.trim() : '';
+    if (name.length < 2 || name.length > 150) throw new BadRequestException('Họ tên cần từ 2 đến 150 ký tự');
+    const phone = data?.so_dien_thoai ? chuanHoaSoDienThoai(data.so_dien_thoai) : null;
+    const image = typeof data?.anh_dai_dien === 'string' ? data.anh_dai_dien.trim() : '';
+    if (image) {
+      let url: URL;
+      try { url = new URL(image); } catch { throw new BadRequestException('Đường dẫn ảnh không hợp lệ'); }
+      if (url.protocol !== 'https:' || url.username || url.password || image.length > 2048)
+        throw new BadRequestException('Ảnh đại diện cần đường dẫn HTTPS hợp lệ');
+    }
+    const db = await moDb();
+    try {
+      const result = await db.query(
+        "UPDATE public.nguoi_dung SET ho_ten=$2, so_dien_thoai=$3, anh_dai_dien=$4, ngay_cap_nhat=now() WHERE id=$1 AND trang_thai='Đang hoạt động' RETURNING ho_ten, so_dien_thoai, anh_dai_dien",
+        [id, name, phone, image || null],
+      );
+      if (!result.rowCount) throw new BadRequestException('Chưa tìm thấy hồ sơ đang hoạt động');
+      return result.rows[0];
+    } catch (error) {
+      if ((error as {code?:string}).code === '23505') throw new BadRequestException('Số liên hệ đã được sử dụng');
+      throw error;
+    } finally { await db.end(); }
+  }
+
   async xacMinhToken(token: string) {
     const { data, error } = await this.supabase.auth.getUser(token);
     if (error || !data.user) throw new UnauthorizedException('Phiên đăng nhập không hợp lệ');

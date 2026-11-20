@@ -9,7 +9,7 @@ class HienDan extends StatefulWidget {
   State<HienDan> createState() => _HienDanState();
 }
 class _HienDanState extends State<HienDan> with SingleTickerProviderStateMixin {
-  late final AnimationController controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
+  late final AnimationController controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 270));
   late final Animation<double> curve = CurvedAnimation(parent: controller, curve: Curves.easeOutCubic);
   bool scheduled = false;
   Timer? entrance;
@@ -47,6 +47,6 @@ class _HienDanState extends State<HienDan> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     schedule();
-    return FadeTransition(opacity: curve, child: SlideTransition(position: Tween(begin: const Offset(0, .06), end: Offset.zero).animate(curve), child: widget.child));
+    return FadeTransition(opacity: curve, child: SlideTransition(position: Tween(begin: const Offset(-.025, -.025), end: Offset.zero).animate(curve), child: widget.child));
   }
 }

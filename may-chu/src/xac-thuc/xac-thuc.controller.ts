@@ -1,5 +1,5 @@
 import {GioiHanTruyCapService} from './gioi-han.service.js';
-import { BadRequestException, Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Post, Put, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { SupabaseAuthGuard } from './supabase-auth.guard.js';
 import { XacThucService } from './xac-thuc.service.js';
@@ -49,6 +49,18 @@ export class XacThucController {
     const refresh=(body as {refresh_token?:unknown}|null)?.refresh_token;
     if(typeof refresh!=='string'||refresh.length<10||refresh.length>4096)throw new BadRequestException('Refresh token không hợp lệ');
     return this.xacThucService.lamMoi(refresh);
+  }
+
+  @UseGuards(SupabaseAuthGuard)
+  @Get('ho-so')
+  profile(@Req() request: Request & { nguoiDung: {id:string} }) {
+    return this.xacThucService.hoSo(request.nguoiDung.id);
+  }
+
+  @UseGuards(SupabaseAuthGuard)
+  @Put('ho-so')
+  updateProfile(@Req() request: Request & { nguoiDung: {id:string} }, @Body() body: unknown) {
+    return this.xacThucService.suaHoSo(request.nguoiDung.id, body);
   }
 
   @UseGuards(SupabaseAuthGuard)

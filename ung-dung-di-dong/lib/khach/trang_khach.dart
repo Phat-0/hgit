@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../dung_chung/api.dart';
 import '../dung_chung/chuyen_dong.dart';
+import '../dung_chung/thong_bao.dart';
 import 'dat_phong.dart';
 import 'tro_chuyen.dart';
-import 'tai_khoan.dart';
+import 'ho_so.dart';
 
 String money(dynamic value) => '${NumberFormat.decimalPattern('vi').format(num.tryParse('$value') ?? 0)} đ';
 List<String> photos(Json item) => (item['anh'] is List ? item['anh'] as List : []).whereType<String>().where((e) => e.startsWith('http')).toList();
@@ -31,7 +32,7 @@ class _TrangKhachState extends State<TrangKhach> {
   void settings() => showModalBottomSheet<void>(context: context, showDragHandle: true, builder: (context) => SafeArea(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Cỡ chữ', style: Theme.of(context).textTheme.titleLarge), const SizedBox(height: 16), Wrap(spacing: 8, children: [1.0, 1.15, 1.3, 1.5].map((s) => ChoiceChip(label: Text('${(s * 100).round()}%'), selected: widget.scale == s, onSelected: (_) { widget.onScale(s); Navigator.pop(context); })).toList()), const SizedBox(height: 16), const Text('Cỡ chữ của hệ thống vẫn được giữ. App tự điều chỉnh bố cục khi chữ lớn hơn.')]))));
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('HomeStay'), actions: [if(widget.adminAction != null) IconButton(onPressed: widget.adminAction, icon: const Icon(Icons.dashboard_outlined), tooltip: 'Quản trị'), IconButton(onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => TaiKhoan(api: widget.api))), icon: const Icon(Icons.person_outline), tooltip: 'Tài khoản và đơn của tôi'), IconButton(onPressed: settings, icon: const Icon(Icons.text_fields), tooltip: 'Cỡ chữ')]),
+    appBar: AppBar(title: const Text('HomeStay'), actions: [NutThongBao(api: widget.api), if(widget.adminAction != null) IconButton(onPressed: widget.adminAction, icon: const Icon(Icons.dashboard_outlined), tooltip: 'Quản trị'), IconButton(onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => HoSo(api: widget.api))), icon: const Icon(Icons.person_outline), tooltip: 'Hồ sơ'), IconButton(onPressed: settings, icon: const Icon(Icons.text_fields), tooltip: 'Cỡ chữ')]),
     floatingActionButton: FloatingActionButton(onPressed: () => showModalBottomSheet<void>(context: context, isScrollControlled: true, showDragHandle: true, builder: (_) => SizedBox(height: MediaQuery.sizeOf(context).height * .82, child: TroChuyen(api: widget.api))), tooltip: 'Chat với CSKH', child: const Icon(Icons.chat_bubble_outline)),
     body: FutureBuilder<List<dynamic>>(future: data, builder: (context, snapshot) {
       if (snapshot.hasError) return Center(child: Padding(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [Text('${snapshot.error}', textAlign: TextAlign.center), const SizedBox(height: 16), FilledButton(onPressed: () => setState(reload), child: const Text('Thử lại'))])));
@@ -41,6 +42,14 @@ class _TrangKhachState extends State<TrangKhach> {
       final hero = cms['hero'] is Map ? Map<String, dynamic>.from(cms['hero']) : <String, dynamic>{};
       final ui = cms['giao_dien'] is Map ? Map<String, dynamic>.from(cms['giao_dien']) : <String, dynamic>{};
       final rooms = rows(catalog['phong']);
+      final album = <String>{
+        ...(hero['album'] is List ? (hero['album'] as List).whereType<String>() : const <String>[]),
+        for (final item in rows(hero['bo_anh']))
+          if (item['url'] is String) item['url'] as String
+          else for (final room in rooms.where((room) => room['id'] == item['phong_id']))
+            for (final image in rows(room['anh_chon']).where((image) => image['id'] == item['anh_id']))
+              label(image, 'url'),
+      }.where((url) => url.startsWith('https://')).toList();
       final combos = rows(catalog['combo']);
       final branches = rows(catalog['chi_nhanh']);
       final available = rows(snapshot.data![2]);
@@ -51,6 +60,19 @@ class _TrangKhachState extends State<TrangKhach> {
       }
       return RefreshIndicator(onRefresh: () async { setState(reload); await data; }, child: CustomScrollView(slivers: [
         if (widget.section == 0) SliverToBoxAdapter(child: _Hero(heading: label(hero, 'tieu_de', 'Đổi không gian. Chạm cảm hứng.'), description: label(hero, 'noi_dung'), image: label(hero, 'anh_nen', label(hero, 'anh', rooms.isNotEmpty && photos(rooms.first).isNotEmpty ? photos(rooms.first).first : '')), name: label(ui, 'ten_web', 'HomeStay'))),
+        if (widget.section == 0 && album.isNotEmpty)
+          SliverToBoxAdapter(child: SizedBox(height: 124, child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            scrollDirection: Axis.horizontal,
+            itemCount: album.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (context, index) => HienDan(
+              delay: Duration(milliseconds: (index % 5) * 55),
+              child: SizedBox(width: 172, child: ClipRRect(
+                borderRadius: BorderRadius.circular(12), child: photo(album[index]),
+              )),
+            ),
+          ))),
         SliverPadding(padding: const EdgeInsets.symmetric(horizontal: 20), sliver: SliverToBoxAdapter(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           if (widget.section == 0) SingleChildScrollView(scrollDirection: Axis.horizontal, child: Wrap(spacing: 8, children: [ChoiceChip(label: const Text('Phòng & giá'), selected: tab == 0, onSelected: (_) => setState(() => tab = 0)), ChoiceChip(label: const Text('Combo'), selected: tab == 1, onSelected: (_) => setState(() => tab = 1)), ChoiceChip(label: const Text('Phòng trống hiện tại'), selected: tab == 2, onSelected: (_) => setState(() { tab = 2; reload(); }))])),
           const SizedBox(height: 16), Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: DropdownButtonFormField<String>(initialValue: branch, isExpanded: true, decoration: const InputDecoration(labelText: 'Chi nhánh'), items: [const DropdownMenuItem(value: '', child: Text('Tất cả chi nhánh')), ...branches.map((b) => DropdownMenuItem(value: label(b, 'id'), child: Text(label(b, 'ten_homestay', label(b, 'ten')), overflow: TextOverflow.ellipsis)))], onChanged: (v) => setState(() => branch = v ?? ''))),
@@ -61,7 +83,7 @@ class _TrangKhachState extends State<TrangKhach> {
           const count = 2;
           return SliverList(delegate: SliverChildBuilderDelegate((context, index) {
             final slice = shown.skip(index * count).take(count).toList();
-            return Padding(padding: const EdgeInsets.only(bottom: 16), child: AnimatedSwitcher(duration: const Duration(milliseconds: 420), transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: SlideTransition(position: Tween(begin: const Offset(.03, 0), end: Offset.zero).animate(animation), child: child)), child: Row(key: ValueKey('$tab-$branch-$sort-$index'), crossAxisAlignment: CrossAxisAlignment.start, children: [for (var n = 0; n < count; n++) Expanded(child: n >= slice.length ? const SizedBox() : Padding(padding: EdgeInsets.only(right: n == count - 1 ? 0 : 16), child: HienDan(delay: Duration(milliseconds: n * 100), child: _Card(item: slice[n], combo: tab == 1, onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => ChiTiet(api: widget.api, item: slice[n], combo: tab == 1)))))))])));
+            return Padding(padding: const EdgeInsets.only(bottom: 16), child: AnimatedSwitcher(duration: const Duration(milliseconds: 180), transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: SlideTransition(position: Tween(begin: const Offset(-.025, -.025), end: Offset.zero).animate(animation), child: child)), child: Row(key: ValueKey('$tab-$branch-$sort-$index'), crossAxisAlignment: CrossAxisAlignment.start, children: [for (var n = 0; n < count; n++) Expanded(child: n >= slice.length ? const SizedBox() : Padding(padding: EdgeInsets.only(right: n == count - 1 ? 0 : 16), child: HienDan(delay: Duration(milliseconds: n * 100), child: _Card(item: slice[n], combo: tab == 1, onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => ChiTiet(api: widget.api, item: slice[n], combo: tab == 1)))))))])));
           }, childCount: (shown.length / count).ceil()));
         })),
         if (widget.section == 0) SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.fromLTRB(20, 20, 20, 96), child: HienDan(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Khách hàng nói về homestay', style: Theme.of(context).textTheme.titleLarge), const SizedBox(height: 16), for (final review in rows(catalog['danh_gia']).take(3)) Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('${label(review, 'ten_khach')} · ${label(review, 'so_sao')} ★'), const SizedBox(height: 8), Text(label(review, 'noi_dung'))])))])))),
@@ -118,7 +140,30 @@ class _Hero extends StatelessWidget {
   const _Hero({required this.heading, required this.description, required this.image, required this.name});
   final String heading, description, image, name;
   @override
-  Widget build(BuildContext context) => Stack(children: [Positioned.fill(child: RepaintBoundary(child: AnimatedBuilder(animation: Scrollable.of(context).position, child: photo(image), builder: (context, child) => Transform.translate(offset: Offset(0, MediaQuery.of(context).disableAnimations ? 0 : (Scrollable.of(context).position.pixels * .08).clamp(0, 24).toDouble()), child: Transform.scale(scale: 1.08, child: child))))), Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.black.withValues(alpha: .15), const Color(0xff251a15)])))), Padding(padding: const EdgeInsets.fromLTRB(24, 110, 24, 48), child: HienDan(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 700), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(name.toUpperCase(), style: const TextStyle(letterSpacing: 3, color: Color(0xffe9bd80))), const SizedBox(height: 18), Text(heading, style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontFamily: 'serif', height: 1.2)), const SizedBox(height: 18), Text(description, style: const TextStyle(height: 1.6))]))))]);
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.all(16),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: Stack(children: [
+        Positioned.fill(child: photo(image)),
+        const Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(
+          gradient: LinearGradient(colors: [Color(0xc9201814), Color(0x55201814)]),
+        ))),
+        Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(name, style: const TextStyle(color: Color(0xffe9bd80))),
+            const SizedBox(height: 12),
+            Text(heading, style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: Colors.white)),
+            if (description.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(description, style: const TextStyle(color: Colors.white)),
+            ],
+          ]),
+        ),
+      ]),
+    ),
+  );
 }
 class _Card extends StatelessWidget {
   const _Card({required this.item, required this.combo, required this.onTap});

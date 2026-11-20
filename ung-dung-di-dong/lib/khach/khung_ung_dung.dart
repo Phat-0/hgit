@@ -14,6 +14,7 @@ class KhungUngDung extends StatefulWidget {
 }
 class _KhungUngDungState extends State<KhungUngDung> {
   int page = 0;
+  final visited = <int>[0];
   Json? access;
   bool checkingAccess = true, adminMode = false;
   int? cartCount;
@@ -66,13 +67,22 @@ class _KhungUngDungState extends State<KhungUngDung> {
         onGuest: () => setState(() => adminMode = false));
     }
     return Scaffold(
-    body: page == 4 ? TaiKhoan(api: widget.api) : TrangKhach(
-      key: ValueKey(page), api: widget.api, scale: widget.scale, onScale: widget.onScale,
-      section: page, onBookingSaved: refreshCart,
-      adminAction: access == null ? null : () => setState(() => adminMode = true),
+    body: IndexedStack(
+      index: visited.indexOf(page),
+      children: [
+        for (final section in visited)
+          TickerMode(
+            key: ValueKey(section), enabled: section == page,
+            child: section == 4 ? TaiKhoan(api: widget.api) : TrangKhach(
+              api: widget.api, scale: widget.scale, onScale: widget.onScale,
+              section: section, onBookingSaved: refreshCart,
+              adminAction: access == null ? null : () => setState(() => adminMode = true),
+            ),
+          ),
+      ],
     ),
     bottomNavigationBar: SafeArea(child: Container(decoration: const BoxDecoration(color: Color(0xff37261c), border: Border(top: BorderSide(color: Color(0xff775338)))), padding: const EdgeInsets.symmetric(vertical: 8), child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-      for (var i=0;i<5;i++) Expanded(child: Semantics(selected: page == i, button: true, child: InkWell(onTap: () { setState(() => page = i); refreshCart(); }, borderRadius: BorderRadius.circular(18), child: Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Column(mainAxisSize: MainAxisSize.min, children: [AnimatedContainer(duration: const Duration(milliseconds: 260), padding: EdgeInsets.all(i == 2 ? 13 : 8), decoration: BoxDecoration(color: i == 2 ? const Color(0xffe9bd80) : page == i ? const Color(0xff67482f) : Colors.transparent, shape: BoxShape.circle), child: Badge(isLabelVisible: i == 4 && cartCount != null, label: Text((cartCount ?? 0) > 99 ? '99+' : '${cartCount ?? 0}'), child: Icon([Icons.home_outlined, Icons.bed_outlined, Icons.add_circle_outline, Icons.redeem, Icons.shopping_bag_outlined][i], size: i == 2 ? 32 : 25, color: i == 2 ? const Color(0xff251a15) : const Color(0xffe9bd80)))), const SizedBox(height: 4), Text(['Trang chủ','Phòng','Đặt phòng','Combo','Giỏ hàng'][i], textAlign: TextAlign.center, style: const TextStyle(fontSize: 11))])))))
+      for (var i=0;i<5;i++) Expanded(child: Semantics(selected: page == i, button: true, child: InkWell(onTap: () { setState(() { page = i; if (!visited.contains(i)) visited.add(i); }); refreshCart(); }, borderRadius: BorderRadius.circular(18), child: Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Column(mainAxisSize: MainAxisSize.min, children: [AnimatedContainer(duration: const Duration(milliseconds: 260), padding: EdgeInsets.all(i == 2 ? 13 : 8), decoration: BoxDecoration(color: i == 2 ? const Color(0xffe9bd80) : page == i ? const Color(0xff67482f) : Colors.transparent, shape: BoxShape.circle), child: Badge(isLabelVisible: i == 4 && cartCount != null, label: Text((cartCount ?? 0) > 99 ? '99+' : '${cartCount ?? 0}'), child: Icon([Icons.home_outlined, Icons.bed_outlined, Icons.add_circle_outline, Icons.redeem, Icons.shopping_bag_outlined][i], size: i == 2 ? 32 : 25, color: i == 2 ? const Color(0xff251a15) : const Color(0xffe9bd80)))), const SizedBox(height: 4), Text(['Trang chủ','Phòng','Đặt phòng','Combo','Giỏ hàng'][i], textAlign: TextAlign.center, style: const TextStyle(fontSize: 11))])))))
     ]))),
     );
   }

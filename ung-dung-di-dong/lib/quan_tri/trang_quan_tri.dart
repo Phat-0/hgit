@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../dung_chung/api.dart';
 import '../khach/tro_chuyen.dart';
+import '../khach/trang_khach.dart' show money, photo;
+import '../khach/ho_so.dart';
+import '../dung_chung/thong_bao.dart';
 
 class TrangQuanTri extends StatefulWidget {
   const TrangQuanTri({super.key, required this.api, required this.access, required this.onGuest});
@@ -11,7 +14,7 @@ class TrangQuanTri extends StatefulWidget {
 }
 class _TrangQuanTriState extends State<TrangQuanTri> {
   static const modules = <String,(String,String,IconData)>{
-    'tong-quan': ('Tổng quan','/tong-quan',Icons.dashboard_outlined),
+    'tong-quan': ('Tổng quan','/tong-quan-moi',Icons.dashboard_outlined),
     'lich': ('Lịch phòng','/lich-phong',Icons.calendar_month),
     've-sinh': ('Vệ sinh','/ve-sinh',Icons.cleaning_services),
     'tin-nhan': ('Tin nhắn','/chat',Icons.chat_bubble_outline),
@@ -24,7 +27,6 @@ class _TrangQuanTriState extends State<TrangQuanTri> {
     'nhan-vien': ('Nhân viên','/nhan-vien',Icons.badge_outlined),
     'lich-su': ('Lịch sử','/lich-su',Icons.history),
     'danh-gia': ('Đánh giá','/danh-gia',Icons.star_outline),
-    'bao-cao': ('Báo cáo','/bao-cao',Icons.bar_chart),
     'trang-chu': ('Trang chủ','/trang-chu',Icons.home_outlined),
     'chatbot': ('Chatbot','/chatbot',Icons.auto_awesome),
   };
@@ -40,9 +42,14 @@ class _TrangQuanTriState extends State<TrangQuanTri> {
         IconButton(onPressed: widget.onGuest, tooltip: 'Giao diện khách', icon: const Icon(Icons.swap_horiz)),
       ]), body: const Center(child: Text('Chưa có mục được phân công.')));
     }
-    return Scaffold(
+    return Theme(
+      data: ThemeData.light(useMaterial3: true).copyWith(
+        scaffoldBackgroundColor: Colors.white,
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff685690)),
+      ),
+      child: Scaffold(
       body: DuLieuQuanTri(key: ValueKey(current), api: widget.api,
-        name: module.$1, path: module.$2, type: current, onGuest: widget.onGuest),
+        name: module.$1, path: module.$2, type: current, onGuest: widget.onGuest, canChat: pages.contains('tin-nhan')),
       bottomNavigationBar: SafeArea(
         child: Material(
           color: Theme.of(context).colorScheme.surfaceContainer,
@@ -64,14 +71,15 @@ class _TrangQuanTriState extends State<TrangQuanTri> {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 
 class DuLieuQuanTri extends StatefulWidget {
-  const DuLieuQuanTri({super.key, required this.api, required this.name, required this.path, required this.type, this.onGuest});
+  const DuLieuQuanTri({super.key, required this.api, required this.name, required this.path, required this.type, this.onGuest, this.canChat = false});
   final Api api; final String name,path,type;
   final VoidCallback? onGuest;
+  final bool canChat;
   @override State<DuLieuQuanTri> createState() => _DuLieuQuanTriState();
 }
 class _DuLieuQuanTriState extends State<DuLieuQuanTri> {
@@ -171,12 +179,150 @@ class _DuLieuQuanTriState extends State<DuLieuQuanTri> {
   }
 
   String time(dynamic value) { final date = DateTime.tryParse('$value'); return date == null ? '' : DateFormat('dd/MM HH:mm').format(date.toLocal()); }
+  Future<void> editBranch([Json? branch]) async {
+    final roomType = widget.type == 'loai-phong';
+    final fields = roomType ? roomTypeFields : branchFields;
+    String? branchId = branch?['homestay_id'] as String?;
+    final options = roomType ? widget.api.request('/cau-hinh') : null;
+    final controllers = {
+      for (final key in fields.keys.where((key) => key != 'homestay_id')) key: TextEditingController(text: label(branch ?? {}, key)),
+    };
+    try {
+      final payload = await showDialog<Json>(
+        context: context,
+        builder: (context) => AlertDialog(
+          scrollable: true, title: Text('${branch == null ? 'Thêm' : 'Sửa'} ${roomType ? 'loại phòng' : 'chi nhánh'}'),
+          content: Column(children: [
+            if (roomType) FutureBuilder<dynamic>(
+              future: options,
+              builder: (context, snapshot) {
+                if (snapshot.hasError) return Text('${snapshot.error}');
+                if (!snapshot.hasData) return const LinearProgressIndicator();
+                final branches = rows(snapshot.data['chi_nhanh']);
+                return DropdownButtonFormField<String>(
+                  initialValue: branchId,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Chi nhánh'),
+                  items: [
+                    for (final option in branches) DropdownMenuItem(
+                      value: label(option, 'id'), child: Text(label(option, 'ten_homestay'), overflow: TextOverflow.ellipsis)),
+                    if (branchId != null && !branches.any((option) => option['id'] == branchId))
+                      DropdownMenuItem(value: branchId, child: Text(label(branch ?? {}, 'ten_homestay', 'Chi nhánh hiện tại'))),
+                  ],
+                  onChanged: (value) => branchId = value,
+                );
+              },
+            ),
+            for (final entry in controllers.entries)
+              Padding(padding: const EdgeInsets.only(bottom: 8), child: TextField(
+                controller: entry.value, decoration: InputDecoration(labelText: fields[entry.key]),
+              )),
+          ]),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
+            FilledButton(onPressed: () => Navigator.pop(context, <String, dynamic>{
+              for (final entry in controllers.entries) entry.key: entry.value.text.trim(),
+              if (roomType) 'homestay_id': branchId,
+              if (!roomType) ...{
+                'trang_thai': branch?['trang_thai'] ?? 'Chờ duyệt',
+                'vi_do': num.tryParse(label(branch ?? {}, 'vi_do')),
+                'kinh_do': num.tryParse(label(branch ?? {}, 'kinh_do')),
+              },
+            }), child: const Text('Lưu')),
+          ],
+        ),
+      );
+      if (payload != null && mounted) await mutateBranch(branch == null ? '' : '/${branch['id']}', branch == null ? 'POST' : 'PUT', payload);
+    } finally {
+      for (final controller in controllers.values) { controller.dispose(); }
+    }
+  }
+
+  static const branchFields = {
+    'ten_homestay': 'Tên chi nhánh', 'dia_chi': 'Địa chỉ',
+    'tinh_thanh': 'Tỉnh thành', 'phuong_xa': 'Phường xã',
+    'so_dien_tho': 'Điện thoại', 'mo_ta': 'Mô tả',
+  };
+
+  static const roomTypeFields = {
+    'homestay_id': 'Mã chi nhánh', 'ten_loai': 'Tên loại phòng',
+    'suc_chua': 'Sức chứa', 'dien_tich_m2': 'Diện tích (m²)',
+  };
+
+  Future<void> mutateBranch(String suffix, String method, [Json? body]) async {
+    if (busy) return;
+    setState(() => busy = true);
+    try {
+      await widget.api.request('${widget.path}$suffix', admin: true, method: method, body: body);
+      if (mounted) setState(load);
+    } catch (error) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> removeBranch(Json branch) async {
+    final confirmed = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
+      title: Text(widget.type == 'loai-phong' ? 'Xóa loại phòng?' : 'Xóa chi nhánh?'),
+      content: Text(label(branch, widget.type == 'loai-phong' ? 'ten_loai' : 'ten_homestay')),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
+        FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Xóa')),
+      ],
+    ));
+    if (mounted && confirmed == true) await mutateBranch('/${branch['id']}', 'DELETE');
+  }
+
+  Widget overview(Json data) {
+    final revenue = rows(data['theo_ngay']).fold<num>(0, (total, row) => total + (num.tryParse(label(row, 'doanh_thu')) ?? 0));
+    return ListView(padding: const EdgeInsets.all(16), children: [
+      for (final item in [
+        ('Chi nhánh / phòng', "${data['tong_homestay'] ?? 0} / ${data['tong_phong'] ?? 0}"),
+        ('Doanh thu tháng', money(revenue)),
+        ('Đơn đặt phòng', label(data, 'tong_dat_phong', '0')),
+        ('Người dùng', label(data, 'tong_nguoi_dung', '0')),
+        ('Đánh giá', label(data, 'tong_danh_gia', '0')),
+      ]) Card(child: ListTile(title: Text(item.$1), trailing: Text(item.$2))),
+      for (final row in rows(data['danh_gia_moi']))
+        ListTile(title: Text(label(row, 'ten_phong')), subtitle: Text(label(row, 'noi_dung'))),
+    ]);
+  }
+
+  Widget home(Json data) {
+    final hero = data['hero'] is Map ? Map<String, dynamic>.from(data['hero']) : <String, dynamic>{};
+    final images = <String>[
+      label(hero, 'anh_nen', label(hero, 'anh')),
+      ...(hero['album'] is List ? (hero['album'] as List).whereType<String>() : const <String>[]),
+    ].where((image) => image.isNotEmpty).toSet();
+    return ListView(padding: const EdgeInsets.all(16), children: [
+      Text(label(hero, 'tieu_de', 'Trang chủ'), style: Theme.of(context).textTheme.titleLarge),
+      Text(label(hero, 'noi_dung')),
+      for (final image in images) Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: AspectRatio(aspectRatio: 2, child: ClipRRect(
+          borderRadius: BorderRadius.circular(12), child: photo(image),
+        )),
+      ),
+    ]);
+  }
+
   @override Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(widget.name), actions: [
     if (widget.onGuest != null) ...[
+      NutThongBao(api: widget.api),
+      IconButton(onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => HoSo(api: widget.api))), tooltip: 'Hồ sơ', icon: const Icon(Icons.account_circle_outlined)),
       IconButton(onPressed: widget.onGuest, tooltip: 'Giao diện khách', icon: const Icon(Icons.swap_horiz)),
       IconButton(onPressed: () => widget.api.token = null, tooltip: 'Đăng xuất', icon: const Icon(Icons.logout)),
     ],
-    IconButton(onPressed: () => setState(load), icon: const Icon(Icons.refresh), tooltip: 'Tải lại')]), body: Column(children: [
+    IconButton(onPressed: () => setState(load), icon: const Icon(Icons.refresh), tooltip: 'Tải lại')]),
+    floatingActionButton: !widget.canChat ? null : FloatingActionButton(
+      tooltip: 'Trò chuyện', child: const Icon(Icons.chat_bubble_outline),
+      onPressed: () => showModalBottomSheet<void>(context: context, isScrollControlled: true,
+        builder: (_) => FractionallySizedBox(heightFactor: .85,
+          child: DuLieuQuanTri(api: widget.api, name: 'Tin nhắn', path: '/chat', type: 'tin-nhan'))),
+    ), body: Column(children: [
+    if (widget.type == 'chi-nhanh' || widget.type == 'loai-phong') TextButton.icon(
+      onPressed: busy ? null : () => editBranch(), icon: const Icon(Icons.add), label: Text(widget.type == 'chi-nhanh' ? 'Thêm chi nhánh' : 'Thêm loại phòng')),
     if(widget.type == 've-sinh') Padding(padding: const EdgeInsets.all(12), child: Wrap(spacing: 8, children: [ChoiceChip(label: const Text('Chưa hoàn thành'), selected: !completed, onSelected: (_) => setState(() => completed = false)), ChoiceChip(label: const Text('Hoàn thành'), selected: completed, onSelected: (_) => setState(() => completed = true))])),
     if(widget.type == 'lich') TextButton.icon(onPressed: () async { final v = await showDatePicker(context: context, initialDate: day, firstDate: DateTime(2020), lastDate: DateTime(2040)); if(v != null && mounted) setState(() { day = v; load(); }); }, icon: const Icon(Icons.calendar_month), label: Text(DateFormat('dd/MM/yyyy').format(day))),
     if (widget.type == 'tin-nhan')
@@ -198,6 +344,8 @@ class _DuLieuQuanTriState extends State<DuLieuQuanTri> {
       if(snapshot.hasError) return Center(child: Padding(padding: const EdgeInsets.all(24), child: Text('${snapshot.error}')));
       if(!snapshot.hasData) return const Center(child: CircularProgressIndicator());
       final data = snapshot.data;
+      if (data is Map && widget.type == 'tong-quan') return overview(Map<String, dynamic>.from(data));
+      if (data is Map && widget.type == 'trang-chu') return home(Map<String, dynamic>.from(data));
       var list = data is List ? rows(data) : data is Map ? rows(data['hoi_thoai'] ?? data['du_lieu'] ?? data['items'] ?? data['phong'] ?? data['data']) : <Json>[];
       if(widget.type == 've-sinh') {
         list = list.where((r) => (r['trang_thai'] == 'Hoàn thành') == completed).toList();
@@ -271,6 +419,21 @@ class _DuLieuQuanTriState extends State<DuLieuQuanTri> {
                 ),
               ),
           ]
+          else if (widget.type == 'chi-nhanh' || widget.type == 'loai-phong')
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(label(row, widget.type == 'loai-phong' ? 'ten_loai' : 'ten_homestay'), style: Theme.of(context).textTheme.titleMedium),
+              if (widget.type == 'loai-phong') ...[
+                Text(label(row, 'ten_homestay')),
+                Text('Sức chứa: ${row['suc_chua'] ?? '—'}'),
+              ] else ...[
+                Text(label(row, 'dia_chi')),
+                Text(label(row, 'trang_thai')),
+              ],
+              Wrap(children: [
+                TextButton(onPressed: busy ? null : () => editBranch(row), child: const Text('Sửa')),
+                TextButton(onPressed: busy ? null : () => removeBranch(row), child: const Text('Xóa')),
+              ]),
+            ])
           else if (widget.type == 'dat-phong')
             ListTile(
               contentPadding: EdgeInsets.zero,
