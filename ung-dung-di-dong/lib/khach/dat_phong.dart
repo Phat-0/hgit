@@ -66,7 +66,7 @@ class _DatPhongState extends State<DatPhong> {
     if (kind == null || !end.isAfter(start)) return;
     debounce = Timer(const Duration(milliseconds: 350), () async {
       try { final value = await widget.api.request('/bao-gia', body: payload()); if (mounted && current == revision) setState(() => quote = Map<String, dynamic>.from(value)); }
-      catch (e) { if (mounted && current == revision) setState(() { error = '$e'; unavailable = e is ApiError && e.status == 409; }); }
+      catch (e) { if (mounted && current == revision) setState(() { error = '$e'; unavailable = e is ApiError && e.phongKhongKhaDung; }); }
     });
   }
   void selectKind(String value) {
@@ -185,7 +185,7 @@ class _DatPhongState extends State<DatPhong> {
     } catch (e) {
       if (mounted) setState(() {
         error = '$e';
-        unavailable = e is ApiError && e.status == 409;
+        unavailable = e is ApiError && e.phongKhongKhaDung;
       });
     } finally {
       if (mounted) setState(() => busy = false);
@@ -219,7 +219,7 @@ class _DatPhongState extends State<DatPhong> {
       if (!mounted) return;
       setState(() {
         error = '$e';
-        unavailable = e is ApiError && e.status == 409;
+        unavailable = e is ApiError && e.phongKhongKhaDung;
       });
       if (unavailable) await showConflict();
     }

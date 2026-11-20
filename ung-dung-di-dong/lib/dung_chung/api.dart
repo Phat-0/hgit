@@ -27,7 +27,12 @@ class Api extends ChangeNotifier {
       if (response.statusCode == 401 && token != null) token = null;
       if (response.statusCode >= 400) {
         final message = data is Map ? data['message'] : null;
-        throw ApiError(response.statusCode, message is List ? message.join('; ') : '${message ?? 'Không thực hiện được yêu cầu'}');
+        final code = data is Map ? data['code'] : null;
+        throw ApiError(
+          response.statusCode,
+          message is List ? message.join('; ') : '${message ?? 'Không thực hiện được yêu cầu'}',
+          code: code is String ? code : null,
+        );
       }
       return data;
     } on TimeoutException { throw Exception('Kết nối quá lâu. Vui lòng thử lại'); }
@@ -37,7 +42,13 @@ class Api extends ChangeNotifier {
 }
 
 class ApiError implements Exception {
- const ApiError(this.status, this.message);
- final int status; final String message;
+ const ApiError(this.status, this.message, {this.code});
+ final int status;
+ final String message;
+ final String? code;
+
+ bool get phongKhongKhaDung => status == 409 &&
+     (code == 'PHONG_KHONG_KHA_DUNG' ||
+         (code == null && message.startsWith('Phòng vừa được đặt')));
  @override String toString() => message;
 }

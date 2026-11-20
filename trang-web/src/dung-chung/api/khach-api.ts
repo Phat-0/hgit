@@ -1,7 +1,17 @@
 export class KhachApiError extends Error {
-  constructor(public readonly status: number, message: string) {
+  constructor(
+    public readonly status: number,
+    message: string,
+    public readonly code?: string,
+  ) {
     super(message);
     this.name = "KhachApiError";
+  }
+
+  get phongKhongKhaDung() {
+    return this.status === 409 &&
+      (this.code === "PHONG_KHONG_KHA_DUNG" ||
+        (!this.code && this.message.startsWith("Phòng vừa được đặt")));
   }
 }
 
@@ -28,6 +38,7 @@ export async function khachApi<T>(
       Array.isArray(j.message)
         ? j.message.join("; ")
         : j.message || "Không thực hiện được yêu cầu. Vui lòng thử lại",
+      typeof j.code === "string" ? j.code : undefined,
     );
   return j;
 }

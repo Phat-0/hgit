@@ -16,9 +16,25 @@ void main() {
     expect((await api.request('/dat-phong', body: {'khoa_yeu_cau': 'retry-key'}))['ma_dat_phong'], 'DP01');
     api.close();
   });
-  test('Không biến lỗi phòng hết chỗ thành đơn thành công', () async {
-    final api = Api(client: MockClient((_) async => http.Response(jsonEncode({'message': 'Phòng vừa được đặt'}), 409)), base: 'https://example.test/api');
-    await expectLater(api.request('/bao-gia', body: {}), throwsA(isA<Exception>().having((e) => '$e', 'message', contains('Phòng vừa được đặt'))));
-    api.close();
-  });
+  for (final (payload, unavailable) in [
+    ({'code': 'PHONG_KHONG_KHA_DUNG', 'message': 'Khung giờ không còn trống'}, true),
+    ({'message': 'Phòng vừa được đặt. Hãy tìm lại lịch trống'}, true),
+    ({'message': 'Voucher đã hết lượt'}, false),
+  ]) {
+    test('Phân loại HTTP 409: ${payload['message']}', () async {
+      final api = Api(
+        client: MockClient((_) async => http.Response(jsonEncode(payload), 409)),
+        base: 'https://example.test/api',
+      );
+      addTearDown(api.close);
+      await expectLater(
+        api.request('/bao-gia', body: {}),
+        throwsA(isA<ApiError>().having(
+          (error) => error.phongKhongKhaDung,
+          'phongKhongKhaDung',
+          unavailable,
+        )),
+      );
+    });
+  }
 }

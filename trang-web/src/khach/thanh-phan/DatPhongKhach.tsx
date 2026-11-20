@@ -239,7 +239,7 @@ export default function DatPhongKhach({
         })
         .catch((e) => {
           if (!active) return;
-          if (e instanceof KhachApiError && e.status === 409) {
+          if (e instanceof KhachApiError && e.phongKhongKhaDung) {
             setConflictKey(serialized);
           }
           setError(e.message);
@@ -374,7 +374,7 @@ export default function DatPhongKhach({
       );
       onSaved(result, room, form.so_dien_thoai);
     } catch (e) {
-      if (e instanceof KhachApiError && e.status === 409) {
+      if (e instanceof KhachApiError && e.phongKhongKhaDung) {
         setConflictKey(serialized);
         setQuoteKey("");
         window.alert(conflictMessage);

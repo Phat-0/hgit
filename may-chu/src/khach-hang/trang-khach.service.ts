@@ -268,7 +268,7 @@ export class TrangKhachService {
       throw new BadRequestException('Phòng không nhận kiểu đặt này');
     if (!(await this.free(c, id, start, end)))
       throw new ConflictException(
-        'Phòng vừa được đặt hoặc chưa đủ khoảng cách 30 phút. Hãy chọn thời gian khác',
+        { code: 'PHONG_KHONG_KHA_DUNG', message: 'Phòng vừa được đặt hoặc chưa đủ khoảng cách 30 phút. Hãy chọn thời gian khác' },
       );
     const rawIds = x.combo_ids === undefined ? (x.combo_id ? [x.combo_id] : []) : x.combo_ids;
     if (!Array.isArray(rawIds) || rawIds.length > 10 || rawIds.some(v=>typeof v!=='string') || new Set(rawIds).size!==rawIds.length)
@@ -444,7 +444,7 @@ export class TrangKhachService {
       await c.query('ROLLBACK');
       if (['23P01', '23505', 'P0001'].includes((e as any).code))
         throw new ConflictException(
-          'Phòng vừa được đặt. Hãy tìm lại lịch trống',
+          { code: 'PHONG_KHONG_KHA_DUNG', message: 'Phòng vừa được đặt. Hãy tìm lại lịch trống' },
         );
       throw e;
     } finally {
