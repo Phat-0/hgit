@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/cupertino.dart' show CupertinoPicker;
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
@@ -18,8 +19,8 @@ class DatPhong extends StatefulWidget {
 class _DatPhongState extends State<DatPhong> {
   final form = GlobalKey<FormState>();
   final name = TextEditingController(), phone = TextEditingController(), note = TextEditingController(), voucher = TextEditingController();
-  final selectedCombos = <String>{};
-  final quantities = <String,int>{};
+  final quantities = <String, int>{};
+  Iterable<String> get selectedCombos => quantities.keys;
   bool unavailable = false;
   double early = 0, lateHours = 0;
   int guests = 1;
@@ -35,12 +36,28 @@ class _DatPhongState extends State<DatPhong> {
   @override
   void initState() { super.initState(); load(); }
   Future<void> load() async {
-    try { final result = await widget.api.request('/cau-hinh'); if (mounted) { setState(() => config = Map<String, dynamic>.from(result)); selectKind('Theo giờ'); if(widget.initialCombo != null) { final id = '${widget.initialCombo!['id']}'; selectedCombos.add(id); quantities[id] = widget.initialQuantity; changed(); } } }
-    catch (e) { if (mounted) setState(() => error = '$e'); }
+    try {
+      final result = await widget.api.request('/cau-hinh');
+      if (!mounted) return;
+      setState(() => config = Map<String, dynamic>.from(result));
+      final defaultKind = widget.room['cho_dat_theo_gio'] != false
+          ? 'Theo giờ'
+          : widget.room['cho_dat_theo_dem'] != false
+              ? 'Theo đêm'
+              : 'Theo ngày';
+      selectKind(defaultKind);
+      if (widget.initialCombo != null) {
+        final id = label(widget.initialCombo!, 'id');
+        quantities[id] = widget.initialQuantity;
+        changed();
+      }
+    } catch (e) {
+      if (mounted) setState(() => error = '$e');
+    }
   }
   @override
   void dispose() { debounce?.cancel(); name.dispose(); phone.dispose(); note.dispose(); voucher.dispose(); super.dispose(); }
-  Json payload() => {'phong_id': widget.room['id'], 'bat_dau': start.subtract(Duration(minutes: (early * 60).round())).toUtc().toIso8601String(), 'ket_thuc': end.add(Duration(minutes: (lateHours * 60).round())).toUtc().toIso8601String(), 'hinh_thuc_dat': kind, 'combo_ids': selectedCombos.toList(), 'combo_so_luong': {for(final id in selectedCombos) id: quantities[id] ?? 1}, 'ma_voucher': voucher.text.trim(), 'gio_nhan_som': early, 'gio_tra_muon': lateHours};
+  Json payload() => {'phong_id': widget.room['id'], 'bat_dau': start.subtract(Duration(minutes: (early * 60).round())).toUtc().toIso8601String(), 'ket_thuc': end.add(Duration(minutes: (lateHours * 60).round())).toUtc().toIso8601String(), 'hinh_thuc_dat': kind, 'combo_ids': selectedCombos.toList(), 'combo_so_luong': {...quantities}, 'ma_voucher': voucher.text.trim(), 'gio_nhan_som': early, 'gio_tra_muon': lateHours};
   void changed() {
     requestKey = null;
     final current = ++revision;
@@ -57,7 +74,7 @@ class _DatPhongState extends State<DatPhong> {
     DateTime timeAt(DateTime day, dynamic raw, int fallback) { final parts = '${raw ?? '$fallback:00'}'.split(':'); return DateTime(day.year, day.month, day.day, int.tryParse(parts[0]) ?? fallback, parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0); }
     setState(() {
       kind = value;
-      early = 0; lateHours = 0; selectedCombos.clear();
+      early = 0; lateHours = 0; quantities.clear();
       if (value == 'Theo giờ') {
         final now = DateTime.now();
         start = DateTime(now.year, now.month, now.day, now.hour, ((now.minute ~/ 30) + 1) * 30);
@@ -99,14 +116,96 @@ class _DatPhongState extends State<DatPhong> {
     try {
       final options = rows(await widget.api.request('/combo', body: payload()));
       if (!mounted) return;
-      final draft = {...selectedCombos};
-      await showDialog<void>(context: context, builder: (context) => StatefulBuilder(builder: (context, update) => Dialog(child: SizedBox(height: MediaQuery.sizeOf(context).height * .7, child: Column(children: [Expanded(child: ListView(children: [if (options.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Text('Chưa có combo phù hợp.')), ...options.map((co) => CheckboxListTile(title: Text(label(co, 'ten_combo')), subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(money(co['gia_combo'])), if(draft.contains(co['id'])) TextFormField(initialValue: '${quantities[co['id']] ?? 1}', keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Số lượng'), onChanged: (v) { final q = int.tryParse(v); update(() => quantities['${co['id']}'] = q ?? 0); })]), value: draft.contains(co['id']), onChanged: (v) => update(() { if (v == true) { if (co['so_gio_bao_gom'] != null) draft.removeWhere((id) => options.any((p) => p['id'] == id && p['so_gio_bao_gom'] != null)); if (draft.length < 10) draft.add('${co['id']}'); } else { draft.remove(co['id']); } })))])), Padding(padding: const EdgeInsets.all(16), child: FilledButton(onPressed: draft.any((id) => (quantities[id] ?? 1) < 1 || (quantities[id] ?? 1) > (options.firstWhere((p) => p['id'] == id)['so_gio_bao_gom'] == null ? 20 : 1)) ? null : () { selectedCombos..clear()..addAll(draft); Navigator.pop(context); }, child: const Text('Áp dụng')))])))));
-      if (mounted) changed();
-    } catch (e) { if (mounted) setState(() {error = '$e'; unavailable = e is ApiError && e.status == 409;}); }
-    finally { if (mounted) setState(() => busy = false); }
+      final available = {for (final combo in options) label(combo, 'id'): combo};
+      final draft = {
+        for (final entry in quantities.entries)
+          if (available.containsKey(entry.key)) entry.key: entry.value,
+      };
+      int limit(String id) => available[id]?['so_gio_bao_gom'] == null ? 20 : 1;
+      final result = await showDialog<Map<String, int>>(
+        context: context,
+        builder: (context) => StatefulBuilder(
+          builder: (context, update) => AlertDialog(
+            title: const Text('Combo'),
+            scrollable: true,
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (options.isEmpty) const Text('Chưa có combo phù hợp.'),
+                for (final entry in available.entries) ...[
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(label(entry.value, 'ten_combo')),
+                    subtitle: Text(money(entry.value['gia_combo'])),
+                    value: draft.containsKey(entry.key),
+                    onChanged: (checked) => update(() {
+                      if (checked != true) {
+                        draft.remove(entry.key);
+                        return;
+                      }
+                      if (limit(entry.key) == 1) {
+                        draft.removeWhere((id, _) => limit(id) == 1);
+                      }
+                      if (draft.length < 10) draft[entry.key] = 1;
+                    }),
+                  ),
+                  if (draft.containsKey(entry.key) && limit(entry.key) > 1)
+                    TextFormField(
+                      key: ValueKey(entry.key),
+                      initialValue: '${draft[entry.key]}',
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      decoration: const InputDecoration(labelText: 'Số lượng (1–20)'),
+                      onChanged: (text) => update(() {
+                        draft[entry.key] = int.tryParse(text) ?? 0;
+                      }),
+                    ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
+              FilledButton(
+                onPressed: draft.entries.any((entry) =>
+                    entry.value < 1 || entry.value > limit(entry.key))
+                    ? null
+                    : () => Navigator.pop(context, draft),
+                child: const Text('Áp dụng'),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (mounted && result != null) {
+        quantities
+          ..clear()
+          ..addAll(result);
+        changed();
+      }
+    } catch (e) {
+      if (mounted) setState(() {
+        error = '$e';
+        unavailable = e is ApiError && e.status == 409;
+      });
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
   }
+
+  Future<void> showConflict() => showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Giờ không khả dụng'),
+      content: const Text('Lịch của bạn đã được đặt, xin vui lòng chọn lại.'),
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Đóng'))],
+    ),
+  );
+
   Future<void> submit() async {
-    if (unavailable) { await showDialog<void>(context: context, builder: (_) => AlertDialog(title: const Text('Lịch không khả dụng'), content: const Text('Lịch của bạn đã được đặt, xin vui lòng chọn lại.'), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Đóng'))])); return; }
+    if (unavailable) {
+      await showConflict();
+      return;
+    }
     if (busy || !form.currentState!.validate() || quote == null || kind == null) return;
     if (widget.api.token == null) return;
     requestKey ??= const Uuid().v4();
@@ -116,13 +215,20 @@ class _DatPhongState extends State<DatPhong> {
       if (!mounted) return;
       await showDialog<void>(context: context, barrierDismissible: false, builder: (context) => AlertDialog(title: const Text('Đã gửi yêu cầu'), content: Text('Mã đơn: ${result['ma_dat_phong']}\n${result['trang_thai']}'), actions: [FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Đóng'))]));
       if (mounted) Navigator.pop(context);
-    } catch (e) { if (mounted) setState(() {error = '$e'; unavailable = e is ApiError && e.status == 409;}); }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        error = '$e';
+        unavailable = e is ApiError && e.status == 409;
+      });
+      if (unavailable) await showConflict();
+    }
     finally { if (mounted) setState(() => busy = false); }
   }
   @override
   Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Đặt phòng'), actions: [if (unavailable) const Padding(padding: EdgeInsets.all(12), child: Tooltip(message: 'Phòng không thể đặt', child: Icon(Icons.event_busy, color: Colors.orange)))]), body: Align(alignment: Alignment.topCenter, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 760), child: SingleChildScrollView(padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.viewInsetsOf(context).bottom + 24), child: Form(key: form, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
     Text(label(widget.room, 'ten_phong'), style: Theme.of(context).textTheme.titleLarge), if(unavailable) const Text('Giờ không khả dụng', style: TextStyle(color: Colors.orange)), const SizedBox(height: 20),
-    const SizedBox(height: 20), TextFormField(controller: name, enabled: !busy, decoration: const InputDecoration(labelText: 'Họ tên'), validator: (v) => (v?.trim().length ?? 0) < 2 ? 'Nhập họ tên' : null, onChanged: (_) => requestKey = null), const SizedBox(height: 12),
+    TextFormField(controller: name, enabled: !busy, decoration: const InputDecoration(labelText: 'Họ tên'), validator: (v) => (v?.trim().length ?? 0) < 2 ? 'Nhập họ tên' : null, onChanged: (_) => requestKey = null), const SizedBox(height: 12),
     TextFormField(controller: phone, enabled: !busy, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Số điện thoại'), validator: (v) => RegExp(r'^(0|\+84|84)[0-9]{9}$').hasMatch((v ?? '').replaceAll(' ', '')) ? null : 'Nhập số điện thoại hợp lệ', onChanged: (_) => requestKey = null), const SizedBox(height: 12),
     Wrap(spacing: 8, runSpacing: 8, children: [for (final entry in [('Theo giờ', 'Giờ', 'cho_dat_theo_gio'), ('Theo đêm', 'Đêm', 'cho_dat_theo_dem'), ('Theo ngày', 'Ngày', 'cho_dat_theo_ngay')]) if (widget.room[entry.$3] != false) ChoiceChip(label: Text(entry.$2), selected: kind == entry.$1, onSelected: busy || config == null ? null : (_) => selectKind(entry.$1))]), const SizedBox(height: 16),
     Wrap(spacing: 12, runSpacing: 12, children: [OutlinedButton.icon(onPressed: kind == null || busy ? null : () => choose(true), icon: const Icon(Icons.login), label: Text('Ngày nhận: ${DateFormat('dd/MM/yyyy').format(start)}')), OutlinedButton.icon(onPressed: kind == null || busy ? null : () => choose(false), icon: const Icon(Icons.logout), label: Text('Ngày trả: ${DateFormat('dd/MM/yyyy').format(end)}'))]),

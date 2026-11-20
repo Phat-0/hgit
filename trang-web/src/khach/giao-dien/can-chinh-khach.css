@@ -203,6 +203,12 @@
 .kh-reserve > header {
   padding-bottom: 12px;
 }
+.kh-reserve-conflict {
+  margin-inline-start: auto;
+  color: #a43828;
+  font-size: 1.25em;
+  flex: none;
+}
 .kh-reserve h2 {
   font-size: 26px;
   margin: 4px 0;

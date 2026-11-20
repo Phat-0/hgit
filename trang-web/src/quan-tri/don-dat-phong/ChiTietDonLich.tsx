@@ -32,7 +32,7 @@ type Don = DonSua & {
   tien_da_thanh_toan: string;
   ten_combo: string | null;
   ma_voucher?:string;
-  combo_da_chon?:{id:string;ten_combo:string;gia_combo:number;gia_chua_xac_dinh?:boolean}[];
+  combo_da_chon?:{id:string;ten_combo:string;gia_combo:number;so_luong?:number;gia_chua_xac_dinh?:boolean}[];
   cau_hinh_gia_chot?:{tien_phu_thu?:number;gio_nhan_som?:number;gio_tra_muon?:number};
   chi_tiet?:{id:string;ten_muc_chot:string;so_luong:number;thanh_tien:number;du_lieu_chot?:{gia_chua_xac_dinh?:boolean}}[];
   thay_doi?: Change[];
@@ -138,7 +138,7 @@ export default function ChiTietDonLich({
                 ["Tiền giảm", vnd(don.tien_giam)],
                 ["Tổng tiền", vnd(don.tong_tien)],
                 ["Đã thanh toán", vnd(don.tien_da_thanh_toan)],
-                ["Combo", don.combo_da_chon?.length?don.combo_da_chon.map(c=>c.ten_combo+' · '+(c.gia_chua_xac_dinh?'Chưa có đơn giá chốt':vnd(c.gia_combo))).join(' / '):don.ten_combo || "—"],
+                ["Combo", don.combo_da_chon?.length?don.combo_da_chon.map(c=>c.ten_combo+' × '+(c.so_luong??1)+' · '+(c.gia_chua_xac_dinh?'Chưa có đơn giá chốt':vnd(c.gia_combo))).join(' / '):don.ten_combo || "—"],
                 ["Voucher",don.ma_voucher||'—'],
                 ["Nhận sớm / trả muộn",(don.cau_hinh_gia_chot?.gio_nhan_som||0)+' giờ / '+(don.cau_hinh_gia_chot?.gio_tra_muon||0)+' giờ'],
                 ["Phụ thu trong giá phòng",vnd(don.cau_hinh_gia_chot?.tien_phu_thu||0)],

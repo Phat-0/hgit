@@ -1,3 +1,10 @@
+export class KhachApiError extends Error {
+  constructor(public readonly status: number, message: string) {
+    super(message);
+    this.name = "KhachApiError";
+  }
+}
+
 export async function khachApi<T>(
   path: string,
   method = "GET",
@@ -16,7 +23,8 @@ export async function khachApi<T>(
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok)
-    throw Error(
+    throw new KhachApiError(
+      r.status,
       Array.isArray(j.message)
         ? j.message.join("; ")
         : j.message || "Không thực hiện được yêu cầu. Vui lòng thử lại",

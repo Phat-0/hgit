@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
-import { khachApi } from "../../dung-chung/api/khach-api";
+import { KhachApiError, khachApi } from "../../dung-chung/api/khach-api";
 import { RangePicker } from "../../dung-chung/lich/RangePicker";
 import {
   goiYThoiGian,
@@ -20,6 +20,7 @@ export type MucDatPhong = {
   room?: PhongKhach;
   seed?: Record<string, string>;
   comboId?: string;
+  comboQuantity?: number;
   roomIds?: string[];
 };
 type Kind = "" | "gio" | "ngay" | "dem";
@@ -86,7 +87,9 @@ export default function DatPhongKhach({
     [comboIds, setComboIds] = useState<string[]>(
       target.comboId ? [target.comboId] : [],
     ),
-    [comboQuantities,setComboQuantities] = useState<Record<string,number>>({}),
+    [comboQuantities, setComboQuantities] = useState<Record<string, number>>(
+      target.comboId ? { [target.comboId]: target.comboQuantity ?? 1 } : {},
+    ),
     [showCombos, setShowCombos] = useState(false),
     [guestConfirm, setGuestConfirm] = useState(false),
     [early, setEarly] = useState(0),
@@ -98,6 +101,7 @@ export default function DatPhongKhach({
     [discount,setDiscount]=useState(0),
     [quoteKey, setQuoteKey] = useState(""),
     [error, setError] = useState(""),
+    [conflictKey, setConflictKey] = useState(""),
     [quoting, setQuoting] = useState(false),
     [busy, setBusy] = useState(false),
     [form, setForm] = useState({
@@ -170,7 +174,6 @@ export default function DatPhongKhach({
       message: "",
     };
   }, [roomId, kind, start, end, st, et, config, comboIds, room, early, late,voucher,comboQuantities]);
-  const unavailable = /vừa được đặt|trùng|khoảng cách 30 phút|đã có khóa/i.test(error);
   const serialized = JSON.stringify(request.q),
     key = useRef(crypto.randomUUID()),
     inFlight = useRef(false),
@@ -180,6 +183,8 @@ export default function DatPhongKhach({
     closeRef = useRef(onClose),
     busyRef = useRef(false),
     hiddenRef = useRef(hidden);
+  const unavailable = !!request.q && conflictKey === serialized;
+  const conflictMessage = "Lịch của bạn đã được đặt, xin vui lòng chọn lại.";
   closeRef.current = onClose;
   busyRef.current = busy;
   hiddenRef.current = hidden;
@@ -187,6 +192,7 @@ export default function DatPhongKhach({
   useEffect(() => {
     if(!request.q)setPrice(null);
     setQuoteKey("");
+    setConflictKey("");
     setError("");
     if (!request.q) {
       setCombos([]);
@@ -232,7 +238,11 @@ export default function DatPhongKhach({
           setQuoteKey(serialized);
         })
         .catch((e) => {
-          if (active) setError(e.message);
+          if (!active) return;
+          if (e instanceof KhachApiError && e.status === 409) {
+            setConflictKey(serialized);
+          }
+          setError(e.message);
         })
         .finally(() => {
           if (active) setQuoting(false);
@@ -326,7 +336,10 @@ export default function DatPhongKhach({
   }
   async function submit(e?: FormEvent, allowGuest = false) {
     e?.preventDefault();
-    if(unavailable){window.alert("Lịch của bạn đã được đặt, xin vui lòng chọn lại.");return;}
+    if (unavailable) {
+      window.alert(conflictMessage);
+      return;
+    }
     if (showCombos) {
       setShowCombos(false);
       return;
@@ -361,6 +374,11 @@ export default function DatPhongKhach({
       );
       onSaved(result, room, form.so_dien_thoai);
     } catch (e) {
+      if (e instanceof KhachApiError && e.status === 409) {
+        setConflictKey(serialized);
+        setQuoteKey("");
+        window.alert(conflictMessage);
+      }
       setError((e as Error).message);
     } finally {
       inFlight.current = false;
@@ -391,6 +409,11 @@ export default function DatPhongKhach({
             <small>Đặt phòng HomeStay</small>
             <h2 id="kh-reserve-title">Chọn lịch nghỉ của bạn</h2>
           </div>
+          {unavailable && (
+            <span className="kh-reserve-conflict" role="img" aria-label="Phòng không thể đặt" title="Phòng không thể đặt">
+              ⚠
+            </span>
+          )}
           <button
             type="button"
             disabled={busy}
@@ -400,7 +423,7 @@ export default function DatPhongKhach({
             ×
           </button>
         </header>
-        <form onSubmit={submit}>
+        <form onSubmit={(e) => void submit(e)} noValidate>
           <fieldset disabled={busy} className="kh-reserve-fields">
             <div className="kh-reserve-combo-toolbar">
               <button
@@ -722,7 +745,7 @@ export default function DatPhongKhach({
                 </button>
               </div>
             )}
-            {unavailable && <p role="status" className="kh-error"><span aria-label="Phòng không thể đặt">⚠</span> Giờ không khả dụng</p>}
+            {unavailable && <p role="status" className="kh-error">Giờ không khả dụng</p>}
             {(error || request.message) && (
               <p role="alert" className="kh-error">
                 {error || request.message}

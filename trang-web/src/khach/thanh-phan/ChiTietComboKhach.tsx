@@ -13,7 +13,7 @@ export default function ChiTietComboKhach({
   combo: ComboGioiThieu;
   phong: PhongKhach[];
   onDong: () => void;
-  onChon: () => void;
+  onChon: (quantity: number, roomId: string) => void;
   onMo: (url: string) => void;
 }) {
   const ref = useRef<HTMLElement>(null),
@@ -28,6 +28,9 @@ export default function ChiTietComboKhach({
         combo.chi_nhanh_ids?.includes(p.homestay_id)),
   );
   const [roomId, setRoomId] = useState(rooms[0]?.id || "");
+  const [quantity, setQuantity] = useState("1");
+  const count = Number(quantity);
+  const validQuantity = /^[0-9]+$/.test(quantity) && count >= 1 && count <= 20;
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null,
       overflow = document.body.style.overflow;
@@ -39,7 +42,7 @@ export default function ChiTietComboKhach({
       if (e.key === "Tab") {
         const items = Array.from(
             ref.current?.querySelectorAll<HTMLElement>(
-              'button,select,[tabindex="0"]',
+              'button:not(:disabled),select,input,[tabindex="0"]',
             ) || [],
           ),
           first = items[0],
@@ -138,7 +141,24 @@ export default function ChiTietComboKhach({
           <p>
             Chọn lịch để kiểm tra phòng trống, điều kiện áp dụng và tổng giá.
           </p>
-          <button type="button" className="kh-detail-book" onClick={onChon}>
+          {combo.so_gio_bao_gom == null && (
+            <label>
+              Số lượng
+              <input
+                value={quantity}
+                inputMode="numeric"
+                maxLength={2}
+                aria-invalid={!validQuantity}
+                onChange={(e) => setQuantity(e.target.value.replace(/[^0-9]/g, ""))}
+              />
+            </label>
+          )}
+          <button
+            type="button"
+            className="kh-detail-book"
+            disabled={!validQuantity || !selected}
+            onClick={() => onChon(count, roomId)}
+          >
             Chọn lịch áp dụng →
           </button>
         </div>
