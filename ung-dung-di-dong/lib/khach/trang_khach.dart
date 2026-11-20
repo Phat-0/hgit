@@ -11,10 +11,10 @@ List<String> photos(Json item) => (item['anh'] is List ? item['anh'] as List : [
 Widget photo(String? url, {BoxFit fit = BoxFit.cover}) => url == null || url.isEmpty ? const ColoredBox(color: Color(0xff493225), child: Center(child: Icon(Icons.bed_outlined, size: 54))) : Image.network(url, fit: fit, errorBuilder: (_, __, ___) => const ColoredBox(color: Color(0xff493225), child: Center(child: Icon(Icons.image_not_supported_outlined))));
 
 class TrangKhach extends StatefulWidget {
-  const TrangKhach({super.key, required this.api, required this.scale, required this.onScale, this.section = 0, this.adminAction});
+  const TrangKhach({super.key, required this.api, required this.scale, required this.onScale, this.section = 0, this.adminAction, this.onBookingSaved});
   final Api api;
   final int section;
-  final VoidCallback? adminAction;
+  final VoidCallback? adminAction, onBookingSaved;
   final double scale;
   final ValueChanged<double> onScale;
   @override
@@ -43,31 +43,75 @@ class _TrangKhachState extends State<TrangKhach> {
       final rooms = rows(catalog['phong']);
       final combos = rows(catalog['combo']);
       final branches = rows(catalog['chi_nhanh']);
-      final shown = (tab == 0 ? rooms : combos).where((p) => branch.isEmpty || (tab == 0 ? p['homestay_id'] == branch : p['pham_vi'] == 'toan_he_thong' || (p['chi_nhanh_ids'] is List && (p['chi_nhanh_ids'] as List).contains(branch)) || (p['pham_vi'] == 'phong' && p['phong_ids'] is List && rooms.any((room) => room['homestay_id'] == branch && (p['phong_ids'] as List).contains(room['id']))))).toList();
-      shown.sort((a,b) { final key = tab == 1 ? 'gia_combo' : 'gia_moi_gio'; final price = (num.tryParse('${a[key]}') ?? 0).compareTo(num.tryParse('${b[key]}') ?? 0); return sort == 'gia_tang' ? price : sort == 'gia_giam' ? -price : (num.tryParse('${b['luot_dat']}') ?? 0).compareTo(num.tryParse('${a['luot_dat']}') ?? 0); });
-      final stats = catalog['thong_ke'] is Map ? Map<String, dynamic>.from(catalog['thong_ke']) : <String, dynamic>{};
       final available = rows(snapshot.data![2]);
+      final shown = (tab == 0 ? rooms : tab == 1 ? combos : available).where((p) => branch.isEmpty || (tab != 1 ? p['homestay_id'] == branch : p['pham_vi'] == 'toan_he_thong' || (p['chi_nhanh_ids'] is List && (p['chi_nhanh_ids'] as List).contains(branch)) || (p['pham_vi'] == 'phong' && p['phong_ids'] is List && rooms.any((room) => room['homestay_id'] == branch && (p['phong_ids'] as List).contains(room['id']))))).toList();
+      shown.sort((a,b) { final key = tab == 1 ? 'gia_combo' : 'gia_moi_gio'; final price = (num.tryParse('${a[key]}') ?? 0).compareTo(num.tryParse('${b[key]}') ?? 0); return sort == 'gia_tang' ? price : sort == 'gia_giam' ? -price : (num.tryParse('${b['luot_dat']}') ?? 0).compareTo(num.tryParse('${a['luot_dat']}') ?? 0); });
+      if (widget.section == 2) {
+        return _DatPhongTaiCho(api: widget.api, rooms: rooms, onSaved: widget.onBookingSaved);
+      }
       return RefreshIndicator(onRefresh: () async { setState(reload); await data; }, child: CustomScrollView(slivers: [
         if (widget.section == 0) SliverToBoxAdapter(child: _Hero(heading: label(hero, 'tieu_de', 'Đổi không gian. Chạm cảm hứng.'), description: label(hero, 'noi_dung'), image: label(hero, 'anh_nen', label(hero, 'anh', rooms.isNotEmpty && photos(rooms.first).isNotEmpty ? photos(rooms.first).first : '')), name: label(ui, 'ten_web', 'HomeStay'))),
-        if (widget.section == 0) SliverPadding(padding: const EdgeInsets.all(20), sliver: SliverToBoxAdapter(child: HienDan(child: Wrap(spacing: 24, runSpacing: 16, children: [for (final entry in [('Chi nhánh', stats['so_homestay']), ('Phòng', stats['so_phong']), ('Lượt khách', stats['luot_khach'])]) Column(mainAxisSize: MainAxisSize.min, children: [Text('${entry.$2 ?? 0}', style: Theme.of(context).textTheme.headlineMedium), Text(entry.$1)])])))),
-        if (widget.section == 0) SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Phòng trống hiện tại', style: Theme.of(context).textTheme.titleLarge), const SizedBox(height: 12), if (snapshot.data![2] == null) const Text('Chưa tải được phòng trống. Kéo xuống để thử lại.') else if (available.isEmpty) const Text('Chưa có phòng phù hợp khung giờ hiện tại.'), ...available.map((p) => ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.bed_outlined), title: Text(label(p, 'ten_phong')), subtitle: Text(label(p, 'ten_homestay')), trailing: const Icon(Icons.arrow_forward), onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => DatPhong(api: widget.api, room: p)))))]))),
         SliverPadding(padding: const EdgeInsets.symmetric(horizontal: 20), sliver: SliverToBoxAdapter(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          if (widget.section == 0) Wrap(spacing: 8, runSpacing: 8, children: [ChoiceChip(label: const Text('Phòng & giá'), selected: tab == 0, onSelected: (_) => setState(() => tab = 0)), ChoiceChip(label: const Text('Combo'), selected: tab == 1, onSelected: (_) => setState(() => tab = 1))]),
-          const SizedBox(height: 16), DropdownButtonFormField<String>(initialValue: branch, isExpanded: true, decoration: const InputDecoration(labelText: 'Chi nhánh'), items: [const DropdownMenuItem(value: '', child: Text('Tất cả chi nhánh')), ...branches.map((b) => DropdownMenuItem(value: label(b, 'id'), child: Text(label(b, 'ten_homestay', label(b, 'ten')), overflow: TextOverflow.ellipsis)))], onChanged: (v) => setState(() => branch = v ?? '')),
-          const SizedBox(height: 12), DropdownButtonFormField<String>(initialValue: sort, isExpanded: true, decoration: const InputDecoration(labelText: 'Sắp xếp'), items: const [DropdownMenuItem(value: 'noi_bat', child: Text('Nổi bật')), DropdownMenuItem(value: 'gia_tang', child: Text('Giá tăng dần')), DropdownMenuItem(value: 'gia_giam', child: Text('Giá giảm dần'))], onChanged: (v) => setState(() => sort = v ?? 'noi_bat')),
-          const SizedBox(height: 16), if (shown.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Text('Chưa có dữ liệu phù hợp.')),
+          if (widget.section == 0) SingleChildScrollView(scrollDirection: Axis.horizontal, child: Wrap(spacing: 8, children: [ChoiceChip(label: const Text('Phòng & giá'), selected: tab == 0, onSelected: (_) => setState(() => tab = 0)), ChoiceChip(label: const Text('Combo'), selected: tab == 1, onSelected: (_) => setState(() => tab = 1)), ChoiceChip(label: const Text('Phòng trống hiện tại'), selected: tab == 2, onSelected: (_) => setState(() { tab = 2; reload(); }))])),
+          const SizedBox(height: 16), Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: DropdownButtonFormField<String>(initialValue: branch, isExpanded: true, decoration: const InputDecoration(labelText: 'Chi nhánh'), items: [const DropdownMenuItem(value: '', child: Text('Tất cả chi nhánh')), ...branches.map((b) => DropdownMenuItem(value: label(b, 'id'), child: Text(label(b, 'ten_homestay', label(b, 'ten')), overflow: TextOverflow.ellipsis)))], onChanged: (v) => setState(() => branch = v ?? ''))),
+          const SizedBox(width: 8), Expanded(child: DropdownButtonFormField<String>(initialValue: sort, isExpanded: true, decoration: const InputDecoration(labelText: 'Sắp xếp'), items: const [DropdownMenuItem(value: 'noi_bat', child: Text('Nổi bật')), DropdownMenuItem(value: 'gia_tang', child: Text('Giá tăng dần')), DropdownMenuItem(value: 'gia_giam', child: Text('Giá giảm dần'))], onChanged: (v) => setState(() => sort = v ?? 'noi_bat')))]),
+          const SizedBox(height: 16), if (shown.isEmpty) Padding(padding: const EdgeInsets.all(24), child: Text(tab == 2 && snapshot.data![2] == null ? 'Chưa tải được phòng trống. Kéo xuống để thử lại.' : 'Chưa có dữ liệu phù hợp.')),
         ]))),
         SliverPadding(padding: const EdgeInsets.symmetric(horizontal: 20), sliver: SliverLayoutBuilder(builder: (context, constraints) {
           const count = 2;
           return SliverList(delegate: SliverChildBuilderDelegate((context, index) {
             final slice = shown.skip(index * count).take(count).toList();
-            return Padding(padding: const EdgeInsets.only(bottom: 16), child: AnimatedSwitcher(duration: const Duration(milliseconds: 420), transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: SlideTransition(position: Tween(begin: const Offset(.03, 0), end: Offset.zero).animate(animation), child: child)), child: Row(key: ValueKey('$tab-$branch-$sort-$index'), crossAxisAlignment: CrossAxisAlignment.start, children: [for (var n = 0; n < count; n++) Expanded(child: n >= slice.length ? const SizedBox() : Padding(padding: EdgeInsets.only(right: n == count - 1 ? 0 : 16), child: HienDan(child: _Card(item: slice[n], combo: tab == 1, onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => widget.section == 2 ? DatPhong(api: widget.api, room: slice[n]) : ChiTiet(api: widget.api, item: slice[n], combo: tab == 1)))))))])));
+            return Padding(padding: const EdgeInsets.only(bottom: 16), child: AnimatedSwitcher(duration: const Duration(milliseconds: 420), transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: SlideTransition(position: Tween(begin: const Offset(.03, 0), end: Offset.zero).animate(animation), child: child)), child: Row(key: ValueKey('$tab-$branch-$sort-$index'), crossAxisAlignment: CrossAxisAlignment.start, children: [for (var n = 0; n < count; n++) Expanded(child: n >= slice.length ? const SizedBox() : Padding(padding: EdgeInsets.only(right: n == count - 1 ? 0 : 16), child: HienDan(delay: Duration(milliseconds: n * 100), child: _Card(item: slice[n], combo: tab == 1, onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => ChiTiet(api: widget.api, item: slice[n], combo: tab == 1)))))))])));
           }, childCount: (shown.length / count).ceil()));
         })),
         if (widget.section == 0) SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.fromLTRB(20, 20, 20, 96), child: HienDan(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Khách hàng nói về homestay', style: Theme.of(context).textTheme.titleLarge), const SizedBox(height: 16), for (final review in rows(catalog['danh_gia']).take(3)) Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('${label(review, 'ten_khach')} · ${label(review, 'so_sao')} ★'), const SizedBox(height: 8), Text(label(review, 'noi_dung'))])))])))),
       ]));
     }),
   );
+}
+
+class _DatPhongTaiCho extends StatefulWidget {
+  const _DatPhongTaiCho({required this.api, required this.rooms, this.onSaved});
+  final Api api;
+  final List<Json> rooms;
+  final VoidCallback? onSaved;
+  @override State<_DatPhongTaiCho> createState() => _DatPhongTaiChoState();
+}
+
+class _DatPhongTaiChoState extends State<_DatPhongTaiCho> {
+  String? roomId;
+  int formVersion = 0;
+
+  @override Widget build(BuildContext context) {
+    if (widget.rooms.isEmpty) return const Center(child: Text('Chưa có phòng.'));
+    final room = widget.rooms.firstWhere(
+      (room) => label(room, 'id') == roomId, orElse: () => widget.rooms.first,
+    );
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+        child: DropdownButtonFormField<String>(
+          initialValue: label(room, 'id'),
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'Chọn phòng'),
+          items: [
+            for (final item in widget.rooms)
+              DropdownMenuItem(value: label(item, 'id'),
+                child: Text(label(item, 'ten_phong'), overflow: TextOverflow.ellipsis)),
+          ],
+          onChanged: (value) => setState(() => roomId = value),
+        ),
+      ),
+      Expanded(child: DatPhong(
+        key: ValueKey((room['id'], formVersion)),
+        api: widget.api, room: room, embedded: true,
+        onSaved: () {
+          widget.onSaved?.call();
+          setState(() => formVersion++);
+        },
+      )),
+    ]);
+  }
 }
 
 class _Hero extends StatelessWidget {
@@ -94,7 +138,13 @@ class ChiTiet extends StatelessWidget {
   Widget build(BuildContext context) {
     final images = photos(item);
     return Scaffold(appBar: AppBar(title: Text(label(item, combo ? 'ten_combo' : 'ten_phong'))), body: SingleChildScrollView(padding: const EdgeInsets.all(20), child: LayoutBuilder(builder: (context, box) {
-      final gallery = Column(children: [AspectRatio(aspectRatio: 1.15, child: PageView(children: [for (final image in images) GestureDetector(onTap: () => Navigator.push(context, MaterialPageRoute<void>(fullscreenDialog: true, builder: (_) => Scaffold(appBar: AppBar(title: const Text('Ảnh phòng')), body: PageView(controller: PageController(initialPage: images.indexOf(image)), children: [for (final src in images) InteractiveViewer(minScale: 1, maxScale: 4, child: Center(child: photo(src, fit: BoxFit.contain)))])))), child: ClipRRect(borderRadius: BorderRadius.circular(20), child: photo(image))), if (images.isEmpty) photo(null)])), if (images.length > 1) const Padding(padding: EdgeInsets.all(12), child: Text('Vuốt xem ảnh · Chạm để phóng to'))]);
+      final gallery = Column(children: [Stack(children: [AspectRatio(aspectRatio: 1.15, child: PageView(children: [for (final image in images) GestureDetector(onTap: () => Navigator.push(context, MaterialPageRoute<void>(fullscreenDialog: true, builder: (_) => Scaffold(appBar: AppBar(title: const Text('Ảnh phòng')), body: PageView(controller: PageController(initialPage: images.indexOf(image)), children: [for (final src in images) InteractiveViewer(minScale: 1, maxScale: 4, child: Center(child: photo(src, fit: BoxFit.contain)))])))), child: ClipRRect(borderRadius: BorderRadius.circular(20), child: photo(image))), if (images.isEmpty) photo(null)])),
+        if (!combo && item['dang_su_dung'] is bool)
+          Positioned(top: 8, right: 8, child: Chip(
+            backgroundColor: item['dang_su_dung'] == true ? const Color(0xff743829) : const Color(0xff235b42),
+            label: Text(item['dang_su_dung'] == true ? 'Đang sử dụng' : 'Đang trống', style: const TextStyle(color: Colors.white)),
+          )),
+      ]), if (images.length > 1) const Padding(padding: EdgeInsets.all(12), child: Text('Vuốt xem ảnh · Chạm để phóng to'))]);
       final info = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label(item, combo ? 'ten_combo' : 'ten_phong'), style: Theme.of(context).textTheme.headlineMedium), const SizedBox(height: 20), if (combo) ...[Text(money(item['gia_combo'])), const SizedBox(height: 16), ComboDat(api: api, combo: item)] else ...[Text('Theo giờ: ${money(item['gia_moi_gio'])}'), Text('Qua đêm: ${money(item['gia_moi_dem'])}'), Text('Theo ngày: ${money(item['gia_moi_ngay'])}'), const SizedBox(height: 16), FilledButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => DatPhong(api: api, room: item))), icon: const Icon(Icons.calendar_month), label: const Text('Đặt phòng'))], const SizedBox(height: 24), Text(label(item, 'mo_ta', 'Thông tin đang cập nhật'), style: const TextStyle(height: 1.6)), if (item['tien_nghi'] is List) Padding(padding: const EdgeInsets.only(top: 20), child: Wrap(spacing: 8, runSpacing: 8, children: [for (final amenity in item['tien_nghi']) Chip(label: Text('$amenity'))]))]);
       return box.maxWidth > 800 && MediaQuery.textScalerOf(context).scale(14) < 24 ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(flex: 3, child: gallery), const SizedBox(width: 24), Expanded(flex: 2, child: info)]) : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [gallery, const SizedBox(height: 24), info]);
     })));

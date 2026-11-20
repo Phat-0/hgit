@@ -100,6 +100,11 @@ export class TrangKhachService {
     const c=await this.conn.db();
     try {
       const roomRows=await c.query(`SELECT p.id,p.homestay_id,p.ten_phong,p.ma_phong,p.gia_moi_gio,p.gia_moi_ngay,p.gia_moi_dem,p.gia_phu_thu_gio,p.so_gio_toi_thieu,p.cho_dat_theo_gio,p.cho_dat_theo_ngay,p.cho_dat_theo_dem,h.ten_homestay,h.dia_chi,h.tinh_thanh,l.ten_loai,coalesce(to_jsonb(p)->>'mo_ta',to_jsonb(l)->>'mo_ta') AS mo_ta,l.suc_chua,l.dien_tich_m2,
+        (EXISTS(SELECT 1 FROM public.dat_phong d WHERE d.phong_id=p.id
+          AND d.trang_thai IN ('Chờ thanh toán','Chờ xác nhận','Đã xác nhận','Đã nhận phòng')
+          AND (d.trang_thai NOT IN ('Chờ thanh toán','Chờ xác nhận') OR d.het_han_giu_cho IS NULL OR d.het_han_giu_cho>now())
+          AND d.nhan_phong_luc<=now() AND d.tra_phong_luc>now())
+          OR EXISTS(SELECT 1 FROM public.chan_lich_phong k WHERE k.phong_id=p.id AND k.bat_dau<=now() AND k.ket_thuc>now())) AS dang_su_dung,
         (SELECT count(*)::int FROM public.dat_phong d WHERE d.phong_id=p.id AND d.trang_thai IN ('Đã xác nhận','Đã nhận phòng','Đã trả phòng')) AS luot_dat
         FROM public.phong p JOIN public.homestay h ON h.id=p.homestay_id JOIN public.loai_phong l ON l.id=p.loai_phong_id WHERE h.trang_thai='Đang hoạt động' ORDER BY h.ten_homestay,p.ma_phong LIMIT 200`);
       const photos=await c.query('SELECT id,phong_id,duong_dan FROM public.hinh_anh_phong WHERE phong_id=ANY($1::uuid[]) ORDER BY la_anh_dai_dien DESC,thu_tu,id',[roomRows.rows.map(p=>p.id)]);

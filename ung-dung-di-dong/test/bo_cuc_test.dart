@@ -7,6 +7,28 @@ import 'package:homestay_app/dung_chung/api.dart';
 import 'package:homestay_app/khach/khung_ung_dung.dart';
 
 void main() {
+  testWidgets('Nhân viên vào quản trị và chuyển sang giao diện khách', (tester) async {
+    final api = Api(client: MockClient((request) async {
+      final path = request.url.path;
+      final Object payload = path.endsWith('/toi')
+        ? {'duoc_phep': true, 'trang': ['ve-sinh']}
+        : path.endsWith('/so-don')
+          ? {'so_don': 3}
+          : path.endsWith('/ve-sinh') || path.endsWith('/phong-trong-hien-tai') ? [] : {};
+      return http.Response.bytes(utf8.encode(jsonEncode(payload)), 200);
+    }))..token = 'fixture';
+    await tester.pumpWidget(MaterialApp(home: KhungUngDung(api: api, scale: 1, onScale: (_) {})));
+    await tester.pumpAndSettle();
+    expect(find.text('Vệ sinh'), findsNWidgets(2));
+    expect(find.text('Nhân viên'), findsNothing);
+    await tester.tap(find.byTooltip('Giao diện khách'));
+    await tester.pumpAndSettle();
+    expect(find.text('Phòng trống hiện tại'), findsOneWidget);
+    expect(find.text('3'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    api.close();
+  });
+
   for (final width in [320.0, 390.0, 768.0, 1024.0]) {
     for (final scale in [1.0, 1.5, 2.0]) {
       testWidgets('Không tràn ở màn $width với cỡ chữ $scale', (tester) async {

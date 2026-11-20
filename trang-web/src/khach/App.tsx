@@ -6,7 +6,6 @@ import useHieuUngCuon from './useHieuUngCuon';
 import ThongBaoKhach from "./thanh-phan/ThongBaoKhach";
 import KhungDatDonChim from "./thanh-phan/KhungDatDonChim";
 import ChanTrangKhach from "./thanh-phan/ChanTrangKhach";
-import ConSoLuuTru from "./thanh-phan/ConSoLuuTru";
 import {layGiaoDien, type NoiDungTrangChu } from "../dung-chung/du-lieu/trang-chu-noi-dung";
 import { useEffect, useRef, useState,type CSSProperties } from "react";
 import { createPortal } from "react-dom";
@@ -79,7 +78,7 @@ export default function App() {
   const [catalog,setCatalog]=useState<DuLieuGioiThieu>({phong:[],combo:[],danh_gia:[],chi_nhanh:[]}),[catalogError,setCatalogError]=useState(''),[comboChon,setComboChon]=useState(new URLSearchParams(location.search).get('combo')||'');
   const [comboDetail,setComboDetail]=useState(''),[roomIntent,setRoomIntent]=useState(new URLSearchParams(location.search).get('phong')||'');
   useEffect(()=>{let active=true;void khachApi<DuLieuGioiThieu>('/gioi-thieu').then(d=>{if(active)setCatalog(d);}).catch(e=>{if(active)setCatalogError(e.message);}).finally(()=>{if(active)setCatalogLoaded(true);});return()=>{active=false;};},[]);
-  const [bookingOpen,setBookingOpen]=useState(!!location.hash.includes("dat-phong"));
+  const [bookingOpen,setBookingOpen]=useState(true);
   const [bookingTarget,setBookingTarget]=useState<MucDatPhong|null>(null),[receiptPhone,setReceiptPhone]=useState(''),[guestCount,setGuestCount]=useState(1);
   const [cartCount,setCartCount]=useState<number|null>(null),[cartOnly,setCartOnly]=useState(false);
   const [config, setConfig] = useState<Record<string, string>>(defaults),
@@ -413,7 +412,7 @@ export default function App() {
           {home?.hien_phong&&<a href="/phong-gia" aria-current={page==='phong'||page==='chi-tiet'?'page':undefined}>Phòng & Giá</a>}
           {home?.hien_phong&&home.hien_combo!==false&&<a href="/uu-dai-combo" aria-current={page==='combo'?'page':undefined}>Ưu đãi Combo</a>}
           {token&&<ThongBaoKhach token={token}/>}
-          <button className="kh-cart-link" onClick={()=>{setCartOnly(true);void myBookings();}}>Giỏ hàng {cartCount!==null&&<span className="kh-cart-count" aria-label={cartCount+' đơn chưa hoàn thành'}>{cartCount>99?'99+':cartCount}</span>}</button>
+          <button className="kh-cart-link" onClick={()=>{setCartOnly(true);void myBookings();}}><span className="kh-cart-icon"><BieuTuong ten="cart"/>{cartCount!==null&&<span className="kh-cart-count" aria-label={cartCount+' đơn chưa hoàn thành'}>{cartCount>99?'99+':cartCount}</span>}</span> Giỏ hàng</button>
           {home?.hien_phong&&<a className="kh-nav-book" onClick={()=>setBookingOpen(true)} href={page==='home'?'#dat-phong':'/#dat-phong'}><BieuTuong ten="calendar"/>Đặt phòng ngay <span aria-hidden="true">→</span></a>}
         </nav>
       </header>
@@ -466,7 +465,6 @@ export default function App() {
       )}
       {home?.hien_phong && page==='home' && (
         <>
-          <>{ui.hien_thong_ke!==false&&<ConSoLuuTru name={ui.tieu_de_thong_ke||ui.ten_web} stats={catalog.thong_ke} animate={!motion.reduced}/>}</>
           <section id="dat-phong" className={"kh-booking-split "+(bookingOpen?"is-open":"")}><button type="button" className="kh-booking-toggle" aria-expanded={bookingOpen} aria-controls="kh-booking-panel" onClick={()=>setBookingOpen(!bookingOpen)}><BieuTuong ten="calendar"/>{ui.nhan_dat_don||"Đặt đơn"} <span aria-hidden="true">{bookingOpen?'−':'+'}</span></button><KhungDatDonChim title={ui.nhan_dat_don||"Đặt đơn"} description={ui.khau_hieu} open={bookingOpen} animate={!motion.reduced} duration={ui.toc_do_mo_dat_don||1600}><section className="kh-search" aria-label="Tìm phòng trống">
             {roomIntent&&<p className="kh-combo-intent">Đang chọn {catalog.phong.find(p=>p.id===roomIntent)?.ten_phong||'phòng'} · Chọn lịch để kiểm tra phòng trống. <button type="button" onClick={()=>setRoomIntent('')}>Bỏ chọn</button></p>}
             {comboChon&&<p className="kh-combo-intent">Đang chọn {catalog.combo.find(c=>c.id===comboChon)?.ten_combo||'combo'} · Kiểm tra lịch để xem phòng áp dụng. <button type="button" onClick={()=>setComboChon('')}>Bỏ chọn</button></p>}

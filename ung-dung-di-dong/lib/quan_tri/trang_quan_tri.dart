@@ -4,8 +4,9 @@ import '../dung_chung/api.dart';
 import '../khach/tro_chuyen.dart';
 
 class TrangQuanTri extends StatefulWidget {
-  const TrangQuanTri({super.key, required this.api, required this.access});
+  const TrangQuanTri({super.key, required this.api, required this.access, required this.onGuest});
   final Api api; final Json access;
+  final VoidCallback onGuest;
   @override State<TrangQuanTri> createState() => _TrangQuanTriState();
 }
 class _TrangQuanTriState extends State<TrangQuanTri> {
@@ -27,14 +28,50 @@ class _TrangQuanTriState extends State<TrangQuanTri> {
     'trang-chu': ('Trang chủ','/trang-chu',Icons.home_outlined),
     'chatbot': ('Chatbot','/chatbot',Icons.auto_awesome),
   };
+  String? selected;
+
   @override Widget build(BuildContext context) {
-    final pages = (widget.access['trang'] as List? ?? []).whereType<String>().where(modules.containsKey).toList();
-    return Scaffold(appBar: AppBar(title: const Text('Quản trị')), body: ListView(padding: const EdgeInsets.all(16), children: [for(final key in pages) Card(child: ListTile(leading: Icon(modules[key]!.$3), title: Text(modules[key]!.$1), trailing: const Icon(Icons.chevron_right), onTap: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => DuLieuQuanTri(api: widget.api, name: modules[key]!.$1, path: modules[key]!.$2, type: key)))))]));
+    final pages = (widget.access['trang'] as List? ?? [])
+      .whereType<String>().where(modules.containsKey).toSet().toList();
+    final current = pages.contains(selected) ? selected : pages.firstOrNull;
+    final module = modules[current];
+    if (current == null || module == null) {
+      return Scaffold(appBar: AppBar(title: const Text('Quản trị'), actions: [
+        IconButton(onPressed: widget.onGuest, tooltip: 'Giao diện khách', icon: const Icon(Icons.swap_horiz)),
+      ]), body: const Center(child: Text('Chưa có mục được phân công.')));
+    }
+    return Scaffold(
+      body: DuLieuQuanTri(key: ValueKey(current), api: widget.api,
+        name: module.$1, path: module.$2, type: current, onGuest: widget.onGuest),
+      bottomNavigationBar: SafeArea(
+        child: Material(
+          color: Theme.of(context).colorScheme.surfaceContainer,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.all(8),
+            child: Row(children: [
+              for (final key in pages)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: ChoiceChip(
+                    avatar: Icon(modules[key]!.$3, size: 18),
+                    label: Text(modules[key]!.$1),
+                    selected: current == key,
+                    onSelected: (_) => setState(() => selected = key),
+                  ),
+                ),
+            ]),
+          ),
+        ),
+      ),
+    );
   }
 }
+
 class DuLieuQuanTri extends StatefulWidget {
-  const DuLieuQuanTri({super.key, required this.api, required this.name, required this.path, required this.type});
+  const DuLieuQuanTri({super.key, required this.api, required this.name, required this.path, required this.type, this.onGuest});
   final Api api; final String name,path,type;
+  final VoidCallback? onGuest;
   @override State<DuLieuQuanTri> createState() => _DuLieuQuanTriState();
 }
 class _DuLieuQuanTriState extends State<DuLieuQuanTri> {
@@ -134,7 +171,12 @@ class _DuLieuQuanTriState extends State<DuLieuQuanTri> {
   }
 
   String time(dynamic value) { final date = DateTime.tryParse('$value'); return date == null ? '' : DateFormat('dd/MM HH:mm').format(date.toLocal()); }
-  @override Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(widget.name), actions: [IconButton(onPressed: () => setState(load), icon: const Icon(Icons.refresh), tooltip: 'Tải lại')]), body: Column(children: [
+  @override Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: Text(widget.name), actions: [
+    if (widget.onGuest != null) ...[
+      IconButton(onPressed: widget.onGuest, tooltip: 'Giao diện khách', icon: const Icon(Icons.swap_horiz)),
+      IconButton(onPressed: () => widget.api.token = null, tooltip: 'Đăng xuất', icon: const Icon(Icons.logout)),
+    ],
+    IconButton(onPressed: () => setState(load), icon: const Icon(Icons.refresh), tooltip: 'Tải lại')]), body: Column(children: [
     if(widget.type == 've-sinh') Padding(padding: const EdgeInsets.all(12), child: Wrap(spacing: 8, children: [ChoiceChip(label: const Text('Chưa hoàn thành'), selected: !completed, onSelected: (_) => setState(() => completed = false)), ChoiceChip(label: const Text('Hoàn thành'), selected: completed, onSelected: (_) => setState(() => completed = true))])),
     if(widget.type == 'lich') TextButton.icon(onPressed: () async { final v = await showDatePicker(context: context, initialDate: day, firstDate: DateTime(2020), lastDate: DateTime(2040)); if(v != null && mounted) setState(() { day = v; load(); }); }, icon: const Icon(Icons.calendar_month), label: Text(DateFormat('dd/MM/yyyy').format(day))),
     if (widget.type == 'tin-nhan')

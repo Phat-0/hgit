@@ -36,6 +36,11 @@ export default function ChiTietPhongKhach({
           <span className="kh-detail-eyebrow">
             {phong.ten_loai} · {phong.ma_phong}
           </span>
+          {typeof phong.dang_su_dung === "boolean" && (
+            <span className="kh-room-live" data-busy={phong.dang_su_dung}>
+              {phong.dang_su_dung ? "Đang sử dụng" : "Đang trống"}
+            </span>
+          )}
           <h1 id="kh-detail-title">{phong.ten_phong}</h1>
           <p className="kh-room-page-address">
             {phong.ten_homestay}

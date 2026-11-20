@@ -1,6 +1,8 @@
+import { khachApi } from "../../dung-chung/api/khach-api";
 import {giamChuyenDong} from '../../dung-chung/giao-dien/chuyen-dong';
 import { useMemo, useState, useEffect, useRef } from "react";
 export type PhongKhach = {
+  dang_su_dung?: boolean;
   id: string;
   homestay_id?: string;
   ten_phong: string;
@@ -141,7 +143,7 @@ export default function GioiThieuLuuTru({
 }) {
   const [catalogBranch, setCatalogBranch] = useState("");
   const [comboType, setComboType] = useState("");
-  const [activeTab, setActiveTab] = useState<"phong" | "combo">("phong");
+  const [activeTab, setActiveTab] = useState<"phong" | "combo" | "trong">("phong");
   const [roomSort, setRoomSort] = useState<SapXep>("noi-bat"),
     [comboSort, setComboSort] = useState<SapXep>("noi-bat"),
     [search, setSearch] = useState("");
@@ -186,7 +188,21 @@ export default function GioiThieuLuuTru({
     (c) => Number(c.gia_combo),
     (c) => c.luot_dat || 0,
   );
-  const shownRooms = page === "home" ? rooms.slice(0, 6) : rooms,
+  const [available, setAvailable] = useState<string[] | null>(null);
+  const [availabilityError, setAvailabilityError] = useState(false);
+  useEffect(() => {
+    if (page !== "home" || activeTab !== "trong") return;
+    let active = true;
+    setAvailable(null);
+    setAvailabilityError(false);
+    void khachApi<PhongKhach[]>("/phong-trong-hien-tai").then(list => {
+      if (active) setAvailable(list.map(room => room.id));
+    }).catch(() => { if (active) setAvailabilityError(true); });
+    return () => { active = false; };
+  }, [page, activeTab]);
+  const shownRooms = page === "home"
+      ? activeTab === "trong" ? rooms.filter(room => available?.includes(room.id)) : rooms.slice(0, 6)
+      : rooms,
     shownCombos = page === "home" ? combos.slice(0, 6) : combos;
   return (
     <div
@@ -220,13 +236,17 @@ export default function GioiThieuLuuTru({
               Combo
             </button>
           )}
+          <button type="button" role="tab" aria-controls="gioi-thieu-phong"
+            aria-selected={activeTab === "trong"} onClick={() => setActiveTab("trong")}>
+            Phòng trống hiện tại
+          </button>
         </div>
       )}
       {page !== "combo" && (
         <section
           id="gioi-thieu-phong"
           className="kh-showcase"
-          hidden={page === "home" && activeTab !== "phong"}
+          hidden={page === "home" && activeTab === "combo"}
           aria-label="Giá phòng"
         >
           <div className="kh-showcase-tools">
@@ -267,7 +287,12 @@ export default function GioiThieuLuuTru({
               />
             )}
           </div>
-          <div className={"kh-showcase-cards kh-tab-content tab-" + activeTab}>
+          {page === "home" && activeTab === "trong" && (
+            <p role="status">{availabilityError ? "Chưa tải được phòng trống."
+              : available === null ? "Đang kiểm tra phòng trống…"
+              : shownRooms.length === 0 ? "Chưa có phòng phù hợp khung giờ hiện tại." : ""}</p>
+          )}
+          <div key={activeTab} className={"kh-showcase-cards kh-tab-content tab-" + activeTab}>
             {shownRooms.map((p) => (
               <article key={p.id} className="kh-feature-card">
                 <button

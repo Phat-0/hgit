@@ -8,8 +8,10 @@ import '../dung_chung/api.dart';
 import 'trang_khach.dart';
 
 class DatPhong extends StatefulWidget {
-  const DatPhong({super.key, required this.api, required this.room, this.initialCombo, this.initialQuantity = 1});
+  const DatPhong({super.key, required this.api, required this.room, this.initialCombo, this.initialQuantity = 1, this.embedded = false, this.onSaved});
   final Api api;
+  final bool embedded;
+  final VoidCallback? onSaved;
   final Json room;
   final Json? initialCombo;
   final int initialQuantity;
@@ -214,7 +216,10 @@ class _DatPhongState extends State<DatPhong> {
       final result = await widget.api.request('/app/dat-phong', body: {...payload(), 'ten_khach': name.text.trim(), 'so_dien_thoai': phone.text.trim(), 'so_khach': guests, 'ghi_chu': note.text.trim(), 'khoa_yeu_cau': requestKey});
       if (!mounted) return;
       await showDialog<void>(context: context, barrierDismissible: false, builder: (context) => AlertDialog(title: const Text('Đã gửi yêu cầu'), content: Text('Mã đơn: ${result['ma_dat_phong']}\n${result['trang_thai']}'), actions: [FilledButton(onPressed: () => Navigator.pop(context), child: const Text('Đóng'))]));
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        widget.onSaved?.call();
+        if (!widget.embedded) Navigator.pop(context, true);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -226,7 +231,7 @@ class _DatPhongState extends State<DatPhong> {
     finally { if (mounted) setState(() => busy = false); }
   }
   @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Đặt phòng'), actions: [if (unavailable) const Padding(padding: EdgeInsets.all(12), child: Tooltip(message: 'Phòng không thể đặt', child: Icon(Icons.event_busy, color: Colors.orange)))]), body: Align(alignment: Alignment.topCenter, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 760), child: SingleChildScrollView(padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.viewInsetsOf(context).bottom + 24), child: Form(key: form, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+  Widget build(BuildContext context) => Scaffold(appBar: AppBar(automaticallyImplyLeading: !widget.embedded, title: const Text('Đặt phòng'), actions: [if (unavailable) const Padding(padding: EdgeInsets.all(12), child: Tooltip(message: 'Phòng không thể đặt', child: Icon(Icons.event_busy, color: Colors.orange)))]), body: Align(alignment: Alignment.topCenter, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 760), child: SingleChildScrollView(padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.viewInsetsOf(context).bottom + 24), child: Form(key: form, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
     Text(label(widget.room, 'ten_phong'), style: Theme.of(context).textTheme.titleLarge), if(unavailable) const Text('Giờ không khả dụng', style: TextStyle(color: Colors.orange)), const SizedBox(height: 20),
     TextFormField(controller: name, enabled: !busy, decoration: const InputDecoration(labelText: 'Họ tên'), validator: (v) => (v?.trim().length ?? 0) < 2 ? 'Nhập họ tên' : null, onChanged: (_) => requestKey = null), const SizedBox(height: 12),
     TextFormField(controller: phone, enabled: !busy, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Số điện thoại'), validator: (v) => RegExp(r'^(0|\+84|84)[0-9]{9}$').hasMatch((v ?? '').replaceAll(' ', '')) ? null : 'Nhập số điện thoại hợp lệ', onChanged: (_) => requestKey = null), const SizedBox(height: 12),

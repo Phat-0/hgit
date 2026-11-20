@@ -1,5 +1,6 @@
-export type TenBieuTuong = 'home'|'search'|'image'|'file'|'close'|'chevron'|'menu'|'message'|'calendar'|'building'|'bed'|'grid'|'gift'|'users'|'star'|'chart'|'logout'|'phone'|'mail'|'globe'|'facebook'|'instagram'|'tiktok'|'zalo';
+export type TenBieuTuong = 'home'|'cart'|'search'|'image'|'file'|'close'|'chevron'|'menu'|'message'|'calendar'|'building'|'bed'|'grid'|'gift'|'users'|'star'|'chart'|'logout'|'phone'|'mail'|'globe'|'facebook'|'instagram'|'tiktok'|'zalo';
 const paths: Record<TenBieuTuong,string[]> = {
+  cart:['M3 4h2l2 11h12l2-8H6','M9 20h.01M18 20h.01'],
   phone:['M7 3H3v4c0 8 6 14 14 14h4v-4l-5-2-2 2c-3-1-6-4-7-7l2-2z'],
   mail:['M3 5h18v14H3z','m3 5 9 8 9-8'],
   globe:['M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0','M3 12h18M12 3c-5 5-5 13 0 18M12 3c5 5 5 13 0 18'],
