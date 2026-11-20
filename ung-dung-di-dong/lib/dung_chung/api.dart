@@ -23,7 +23,7 @@ class Api extends ChangeNotifier {
       if (body != null) request.body = jsonEncode(body);
       final response = await client.send(request).then(http.Response.fromStream).timeout(const Duration(seconds: 25));
       dynamic data;
-      try { data = jsonDecode(response.body); } catch (_) { throw Exception('Máy chủ trả về dữ liệu không hợp lệ'); }
+      try { data = jsonDecode(utf8.decode(response.bodyBytes)); } catch (_) { throw Exception('Máy chủ trả về dữ liệu không hợp lệ'); }
       if (response.statusCode == 401 && token != null) token = null;
       if (response.statusCode >= 400) {
         final message = data is Map ? data['message'] : null;

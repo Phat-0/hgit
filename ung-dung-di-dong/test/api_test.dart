@@ -23,7 +23,7 @@ void main() {
   ]) {
     test('Phân loại HTTP 409: ${payload['message']}', () async {
       final api = Api(
-        client: MockClient((_) async => http.Response(jsonEncode(payload), 409)),
+        client: MockClient((_) async => http.Response.bytes(utf8.encode(jsonEncode(payload)), 409)),
         base: 'https://example.test/api',
       );
       addTearDown(api.close);
